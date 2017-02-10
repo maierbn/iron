@@ -1185,7 +1185,8 @@ CONTAINS
                   VELOCITY=VELOCITY*1.0_DP/DBLE((MAXIMUM_NUMBER_OF_ITERATIONS/2)-ITERATION_NUMBER)
                 ENDIF
               ELSEIF(VELOCITY>(ABS(VELOCITY_MAX))) THEN
-                CALL FLAG_WARNING('Exceeded maximum contraction velocity (lengthening).',ERR,ERROR,*999)
+                ! warning disabled
+                !CALL FLAG_WARNING('Exceeded maximum contraction velocity (lengthening).',ERR,ERROR,*999)
 !!!                VELOCITY=-VELOCITY_MAX
 !                !damping
 !                IF(ITERATION_NUMBER<(MAXIMUM_NUMBER_OF_ITERATIONS/2)) THEN
@@ -2000,7 +2001,8 @@ CONTAINS
                               VELOCITY=VELOCITY_MAX
                             !The max lengthening velocity is assumed to be VELOCITY_MAX/2.0
                             ELSEIF(VELOCITY>(ABS(VELOCITY_MAX)/2.0_DP)) THEN
-                              CALL FLAG_WARNING('Exceeded maximum contraction velocity (lengthening).',ERR,ERROR,*999)
+                              ! warning disabled
+                              !CALL FLAG_WARNING('Exceeded maximum contraction velocity (lengthening).',ERR,ERROR,*999)
                               VELOCITY=-VELOCITY_MAX/2.0_DP
                             ENDIF
                           ENDIF
