@@ -5,6 +5,7 @@ lib/
 build/
 /include/
 src/opencmiss_c.f90
+install
 
 # OpenCMISS examples repository
 /examples
