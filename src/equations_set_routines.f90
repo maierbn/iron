@@ -1548,7 +1548,10 @@ CONTAINS
             ENDIF
             NUMBER_OF_TIMES=0
 
+<<<<<<< HEAD
             IF (.FALSE.) THEN
+=======
+>>>>>>> 4c7da6262d1f003c85658a7876afdf673e50800c
             ! Debugging output in critical section
             CALL MPI_Comm_Size(MPI_COMM_WORLD, NumberOfComputationalNodes, Err)
             CALL MPI_Comm_Rank(MPI_COMM_WORLD, ComputationalNodeNumber, Err)
@@ -1579,7 +1582,10 @@ CONTAINS
               CALL MPI_Barrier(MPI_COMM_WORLD, Err)
 
             ENDDO
+<<<<<<< HEAD
             END IF
+=======
+>>>>>>> 4c7da6262d1f003c85658a7876afdf673e50800c
 
             !Loop over the internal elements
             DO element_idx = ELEMENTS_MAPPING%INTERNAL_START, ELEMENTS_MAPPING%INTERNAL_FINISH

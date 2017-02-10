@@ -1,8 +1,8 @@
-!> \file 
+!> \file
 !> \author Chris Bradley
 !> \brief This module handles all solver routines.
 !>
-!> \section LICENSE 
+!> \section LICENSE
 !>
 !> Version: MPL 1.1/GPL 2.0/LGPL 2.1
 !>
@@ -71,7 +71,7 @@ MODULE SOLVER_ROUTINES
   USE TYPES
   USE CUSTOM_PROFILING
 
-#include "macros.h"  
+#include "macros.h"
 
   IMPLICIT NONE
 
@@ -132,7 +132,7 @@ MODULE SOLVER_ROUTINES
 
 
 #include "petscversion.h"
- 
+
   !Module parameters
 
   !> \addtogroup SOLVER_ROUTINES_SolverTypes SOLVER_ROUTINES::SolverTypes
@@ -8307,8 +8307,8 @@ CONTAINS
       SOLVER%LABEL=""
       CALL SOLVER_LINEAR_FINALISE(SOLVER%LINEAR_SOLVER,ERR,ERROR,*999)
       CALL SOLVER_NONLINEAR_FINALISE(SOLVER%NONLINEAR_SOLVER,ERR,ERROR,*999)
-      CALL SOLVER_DYNAMIC_FINALISE(SOLVER%DYNAMIC_SOLVER,ERR,ERROR,*999)        
-      CALL SOLVER_DAE_FINALISE(SOLVER%DAE_SOLVER,ERR,ERROR,*999)        
+      CALL SOLVER_DYNAMIC_FINALISE(SOLVER%DYNAMIC_SOLVER,ERR,ERROR,*999)
+      CALL SOLVER_DAE_FINALISE(SOLVER%DAE_SOLVER,ERR,ERROR,*999)
       CALL SOLVER_EIGENPROBLEM_FINALISE(SOLVER%EIGENPROBLEM_SOLVER,ERR,ERROR,*999)
       CALL SOLVER_OPTIMISER_FINALISE(SOLVER%OPTIMISER_SOLVER,ERR,ERROR,*999)
       CALL SOLVER_CELLML_EVALUATOR_FINALISE(SOLVER%CELLML_EVALUATOR_SOLVER,ERR,ERROR,*999)
@@ -8318,20 +8318,20 @@ CONTAINS
       IF(ALLOCATED(SOLVER%LINKED_SOLVER_TYPE_MAP)) DEALLOCATE(SOLVER%LINKED_SOLVER_TYPE_MAP)
       IF(ALLOCATED(SOLVER%LINKED_SOLVERS)) DEALLOCATE(SOLVER%LINKED_SOLVERS)
       DEALLOCATE(SOLVER)
-    ENDIF 
-        
+    ENDIF
+
     EXITS("SOLVER_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_FINALISE
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Set the arbitrary path logical for geometric transformation solver 
+  !>Set the arbitrary path logical for geometric transformation solver
   SUBROUTINE Solver_GeometricTransformationArbitraryPathSet(solver,arbitraryPath,err,error,*)
 
     !Argument variables
@@ -8342,7 +8342,7 @@ CONTAINS
     !Local Variables
 
     ENTERS("Solver_GeometricTransformationArbitraryPathSet",err,error,*999)
-    
+
     IF(ASSOCIATED(solver)) THEN
       IF(ASSOCIATED(solver%geometricTransformationSolver)) THEN
         solver%geometricTransformationSolver%arbitraryPath=arbitraryPath
@@ -8352,20 +8352,20 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",err,error,*999)
     ENDIF
-        
+
     EXITS("Solver_GeometricTransformationArbitraryPathSet")
     RETURN
 999 ERRORS("Solver_GeometricTransformationArbitraryPathSet",err,error)
     EXITS("Solver_GeometricTransformationArbitraryPathSet")
     RETURN 1
-   
+
   END SUBROUTINE Solver_GeometricTransformationArbitraryPathSet
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Clear transformation for a geometric transformation solver 
+  !>Clear transformation for a geometric transformation solver
   SUBROUTINE Solver_GeometricTransformationClear(solver,err,error,*)
 
     !Argument variables
@@ -8374,7 +8374,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
     INTEGER(INTG) :: incrementIdx,i
-    
+
     ENTERS("Solver_GeometricTransformationClear",err,error,*999)
 
     IF(ASSOCIATED(solver)) THEN
@@ -8392,20 +8392,20 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",err,error,*999)
     ENDIF
-        
+
     EXITS("Solver_GeometricTransformationClear")
     RETURN
-    
+
 999 ERRORSEXITS("Solver_GeometricTransformationClear",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_GeometricTransformationClear
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Set the field and field variable type for geometric transformation solver 
+  !>Set the field and field variable type for geometric transformation solver
   SUBROUTINE Solver_GeometricTransformationFieldSet(solver,field,variableType,err,error,*)
 
     !Argument variables
@@ -8419,7 +8419,7 @@ CONTAINS
     INTEGER(INTG) :: numberOfGeoemtricComponents,i,j
 
     ENTERS("Solver_GeometricTransformationFieldSet",err,error,*999)
-    
+
     IF(ASSOCIATED(solver)) THEN
       IF(ASSOCIATED(solver%geometricTransformationSolver)) THEN
         IF(ASSOCIATED(field)) THEN
@@ -8467,20 +8467,20 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",err,error,*999)
     ENDIF
-        
+
     EXITS("Solver_GeometricTransformationFieldSet")
     RETURN
-    
+
 999 ERRORSEXITS("Solver_GeometricTransformationFieldSet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_GeometricTransformationFieldSet
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Set the full transformation matrix for a geometric transformation at a load increment 
+  !>Set the full transformation matrix for a geometric transformation at a load increment
   SUBROUTINE Solver_GeometricTransformationMatrixSet(solver,matrix,incrementIdx,err,error,*)
 
     !Argument variables
@@ -8492,10 +8492,10 @@ CONTAINS
     !Local Variables
 
     ENTERS("Solver_GeometricTransformationMatrixSet",err,error,*999)
-    
+
     IF(ASSOCIATED(solver)) THEN
       IF(ASSOCIATED(solver%geometricTransformationSolver)) THEN
-        IF(ASSOCIATED(solver%geometricTransformationSolver%field)) THEN 
+        IF(ASSOCIATED(solver%geometricTransformationSolver%field)) THEN
           IF(incrementIdx>0 .AND. incrementIdx<=solver%geometricTransformationSolver%numberOfIncrements) THEN
             IF(SIZE(matrix)==SIZE(solver%geometricTransformationSolver%transformationMatrices(:,:,incrementIdx))) THEN
               solver%geometricTransformationSolver%transformationMatrices(:,:,incrementIdx)=matrix
@@ -8515,20 +8515,20 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",err,error,*999)
     ENDIF
-    
+
     EXITS("Solver_GeometricTransformationMatrixSet")
     RETURN
 
 999 ERRORSEXITS("Solver_GeometricTransformationMatrixSet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_GeometricTransformationMatrixSet
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Set the number of load increments for geometric transformation solver 
+  !>Set the number of load increments for geometric transformation solver
   SUBROUTINE Solver_GeometricTransformationNumberOfLoadIncrementsSet(solver,numberOfIncrements,err,error,*)
 
     !Argument variables
@@ -8539,7 +8539,7 @@ CONTAINS
     !Local Variables
 
     ENTERS("Solver_GeometricTransformationFieldSet",err,error,*999)
-    
+
     IF(ASSOCIATED(solver)) THEN
       IF(ASSOCIATED(solver%geometricTransformationSolver)) THEN
         solver%geometricTransformationSolver%numberOfIncrements=numberOfIncrements
@@ -8549,21 +8549,21 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",err,error,*999)
     ENDIF
-        
+
     EXITS("Solver_GeometricTransformationNumberOfLoadIncrementsSet")
     RETURN
-    
+
 999 ERRORS("Solver_GeometricTransformationNumberOfLoadIncrementsSet",err,error)
     EXITS("Solver_GeometricTransformationNumberOfLoadIncrementsSet")
     RETURN 1
-   
+
   END SUBROUTINE Solver_GeometricTransformationNumberOfLoadIncrementsSet
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Set the rotation for a geometric transformation 
+  !>Set the rotation for a geometric transformation
   SUBROUTINE Solver_GeometricTransformationRotationSet(solver,pt,axis,theta,incrementIdx,err,error,*)
 
     !Argument variables
@@ -8579,10 +8579,10 @@ CONTAINS
     REAL(DP) :: u,v,w,vectorLength,rotationMatrix(4,4),transformationMatrix(4,4)
 
     ENTERS("Solver_GeometricTransformationRotationSet",err,error,*999)
-    
+
     IF(ASSOCIATED(solver)) THEN
       IF(ASSOCIATED(solver%geometricTransformationSolver)) THEN
-        IF(ASSOCIATED(solver%geometricTransformationSolver%field)) THEN 
+        IF(ASSOCIATED(solver%geometricTransformationSolver%field)) THEN
           IF(incrementIdx>0 .AND. incrementIdx<=solver%geometricTransformationSolver%numberOfIncrements) THEN
             IF(incrementIdx>1 .AND. .NOT.solver%geometricTransformationSolver%arbitraryPath) &
               & CALL FlagError("Rotating a field through multiple load increments must be specified through arbitrary path.", &
@@ -8618,7 +8618,7 @@ CONTAINS
                   CALL FlagError("Number of geometric components out of range.",err,error,*999)
                 END SELECT
                 ! Calculate new transformation matrix by multiplying the old matrix stored with the new rotation matrix
-                transformationMatrix(1:numberOfGeomComp+1,1:numberOfGeomComp+1)=MATMUL(solver%geometricTransformationSolver% & 
+                transformationMatrix(1:numberOfGeomComp+1,1:numberOfGeomComp+1)=MATMUL(solver%geometricTransformationSolver% &
                   & transformationMatrices(:,:,incrementIdx),rotationMatrix(1:numberOfGeomComp+1,1:numberOfGeomComp+1))
                 ! Store the new transformation matrix
                 solver%geometricTransformationSolver%transformationMatrices(:,:,incrementIdx)= &
@@ -8626,7 +8626,7 @@ CONTAINS
               ELSE
                 CALL FlagError("Dimension of the rotation axis does not match no. field geometric components.", &
                   & err,error,*999)
-              ENDIF    
+              ENDIF
             ELSE
               CALL FlagError("Dimension of the pivot point does not match no. field geometric components.", &
                 & err,error,*999)
@@ -8643,20 +8643,20 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",err,error,*999)
     ENDIF
-    
+
     EXITS("Solver_GeometricTransformationRotationSet")
     RETURN
 
 999 ERRORSEXITS("Solver_GeometricTransformationRotationSet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_GeometricTransformationRotationSet
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Set the scalings for geometric transformation solver 
+  !>Set the scalings for geometric transformation solver
   SUBROUTINE Solver_GeometricTransformationScalingsSet(solver,scalings,err,error,*)
 
     !Argument variables
@@ -8667,7 +8667,7 @@ CONTAINS
     !Local Variables
 
     ENTERS("Solver_GeometricTransformationScalingsSet",err,error,*999)
-    
+
     IF(ASSOCIATED(solver)) THEN
       IF(ASSOCIATED(solver%geometricTransformationSolver)) THEN
         IF(solver%geometricTransformationSolver%arbitraryPath) THEN
@@ -8689,20 +8689,20 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",err,error,*999)
     ENDIF
-        
+
     EXITS("Solver_GeometricTransformationScalingsSet")
     RETURN
-    
+
 999 ERRORSEXITS("Solver_GeometricTransformationScalingsSet",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_GeometricTransformationScalingsSet
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Set the translation for a geometric transformation 
+  !>Set the translation for a geometric transformation
   SUBROUTINE Solver_GeometricTransformationTranslationSet(solver,translation,incrementIdx,err,error,*)
 
     !Argument variables
@@ -8716,10 +8716,10 @@ CONTAINS
     REAL(DP) :: transformationMatrix(4,4),translationMatrix(4,4)
 
     ENTERS("Solver_GeometricTransformationTranslationSet",err,error,*999)
-    
+
     IF(ASSOCIATED(solver)) THEN
       IF(ASSOCIATED(solver%geometricTransformationSolver)) THEN
-        IF(ASSOCIATED(solver%geometricTransformationSolver%field)) THEN 
+        IF(ASSOCIATED(solver%geometricTransformationSolver%field)) THEN
           IF(incrementIdx>0 .AND. incrementIdx<=solver%geometricTransformationSolver%numberOfIncrements) THEN
             numberOfGeomComp=SIZE(solver%geometricTransformationSolver%transformationMatrices,incrementIdx)-1
             !Add translation to matrix at a specific step
@@ -8752,15 +8752,15 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",err,error,*999)
     ENDIF
-    
+
     EXITS("Solver_GeometricTransformationTranslationSet")
     RETURN
 999 ERRORS("Solver_GeometricTransformationTranslationSet",err,error)
     EXITS("Solver_GeometricTransformationTranslationSet")
     RETURN 1
-   
+
   END SUBROUTINE Solver_GeometricTransformationTranslationSet
-  
+
   !
   !================================================================================================================================
   !
@@ -8776,7 +8776,7 @@ CONTAINS
 
     ENTERS("Solver_GeometricTransformationFinalise",err,error,*999)
 
-    IF(ASSOCIATED(geometricTransformationSolver)) THEN   
+    IF(ASSOCIATED(geometricTransformationSolver)) THEN
       NULLIFY(geometricTransformationSolver%solver)
       IF(ASSOCIATED(geometricTransformationSolver%field)) NULLIFY(geometricTransformationSolver%field)
       geometricTransformationSolver%arbitraryPath=.FALSE.
@@ -8787,14 +8787,14 @@ CONTAINS
       geometricTransformationSolver%fieldVariableType=0
       DEALLOCATE(geometricTransformationSolver)
     ENDIF
-        
+
     EXITS("Solver_GeometricTransformationFinalise")
     RETURN
 999 ERRORSEXITS("Solver_GeometricTransformationFinalise",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE Solver_GeometricTransformationFinalise
-  
+
   !
   !================================================================================================================================
   !
@@ -8860,19 +8860,19 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",err,error,*998)
     ENDIF
-        
+
     EXITS("Solver_GeometricTransformationInitialise")
     RETURN
 999 CALL Solver_GeometricTransformationFinalise(solver%geometricTransformationSolver,dummyErr,dummyError,*998)
 998 ERRORSEXITS("Solver_GeometricTransformationInitialise",err,error)
     RETURN 1
-   
+
   END SUBROUTINE Solver_GeometricTransformationInitialise
 
   !
   !================================================================================================================================
   !
-  
+
   !>Create a CellML evaluator solver for the Newton solver
   SUBROUTINE SOLVER_NEWTON_CELLML_EVALUATOR_CREATE(SOLVER,CELLML_SOLVER,ERR,ERROR,*)
 
@@ -8884,9 +8884,9 @@ CONTAINS
     !Local Variables
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER
     TYPE(NEWTON_SOLVER_TYPE), POINTER :: NEWTON_SOLVER
-            
+
     NULLIFY(CELLML_SOLVER)
-    
+
     ENTERS("SOLVER_NEWTON_CELLML_EVALUATOR_CREATE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -8915,12 +8915,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_NEWTON_CELLML_EVALUATOR_CREATE")
     RETURN
 999 ERRORSEXITS("SOLVER_NEWTON_CELLML_EVALUATOR_CREATE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_NEWTON_CELLML_EVALUATOR_CREATE
 
   !
@@ -8938,7 +8938,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: DUMMY_ERR
     TYPE(VARYING_STRING) :: DUMMY_ERROR,LOCAL_ERROR
-    
+
     ENTERS("SOLVER_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(SOLVERS)) THEN
@@ -8968,20 +8968,20 @@ CONTAINS
     ELSE
       CALL FlagError("Solvers is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("SOLVER_INITIALISE")
     RETURN
 999 CALL SOLVER_FINALISE(SOLVERS%SOLVERS(SOLVER_INDEX)%PTR,DUMMY_ERR,DUMMY_ERROR,*998)
 998 ERRORSEXITS("SOLVER_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_INITIALISE
 
   !
   !================================================================================================================================
   !
 
-  !>Initialise a solver 
+  !>Initialise a solver
   SUBROUTINE SOLVER_INITIALISE_PTR(SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -8990,7 +8990,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: solver_idx
-    
+
     ENTERS("SOLVER_INITIALISE_PTR",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -9017,12 +9017,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_INITIALISE_PTR")
     RETURN
 999 ERRORSEXITS("SOLVER_INITIALISE_PTR",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_INITIALISE_PTR
 
   !
@@ -9053,12 +9053,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_LABEL_GET_C")
     RETURN
 999 ERRORSEXITS("SOLVER_LABEL_GET_C",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_LABEL_GET_C
 
    !
@@ -9082,12 +9082,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_LABEL_GET_VS")
     RETURN
 999 ERRORSEXITS("SOLVER_LABEL_GET_VS",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_LABEL_GET_VS
 
   !
@@ -9098,7 +9098,7 @@ CONTAINS
   SUBROUTINE SOLVER_LABEL_SET_C(SOLVER,LABEL,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer to the solver to set the label for 
+    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer to the solver to set the label for
     CHARACTER(LEN=*), INTENT(IN) :: LABEL !<The label to set
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -9115,12 +9115,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_LABEL_SET_C")
     RETURN
 999 ERRORSEXITS("SOLVER_LABEL_SET_C",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_LABEL_SET_C
 
   !
@@ -9131,7 +9131,7 @@ CONTAINS
   SUBROUTINE SOLVER_LABEL_SET_VS(SOLVER,LABEL,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer to the solver to set the label for 
+    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer to the solver to set the label for
     TYPE(VARYING_STRING), INTENT(IN) :: LABEL !<The label to set
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -9148,7 +9148,7 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_LABEL_SET_VS")
     RETURN
 999 ERRORSEXITS("SOLVER_LABEL_SET_VS",ERR,ERROR)
@@ -9197,7 +9197,7 @@ CONTAINS
         ENDIF
       CASE(SOLVER_DYNAMIC_TYPE)
         DYNAMIC_SOLVER=>SOLVER%DYNAMIC_SOLVER
-        IF(ASSOCIATED(DYNAMIC_SOLVER)) THEN         
+        IF(ASSOCIATED(DYNAMIC_SOLVER)) THEN
           CALL SOLVER_DYNAMIC_LIBRARY_TYPE_GET(DYNAMIC_SOLVER,SOLVER_LIBRARY_TYPE,ERR,ERROR,*999)
           SOLVER_LIBRARY_TYPE=DYNAMIC_SOLVER%SOLVER_LIBRARY
         ELSE
@@ -9239,14 +9239,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_LIBRARY_TYPE_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_LIBRARY_TYPE_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LIBRARY_TYPE_GET
-  
+
   !
   !================================================================================================================================
   !
@@ -9333,7 +9333,7 @@ CONTAINS
             CALL SOLVER_CELLML_EVALUATOR_LIBRARY_TYPE_SET(CELLML_EVALUATOR_SOLVER,SOLVER_LIBRARY_TYPE,ERR,ERROR,*999)
           ELSE
             CALL FlagError("Solver CellML evaluator solver is not associated.",ERR,ERROR,*999)
-          ENDIF          
+          ENDIF
         CASE DEFAULT
           LOCAL_ERROR="The solver type of "//TRIM(NumberToVString(SOLVER%SOLVE_TYPE,"*",ERR,ERROR))//" is invalid."
           CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
@@ -9342,19 +9342,19 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_LIBRARY_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_LIBRARY_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LIBRARY_TYPE_SET
-  
+
   !
   !================================================================================================================================
   !
 
-  !>Finishes the process of creating a linear solver 
+  !>Finishes the process of creating a linear solver
   SUBROUTINE SOLVER_LINEAR_CREATE_FINISH(LINEAR_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -9459,14 +9459,14 @@ CONTAINS
     ELSE
       CALL FlagError("Linear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_CREATE_FINISH")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_CREATE_FINISH",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_CREATE_FINISH
-        
+
   !
   !================================================================================================================================
   !
@@ -9490,7 +9490,7 @@ CONTAINS
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_DIRECT_CHOLESKY_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_CHOLESKY_FINALISE
 
   !
@@ -9505,7 +9505,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    
+
     ENTERS("SOLVER_LINEAR_DIRECT_CHOLESKY_INITIALISE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(DIRECT_SOLVER)) THEN
@@ -9513,19 +9513,19 @@ CONTAINS
     ELSE
       CALL FlagError("Direct linear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_DIRECT_CHOLESKY_INITIALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_DIRECT_CHOLESKY_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_CHOLESKY_INITIALISE
 
   !
   !================================================================================================================================
   !
 
-  !>Finishes the process of creating a linear direct solver 
+  !>Finishes the process of creating a linear direct solver
   SUBROUTINE SOLVER_LINEAR_DIRECT_CREATE_FINISH(LINEAR_DIRECT_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -9702,14 +9702,14 @@ CONTAINS
     ELSE
       CALL FlagError("Linear direct solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_LINEAR_DIRECT_CREATE_FINISH")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_DIRECT_CREATE_FINISH",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_CREATE_FINISH
-        
+
   !
   !================================================================================================================================
   !
@@ -9740,7 +9740,7 @@ CONTAINS
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_DIRECT_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_FINALISE
 
   !
@@ -9757,7 +9757,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: DUMMY_ERR
     TYPE(VARYING_STRING) :: DUMMY_ERROR
-    
+
     ENTERS("SOLVER_LINEAR_DIRECT_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(LINEAR_SOLVER)) THEN
@@ -9774,13 +9774,13 @@ CONTAINS
     ELSE
       CALL FlagError("Linear solver is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_DIRECT_INITIALISE")
     RETURN
 999 CALL SOLVER_LINEAR_DIRECT_FINALISE(LINEAR_SOLVER%DIRECT_SOLVER,DUMMY_ERR,DUMMY_ERROR,*998)
 998 ERRORSEXITS("SOLVER_LINEAR_DIRECT_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_INITIALISE
 
   !
@@ -9797,7 +9797,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
- 
+
     ENTERS("SOLVER_LINEAR_DIRECT_LIBRARY_TYPE_GET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(DIRECT_SOLVER)) THEN
@@ -9816,12 +9816,12 @@ CONTAINS
     ELSE
       CALL FlagError("Direct linear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_LINEAR_DIRECT_LIBRARY_TYPE_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_DIRECT_LIBRARY_TYPE_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_LIBRARY_TYPE_GET
 
   !
@@ -9840,7 +9840,7 @@ CONTAINS
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
     ENTERS("SOLVER_LINEAR_DIRECT_LIBRARY_TYPE_SET",ERR,ERROR,*999)
-    
+
     IF(ASSOCIATED(DIRECT_SOLVER)) THEN
       SELECT CASE(DIRECT_SOLVER%DIRECT_SOLVER_TYPE)
       CASE(SOLVER_DIRECT_LU)
@@ -9883,7 +9883,7 @@ CONTAINS
     ELSE
       CALL FlagError("Direct linear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_DIRECT_LIBRARY_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_DIRECT_LIBRARY_TYPE_SET",ERR,ERROR)
@@ -9947,7 +9947,7 @@ CONTAINS
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_DIRECT_LU_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_LU_FINALISE
 
   !
@@ -9964,7 +9964,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: DUMMY_ERR
     TYPE(VARYING_STRING) :: DUMMY_ERROR
-    
+
     ENTERS("SOLVER_LINEAR_DIRECT_LU_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(DIRECT_SOLVER)) THEN
@@ -9977,13 +9977,13 @@ CONTAINS
     ELSE
       CALL FlagError("Direct linear solver is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_DIRECT_LU_INITIALISE")
     RETURN
 999 CALL SOLVER_LINEAR_DIRECT_LU_FINALISE(DIRECT_SOLVER,DUMMY_ERR,DUMMY_ERROR,*998)
 998 ERRORSEXITS("SOLVER_LINEAR_DIRECT_LU_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_LU_INITIALISE
 
   !
@@ -9999,7 +9999,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
- 
+
     ENTERS("Solver_LinearDirectMatricesLibraryTypeGet",ERR,ERROR,*999)
 
     IF(ASSOCIATED(DIRECT_SOLVER)) THEN
@@ -10007,12 +10007,12 @@ CONTAINS
     ELSE
       CALL FlagError("Direct linear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("Solver_LinearDirectMatricesLibraryTypeGet")
     RETURN
 999 ERRORSEXITS("Solver_LinearDirectMatricesLibraryTypeGet",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE Solver_LinearDirectMatricesLibraryTypeGet
 
   !
@@ -10020,13 +10020,13 @@ CONTAINS
   !
 
 !!\todo Allow for the mumps parameters to be set during the solver creation (i.e., cache and defer setting until we have PETSc matrix)
-  
+
   !>Sets MUMPS ICNTL(icntl)=ivalue through PETSc Mat API (see MUMPS user guide for more info). Must be called after the boundary conditions have been set up.
   SUBROUTINE Solver_MumpsSetIcntl(solver,icntl,ivalue,err,error,*)
 
     !Argument variables
     TYPE(SOLVER_TYPE), POINTER :: solver
-    INTEGER(INTG), INTENT(IN) :: icntl !<The MUMPS ICNTL integer control parameter 
+    INTEGER(INTG), INTENT(IN) :: icntl !<The MUMPS ICNTL integer control parameter
     INTEGER(INTG), INTENT(IN) :: ivalue !<The MUMPS ICNTL integer value to set: ICNTL(icntl)=ivalue
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
@@ -10037,7 +10037,7 @@ CONTAINS
     TYPE(SOLVER_TYPE), POINTER :: linkingSolver
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: linkingSolverEquations,solverEquations
     TYPE(SOLVER_MATRICES_TYPE), POINTER :: solverMatrices
-    TYPE(PetscMatType) :: petscFactoredMatrix !<The factored matrix obtained by calling MatGetFactor() from PETSc-MUMPS interface 
+    TYPE(PetscMatType) :: petscFactoredMatrix !<The factored matrix obtained by calling MatGetFactor() from PETSc-MUMPS interface
     TYPE(VARYING_STRING) :: localError
 
     ENTERS("Solver_MumpsSetIcntl",err,error,*999)
@@ -10126,12 +10126,12 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",err,error,*999)
     ENDIF
-    
+
     EXITS("Solver_MumpsSetIcntl")
     RETURN
-999 ERRORSEXITS("Solver_MumpsSetIcntl",err,error)    
+999 ERRORSEXITS("Solver_MumpsSetIcntl",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Solver_MumpsSetIcntl
 
   !
@@ -10145,7 +10145,7 @@ CONTAINS
 
     !Argument variables
     TYPE(SOLVER_TYPE), POINTER :: solver
-    INTEGER(INTG), INTENT(IN) :: icntl !<The MUMPS ICNTL integer control parameter 
+    INTEGER(INTG), INTENT(IN) :: icntl !<The MUMPS ICNTL integer control parameter
     REAL(DP), INTENT(IN) :: val !<The MUMPS CNTL real value to set: CNTL(icntl)=val
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
@@ -10156,7 +10156,7 @@ CONTAINS
     TYPE(SOLVER_TYPE), POINTER :: linkingSolver
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: linkingSolverEquations,solverEquations
     TYPE(SOLVER_MATRICES_TYPE), POINTER :: solverMatrices
-    TYPE(PetscMatType) :: petscFactoredMatrix !<The factored matrix obtained by calling MatGetFactor() from PETSc-MUMPS interface 
+    TYPE(PetscMatType) :: petscFactoredMatrix !<The factored matrix obtained by calling MatGetFactor() from PETSc-MUMPS interface
     TYPE(VARYING_STRING) :: localError
 
     ENTERS("Solver_MumpsSetCntl",err,error,*999)
@@ -10237,19 +10237,19 @@ CONTAINS
     ELSE
       CALL FlagError("Linear direct solver is not associated.",err,error,*999)
     ENDIF
-    
+
     EXITS("Solver_MumpsSetCntl")
     RETURN
-999 ERRORSEXITS("Solver_MumpsSetCntl",err,error)    
+999 ERRORSEXITS("Solver_MumpsSetCntl",err,error)
     RETURN 1
-    
+
   END SUBROUTINE Solver_MumpsSetCntl
 
   !
   !================================================================================================================================
   !
 
-  !>Solve a linear direct solver 
+  !>Solve a linear direct solver
   SUBROUTINE SOLVER_LINEAR_DIRECT_SOLVE(LINEAR_DIRECT_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -10334,7 +10334,7 @@ CONTAINS
                                     ENDIF
                                     !Solve the linear system
                                     CALL Petsc_KSPSolve(LINEAR_DIRECT_SOLVER%KSP,RHS_VECTOR%PETSC%VECTOR, &
-                                      & SOLVER_VECTOR%PETSC%VECTOR,ERR,ERROR,*999) 
+                                      & SOLVER_VECTOR%PETSC%VECTOR,ERR,ERROR,*999)
                                   ELSE
                                     CALL FlagError("Solver matrix PETSc is not associated.",ERR,ERROR,*999)
                                   ENDIF
@@ -10361,7 +10361,7 @@ CONTAINS
                                     ENDIF
                                     !Solve the linear system
                                     CALL Petsc_KSPSolve(LINEAR_DIRECT_SOLVER%KSP,RHS_VECTOR%PETSC%VECTOR, &
-                                      & SOLVER_VECTOR%PETSC%VECTOR,ERR,ERROR,*999) 
+                                      & SOLVER_VECTOR%PETSC%VECTOR,ERR,ERROR,*999)
                                   ELSE
                                     CALL FlagError("Solver matrix PETSc is not associated.",ERR,ERROR,*999)
                                   ENDIF
@@ -10396,7 +10396,7 @@ CONTAINS
                                     ENDIF
                                     !Solve the linear system
                                     CALL Petsc_KSPSolve(LINEAR_DIRECT_SOLVER%KSP,RHS_VECTOR%PETSC%VECTOR, &
-                                      & SOLVER_VECTOR%PETSC%VECTOR,ERR,ERROR,*999) 
+                                      & SOLVER_VECTOR%PETSC%VECTOR,ERR,ERROR,*999)
                                   ELSE
                                     CALL FlagError("Solver matrix PETSc is not associated.",ERR,ERROR,*999)
                                   ENDIF
@@ -10423,7 +10423,7 @@ CONTAINS
                                     ENDIF
                                     !Solve the linear system
                                     CALL Petsc_KSPSolve(LINEAR_DIRECT_SOLVER%KSP,RHS_VECTOR%PETSC%VECTOR, &
-                                      & SOLVER_VECTOR%PETSC%VECTOR,ERR,ERROR,*999) 
+                                      & SOLVER_VECTOR%PETSC%VECTOR,ERR,ERROR,*999)
                                   ELSE
                                     CALL FlagError("Solver matrix PETSc is not associated.",ERR,ERROR,*999)
                                   ENDIF
@@ -10483,14 +10483,14 @@ CONTAINS
     ELSE
       CALL FlagError("Linear direct solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_DIRECT_SOLVE")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_DIRECT_SOLVE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_SOLVE
-        
+
   !
   !================================================================================================================================
   !
@@ -10514,7 +10514,7 @@ CONTAINS
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_DIRECT_SVD_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_SVD_FINALISE
 
   !
@@ -10529,7 +10529,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    
+
     ENTERS("SOLVER_LINEAR_DIRECT_SVD_INITIALISE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(DIRECT_SOLVER)) THEN
@@ -10537,12 +10537,12 @@ CONTAINS
     ELSE
       CALL FlagError("Direct linear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_DIRECT_SVD_INITIALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_DIRECT_SVD_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_SVD_INITIALISE
 
   !
@@ -10559,7 +10559,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_LINEAR_DIRECT_TYPE_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -10614,14 +10614,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_LINEAR_DIRECT_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_DIRECT_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_DIRECT_TYPE_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -10642,12 +10642,12 @@ CONTAINS
       CALL SOLVER_LINEAR_ITERATIVE_FINALISE(LINEAR_SOLVER%ITERATIVE_SOLVER,ERR,ERROR,*999)
       DEALLOCATE(LINEAR_SOLVER)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_FINALISE
 
   !
@@ -10685,13 +10685,13 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_INITIALISE")
     RETURN
 999 CALL SOLVER_LINEAR_FINALISE(SOLVER%LINEAR_SOLVER,DUMMY_ERR,DUMMY_ERROR,*998)
 998 ERRORSEXITS("SOLVER_LINEAR_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_INITIALISE
 
   !
@@ -10702,13 +10702,13 @@ CONTAINS
   SUBROUTINE Solver_LinearIterativeAbsoluteToleranceSet(SOLVER,ABSOLUTE_TOLERANCE,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to set 
+    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to set
     REAL(DP), INTENT(IN) :: ABSOLUTE_TOLERANCE !<The absolute tolerance to set
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("Solver_LinearIterativeAbsoluteToleranceSet",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -10742,19 +10742,19 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("Solver_LinearIterativeAbsoluteToleranceSet")
     RETURN
 999 ERRORSEXITS("Solver_LinearIterativeAbsoluteToleranceSet",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE Solver_LinearIterativeAbsoluteToleranceSet
-        
+
   !
   !================================================================================================================================
   !
 
-  !>Finishes the process of creating a linear iterative solver 
+  !>Finishes the process of creating a linear iterative solver
   SUBROUTINE SOLVER_LINEAR_ITERATIVE_CREATE_FINISH(LINEAR_ITERATIVE_SOLVER,ERR,ERROR,*)
 
     !Argument variables
@@ -10900,7 +10900,7 @@ CONTAINS
               CALL Petsc_KSPSetType(LINEAR_ITERATIVE_SOLVER%KSP,PETSC_KSPCG,ERR,ERROR,*999)
             CASE(SOLVER_ITERATIVE_BICONJUGATE_GRADIENT)
               CALL Petsc_KSPSetType(LINEAR_ITERATIVE_SOLVER%KSP,PETSC_KSPBICG,ERR,ERROR,*999)
-            CASE(SOLVER_ITERATIVE_GMRES)
+            CASE(SOLVER_ITERATIVE_GMRES) ! this one is used
               CALL Petsc_KSPSetType(LINEAR_ITERATIVE_SOLVER%KSP,PETSC_KSPGMRES,ERR,ERROR,*999)
               CALL Petsc_KSPGMRESSetRestart(LINEAR_ITERATIVE_SOLVER%KSP,LINEAR_ITERATIVE_SOLVER%GMRES_RESTART,ERR,ERROR,*999)
             CASE(SOLVER_ITERATIVE_BiCGSTAB)
@@ -10974,14 +10974,14 @@ CONTAINS
     ELSE
       CALL FlagError("Linear iterative solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_ITERATIVE_CREATE_FINISH")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_ITERATIVE_CREATE_FINISH",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE SOLVER_LINEAR_ITERATIVE_CREATE_FINISH
-        
+
   !
   !================================================================================================================================
   !
@@ -10990,13 +10990,13 @@ CONTAINS
   SUBROUTINE Solver_LinearIterativeDivergenceToleranceSet(SOLVER,DIVERGENCE_TOLERANCE,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to set 
+    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to set
     REAL(DP), INTENT(IN) :: DIVERGENCE_TOLERANCE !<The divergence tolerance to set
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("Solver_LinearIterativeDivergenceToleranceSet",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -11031,15 +11031,15 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("Solver_LinearIterativeDivergenceToleranceSet")
     RETURN
 999 ERRORS("Solver_LinearIterativeDivergenceToleranceSet",ERR,ERROR)
     EXITS("Solver_LinearIterativeDivergenceToleranceSet")
     RETURN 1
-   
+
   END SUBROUTINE Solver_LinearIterativeDivergenceToleranceSet
-        
+
   !
   !================================================================================================================================
   !
@@ -11066,12 +11066,12 @@ CONTAINS
       ENDIF
       DEALLOCATE(LINEAR_ITERATIVE_SOLVER)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_ITERATIVE_FINALISE")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_ITERATIVE_FINALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_ITERATIVE_FINALISE
 
   !
@@ -11090,7 +11090,7 @@ CONTAINS
     TYPE(LINEAR_SOLVER_TYPE), POINTER :: LINEAR_SOLVER
     TYPE(LINEAR_ITERATIVE_SOLVER_TYPE), POINTER :: ITERATIVE_SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_LINEAR_ITERATIVE_GMRES_RESTART_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -11130,14 +11130,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_LINEAR_ITERATIVE_GMRES_RESTART_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_ITERATIVE_GMRES_RESTART_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_ITERATIVE_GMRES_RESTART_SET
-        
+
   !
   !================================================================================================================================
   !
@@ -11179,13 +11179,13 @@ CONTAINS
     ELSE
       CALL FlagError("Linear solver is not associated.",ERR,ERROR,*998)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_ITERATIVE_INITIALISE")
     RETURN
 999 CALL SOLVER_LINEAR_ITERATIVE_FINALISE(LINEAR_SOLVER%ITERATIVE_SOLVER,DUMMY_ERR,DUMMY_ERROR,*998)
 998 ERRORSEXITS("SOLVER_LINEAR_ITERATIVE_INITIALISE",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_ITERATIVE_INITIALISE
 
   !
@@ -11202,7 +11202,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
- 
+
     ENTERS("SOLVER_LINEAR_ITERATIVE_LIBRARY_TYPE_GET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(ITERATIVE_SOLVER)) THEN
@@ -11227,12 +11227,12 @@ CONTAINS
     ELSE
       CALL FlagError("Iterative linear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("SOLVER_LINEAR_ITERATIVE_LIBRARY_TYPE_GET")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_ITERATIVE_LIBRARY_TYPE_GET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_ITERATIVE_LIBRARY_TYPE_GET
 
   !
@@ -11249,9 +11249,9 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_LINEAR_ITERATIVE_LIBRARY_TYPE_SET",ERR,ERROR,*999)
-    
+
     IF(ASSOCIATED(ITERATIVE_SOLVER)) THEN
       SELECT CASE(ITERATIVE_SOLVER%ITERATIVE_SOLVER_TYPE)
       CASE(SOLVER_ITERATIVE_RICHARDSON)
@@ -11334,12 +11334,12 @@ CONTAINS
     ELSE
       CALL FlagError("Iterative linear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-        
+
     EXITS("SOLVER_LINEAR_ITERATIVE_LIBRARY_TYPE_SET")
     RETURN
 999 ERRORSEXITS("SOLVER_LINEAR_ITERATIVE_LIBRARY_TYPE_SET",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE SOLVER_LINEAR_ITERATIVE_LIBRARY_TYPE_SET
 
   !
@@ -11355,7 +11355,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    
+
     ENTERS("Solver_LinearIterativeMatricesLibraryTypeGet",ERR,ERROR,*999)
 
     IF(ASSOCIATED(ITERATIVE_SOLVER)) THEN
@@ -11363,13 +11363,13 @@ CONTAINS
     ELSE
       CALL FlagError("Iterative linear solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("Solver_LinearIterativeMatricesLibraryTypeGet")
     RETURN
 999 ERRORS("Solver_LinearIterativeMatricesLibraryTypeGet",ERR,ERROR)
     EXITS("Solver_LinearIterativeMatricesLibraryTypeGet")
     RETURN 1
-   
+
   END SUBROUTINE Solver_LinearIterativeMatricesLibraryTypeGet
 
   !
@@ -11386,7 +11386,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("Solver_LinearIterativeMaximumIterationsSet",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -11420,14 +11420,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("Solver_LinearIterativeMaximumIterationsSet")
     RETURN
 999 ERRORSEXITS("Solver_LinearIterativeMaximumIterationsSet",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE Solver_LinearIterativeMaximumIterationsSet
-        
+
   !
   !================================================================================================================================
   !
@@ -11442,7 +11442,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("Solver_LinearIterativePreconditionerTypeSet",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -11470,7 +11470,7 @@ CONTAINS
                         & SOLVER_ITERATIVE_SOR_PRECONDITIONER
                     CASE(SOLVER_ITERATIVE_INCOMPLETE_CHOLESKY_PRECONDITIONER)
                       SOLVER%LINEAR_SOLVER%ITERATIVE_SOLVER%ITERATIVE_PRECONDITIONER_TYPE= &
-                        & SOLVER_ITERATIVE_INCOMPLETE_CHOLESKY_PRECONDITIONER 
+                        & SOLVER_ITERATIVE_INCOMPLETE_CHOLESKY_PRECONDITIONER
                     CASE(SOLVER_ITERATIVE_INCOMPLETE_LU_PRECONDITIONER)
                       SOLVER%LINEAR_SOLVER%ITERATIVE_SOLVER%ITERATIVE_PRECONDITIONER_TYPE= &
                         & SOLVER_ITERATIVE_INCOMPLETE_LU_PRECONDITIONER
@@ -11487,7 +11487,7 @@ CONTAINS
                       & TRIM(NumberToVString(SOLVER%LINEAR_SOLVER%ITERATIVE_SOLVER%SOLVER_LIBRARY,"*",ERR,ERROR))// &
                       & " is invalid."
                     CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
-                  END SELECT                  
+                  END SELECT
                 ENDIF
               ELSE
                 CALL FlagError("The solver linear solver iterative solver is not associated.",ERR,ERROR,*999)
@@ -11505,14 +11505,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("Solver_LinearIterativePreconditionerTypeSet")
     RETURN
 999 ERRORSEXITS("Solver_LinearIterativePreconditionerTypeSet",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE Solver_LinearIterativePreconditionerTypeSet
-        
+
   !
   !================================================================================================================================
   !
@@ -11521,13 +11521,13 @@ CONTAINS
   SUBROUTINE Solver_LinearIterativeRelativeToleranceSet(SOLVER,RELATIVE_TOLERANCE,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to set 
+    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to set
     REAL(DP), INTENT(IN) :: RELATIVE_TOLERANCE !<The relative tolerance to set
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("Solver_LinearIterativeRelativeToleranceSet",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -11561,14 +11561,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("Solver_LinearIterativeRelativeToleranceSet")
     RETURN
 999 ERRORSEXITS("Solver_LinearIterativeRelativeToleranceSet",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE Solver_LinearIterativeRelativeToleranceSet
-        
+
   !
   !================================================================================================================================
   !
@@ -11577,13 +11577,13 @@ CONTAINS
   SUBROUTINE Solver_LinearIterativeSolutionInitTypeSet(SOLVER,SOLUTION_INITIALISE_TYPE,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to set 
+    TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to set
     INTEGER(INTG), INTENT(IN) :: SOLUTION_INITIALISE_TYPE !<The solution initialise type to set \see SOLVER_ROUTINES_SolutionInitialiseTypes,SOLVER_ROUTINES
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("Solver_LinearIterativeSolutionInitTypeSet",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
@@ -11622,14 +11622,14 @@ CONTAINS
     ELSE
       CALL FlagError("Solver is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("Solver_LinearIterativeSolutionInitTypeSet")
     RETURN
 999 ERRORSEXITS("Solver_LinearIterativeSolutionInitTypeSet",ERR,ERROR)
     RETURN 1
-   
+
   END SUBROUTINE Solver_LinearIterativeSolutionInitTypeSet
-        
+
   !
   !================================================================================================================================
   !
@@ -11654,7 +11654,7 @@ CONTAINS
     TYPE(SOLVER_MATRICES_TYPE), POINTER :: SOLVER_MATRICES
     TYPE(SOLVER_MATRIX_TYPE), POINTER :: SOLVER_MATRIX
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+
     ENTERS("SOLVER_LINEAR_ITERATIVE_SOLVE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(LINEAR_ITERATIVE_SOLVER)) THEN
