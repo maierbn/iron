@@ -701,6 +701,7 @@ CONTAINS
       CASE(PROBLEM_FINITE_ELASTICITY_FLUID_PRESSURE_TYPE)
         !do nothing
       CASE(PROBLEM_BIOELECTRIC_FINITE_ELASTICITY_TYPE)
+        ! output *.exnode files with name e.g. MainTime_1_26.part0.exnode
         CALL BioelectricFiniteElasticity_ControlLoopPostLoop(CONTROL_LOOP,ERR,ERROR,*999)
       CASE(PROBLEM_FINITE_ELASTICITY_STOKES_TYPE)
         !do nothing

@@ -372,6 +372,25 @@ CONTAINS
     TYPE(ROUTINE_LIST_ITEM_TYPE), POINTER :: LIST_ROUTINE_PTR
     TYPE(ROUTINE_STACK_ITEM_TYPE), POINTER :: NEW_ROUTINE_PTR,ROUTINE_PTR
 
+    CHARACTER(LEN=100) :: Filename = "call_stack.txt"
+    INTEGER(INTG) :: stat, I
+    CHARACTER(LEN=200) :: Indentation = ""
+
+    ! write routine name to file
+    IF(DIAG_CALL_STACK) THEN
+
+      CALL_STACK_INDENT_WIDTH = CALL_STACK_INDENT_WIDTH + 1
+      Indentation = ""
+      DO I=1,MIN(100,CALL_STACK_INDENT_WIDTH)
+        Indentation(I:I+1) = "-"
+      ENDDO
+
+      OPEN(unit=200, file=Filename, iostat=stat, access='append')
+      IF (stat /= 0 ) PRINT*, 'Failed to open File \"'// TRIM(Filename) // '\" for writing!.'
+      WRITE(200,'(4A)') "+", TRIM(Indentation), " ", NAME
+      CLOSE(unit=200)
+    ENDIF
+
     IF(DIAG_OR_TIMING) THEN
       !$OMP CRITICAL(ENTERS_1)
       ALLOCATE(NEW_ROUTINE_PTR,STAT=ERR)
@@ -424,8 +443,10 @@ CONTAINS
           DIAGNOSTICS5=.FALSE.
         ENDIF
         IF(ROUTINE_PTR%DIAGNOSTICS) THEN
-          WRITE(OP_STRING,'("*** Enters: ",A)') NAME(1:LEN_TRIM(NAME))
-          CALL WRITE_STR(DIAGNOSTIC_OUTPUT_TYPE,ERR,ERROR,*999)
+          IF(DIAGNOSTICS2) THEN
+            WRITE(OP_STRING,'("*** Enters: ",A)') NAME(1:LEN_TRIM(NAME))
+            CALL WRITE_STR(DIAGNOSTIC_OUTPUT_TYPE,ERR,ERROR,*999)
+          ENDIF
         ELSE IF(ASSOCIATED(ROUTINE_PTR%PREVIOUS_ROUTINE)) THEN
           !CPB 16/05/2007 Only show the calls if we have level 3 diagnostics or higher
           IF(DIAGNOSTICS3) THEN
@@ -518,8 +539,10 @@ CONTAINS
         PREVIOUS_ROUTINE_PTR=>ROUTINE_PTR%PREVIOUS_ROUTINE
         IF(DIAGNOSTICS) THEN
           IF(ROUTINE_PTR%DIAGNOSTICS) THEN
-            WRITE(OP_STRING,'("*** Exits : ",A)') NAME(1:LEN_TRIM(NAME))
-            CALL WRITE_STR(DIAGNOSTIC_OUTPUT_TYPE,ERR,ERROR,*999)
+            IF(DIAGNOSTICS2) THEN
+              WRITE(OP_STRING,'("*** Exits : ",A)') NAME(1:LEN_TRIM(NAME))
+              CALL WRITE_STR(DIAGNOSTIC_OUTPUT_TYPE,ERR,ERROR,*999)
+            ENDIF
           ENDIF
           IF(ASSOCIATED(PREVIOUS_ROUTINE_PTR)) THEN
             IF(PREVIOUS_ROUTINE_PTR%DIAGNOSTICS) THEN
