@@ -585,7 +585,6 @@ MODULE OpenCMISS_Iron
   INTEGER(INTG), PARAMETER :: CMFE_ALL_DIAG_TYPE = ALL_DIAG_TYPE !<Type for setting diagnostic output in all routines \see OPENCMISS_DiagnosticTypes,OPENCMISS
   INTEGER(INTG), PARAMETER :: CMFE_IN_DIAG_TYPE = IN_DIAG_TYPE !<Type for setting diagnostic output in one routine \see OPENCMISS_DiagnosticTypes,OPENCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FROM_DIAG_TYPE = FROM_DIAG_TYPE !<Type for setting diagnostic output in one routine downwards \see OPENCMISS_DiagnosticTypes,OPENCMISS
-  INTEGER(INTG), PARAMETER :: CMFE_CALL_STACK_DIAG_TYPE = CALL_STACK_DIAG_TYPE !<Type for setting diagnostic output in one routine downwards \see OPENCMISS_DiagnosticTypes,OPENCMISS
   !>@}
   !> \addtogroup OPENCMISS_TimingTypes OPENCMISS::DiagnosticAndTiming::TimingTypes
   !> \brief Timing constants.
@@ -603,7 +602,7 @@ MODULE OpenCMISS_Iron
 
   !Interfaces
 
-  PUBLIC CMFE_ALL_DIAG_TYPE,CMFE_IN_DIAG_TYPE,CMFE_FROM_DIAG_TYPE,CMFE_CALL_STACK_DIAG_TYPE
+  PUBLIC CMFE_ALL_DIAG_TYPE,CMFE_IN_DIAG_TYPE,CMFE_FROM_DIAG_TYPE
 
   PUBLIC CMFE_ALL_TIMING_TYPE,CMFE_IN_TIMING_TYPE,CMFE_FROM_TIMING_TYPE
 

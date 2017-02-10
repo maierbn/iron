@@ -372,25 +372,6 @@ CONTAINS
     TYPE(ROUTINE_LIST_ITEM_TYPE), POINTER :: LIST_ROUTINE_PTR
     TYPE(ROUTINE_STACK_ITEM_TYPE), POINTER :: NEW_ROUTINE_PTR,ROUTINE_PTR
 
-    CHARACTER(LEN=100) :: Filename = "call_stack.txt"
-    INTEGER(INTG) :: stat, I
-    CHARACTER(LEN=200) :: Indentation = ""
-
-    ! write routine name to file
-    IF(DIAG_CALL_STACK) THEN
-
-      CALL_STACK_INDENT_WIDTH = CALL_STACK_INDENT_WIDTH + 1
-      Indentation = ""
-      DO I=1,MIN(100,CALL_STACK_INDENT_WIDTH)
-        Indentation(I:I+1) = "-"
-      ENDDO
-
-      OPEN(unit=200, file=Filename, iostat=stat, access='append')
-      IF (stat /= 0 ) PRINT*, 'Failed to open File \"'// TRIM(Filename) // '\" for writing!.'
-      WRITE(200,'(4A)') "+", TRIM(Indentation), " ", NAME
-      CLOSE(unit=200)
-    ENDIF
-
     IF(DIAG_OR_TIMING) THEN
       !$OMP CRITICAL(ENTERS_1)
       ALLOCATE(NEW_ROUTINE_PTR,STAT=ERR)
