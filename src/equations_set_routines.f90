@@ -1511,6 +1511,8 @@ CONTAINS
     TYPE(EQUATIONS_TYPE), POINTER :: EQUATIONS
     TYPE(EQUATIONS_MATRICES_TYPE), POINTER :: EQUATIONS_MATRICES
     TYPE(FIELD_TYPE), POINTER :: DEPENDENT_FIELD
+
+    INTEGER(INTG) :: ComputationalNodeNumber, NumberOfComputationalNodes, I
     
     ENTERS("EQUATIONS_SET_ASSEMBLE_STATIC_NONLINEAR_FEM",ERR,ERROR,*999)
 
@@ -1532,6 +1534,7 @@ CONTAINS
             CALL EQUATIONS_MATRICES_ELEMENT_INITIALISE(EQUATIONS_MATRICES,ERR,ERROR,*999)
             ELEMENTS_MAPPING=>DEPENDENT_FIELD%DECOMPOSITION%DOMAIN(DEPENDENT_FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR% &
               & MAPPINGS%ELEMENTS
+
             !Output timing information if required
             IF(EQUATIONS%OUTPUT_TYPE>=EQUATIONS_TIMING_OUTPUT) THEN
               CALL CPU_TIMER(USER_CPU,USER_TIME2,ERR,ERROR,*999)
@@ -1546,14 +1549,50 @@ CONTAINS
               ELEMENT_SYSTEM_ELAPSED=0.0_SP
             ENDIF
             NUMBER_OF_TIMES=0
+
+            IF (.FALSE.) THEN
+            ! Debugging output in critical section
+            CALL MPI_Comm_Size(MPI_COMM_WORLD, NumberOfComputationalNodes, Err)
+            CALL MPI_Comm_Rank(MPI_COMM_WORLD, ComputationalNodeNumber, Err)
+
+            DO I = 0, NumberOfComputationalNodes
+
+              IF (ComputationalNodeNumber == I .AND. .FALSE.) THEN
+
+                PRINT*, "Process ",I
+                PRINT*, "Loop in equations_set_routines.f90, line 1561"
+                PRINT*, "  loop over internal elements: ", ELEMENTS_MAPPING%INTERNAL_START, " to ", ELEMENTS_MAPPING%INTERNAL_FINISH
+                DO element_idx = ELEMENTS_MAPPING%INTERNAL_START, ELEMENTS_MAPPING%INTERNAL_FINISH
+                  ne = ELEMENTS_MAPPING%DOMAIN_LIST(element_idx)
+                  WRITE(*,"(I0.3,A,I0.3,A)", ADVANCE="no") element_idx,"->",ne, ", "
+                ENDDO
+
+                PRINT*, "  loop over boundary+ghost elements: ", ELEMENTS_MAPPING%BOUNDARY_START, &
+                  & " to ", ELEMENTS_MAPPING%GHOST_FINISH
+                PRINT*, "  (boundary: ", ELEMENTS_MAPPING%BOUNDARY_START, &
+                  & " to ", ELEMENTS_MAPPING%BOUNDARY_FINISH
+                PRINT*, "  ghost: ", ELEMENTS_MAPPING%GHOST_START, &
+                  & " to ", ELEMENTS_MAPPING%GHOST_FINISH, ")"
+                DO element_idx = ELEMENTS_MAPPING%BOUNDARY_START, ELEMENTS_MAPPING%GHOST_FINISH
+                  ne = ELEMENTS_MAPPING%DOMAIN_LIST(element_idx)
+                  WRITE(*,"(I0.3,A,I0.3,A)", ADVANCE="no") element_idx,"->",ne, ", "
+                ENDDO
+              ENDIF
+              CALL MPI_Barrier(MPI_COMM_WORLD, Err)
+
+            ENDDO
+            END IF
+
             !Loop over the internal elements
-            DO element_idx=ELEMENTS_MAPPING%INTERNAL_START,ELEMENTS_MAPPING%INTERNAL_FINISH
-              ne=ELEMENTS_MAPPING%DOMAIN_LIST(element_idx)
-              NUMBER_OF_TIMES=NUMBER_OF_TIMES+1
+            DO element_idx = ELEMENTS_MAPPING%INTERNAL_START, ELEMENTS_MAPPING%INTERNAL_FINISH
+              ne = ELEMENTS_MAPPING%DOMAIN_LIST(element_idx)
+              NUMBER_OF_TIMES = NUMBER_OF_TIMES+1
               CALL EQUATIONS_MATRICES_ELEMENT_CALCULATE(EQUATIONS_MATRICES,ne,ERR,ERROR,*999)
+              !PRINT*, "EquationsSet_FiniteElementResidualEvaluate(1588)"
               CALL EquationsSet_FiniteElementResidualEvaluate(EQUATIONS_SET,ne,ERR,ERROR,*999)
               CALL EQUATIONS_MATRICES_ELEMENT_ADD(EQUATIONS_MATRICES,ERR,ERROR,*999)
             ENDDO !element_idx
+
             !Output timing information if required
             IF(EQUATIONS%OUTPUT_TYPE>=EQUATIONS_TIMING_OUTPUT) THEN
               CALL CPU_TIMER(USER_CPU,USER_TIME3,ERR,ERROR,*999)
@@ -1579,14 +1618,17 @@ CONTAINS
               CALL WRITE_STRING_VALUE(GENERAL_OUTPUT_TYPE,"System time for parameter transfer completion = ",SYSTEM_ELAPSED, &
                 & ERR,ERROR,*999)
             ENDIF
+
             !Loop over the boundary and ghost elements
-            DO element_idx=ELEMENTS_MAPPING%BOUNDARY_START,ELEMENTS_MAPPING%GHOST_FINISH
-              ne=ELEMENTS_MAPPING%DOMAIN_LIST(element_idx)
-              NUMBER_OF_TIMES=NUMBER_OF_TIMES+1
+            DO element_idx = ELEMENTS_MAPPING%BOUNDARY_START, ELEMENTS_MAPPING%GHOST_FINISH
+              ne = ELEMENTS_MAPPING%DOMAIN_LIST(element_idx)
+              NUMBER_OF_TIMES = NUMBER_OF_TIMES+1
               CALL EQUATIONS_MATRICES_ELEMENT_CALCULATE(EQUATIONS_MATRICES,ne,ERR,ERROR,*999)
+              !PRINT*, "EquationsSet_FiniteElementResidualEvaluate(1624)"
               CALL EquationsSet_FiniteElementResidualEvaluate(EQUATIONS_SET,ne,ERR,ERROR,*999)
               CALL EQUATIONS_MATRICES_ELEMENT_ADD(EQUATIONS_MATRICES,ERR,ERROR,*999)
             ENDDO !element_idx
+
             !Output timing information if required
             IF(EQUATIONS%OUTPUT_TYPE>=EQUATIONS_TIMING_OUTPUT) THEN
               CALL CPU_TIMER(USER_CPU,USER_TIME5,ERR,ERROR,*999)
