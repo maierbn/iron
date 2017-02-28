@@ -6038,7 +6038,7 @@ CONTAINS
 
     ENTERS("Petsc_TSSetExactFinalTime",err,error,*999)
 
-    IF(exactFinalTime) THEN
+    IF(exactFinalTime) THEN ! CARE! This sets PetSc's 'eftopt' as the interpolate version! not as the match version! the interface to C language probably does not provide the 'match'
       CALL TSSetExactFinalTime(ts%ts,PETSC_TRUE,err)
     ELSE
       CALL TSSetExactFinalTime(ts%ts,PETSC_FALSE,err)
@@ -6123,6 +6123,12 @@ CONTAINS
   !
       
   !>Buffer routine to the PETSc TSSetProblemType routine.
+  !- probType - One of TS_LINEAR, TS_NONLINEAR where these types refer to problems of the forms
+  !
+  !       U_t - A U = 0      (linear)
+  !       U_t - A(t) U = 0   (linear)
+  !       F(t,U,U_t) = 0     (nonlinear)
+  !
   SUBROUTINE Petsc_TSSetProblemType(ts,probType,err,error,*)
 
     TYPE(PetscTSType), INTENT(INOUT) :: ts !<The TS to set the problem type for
