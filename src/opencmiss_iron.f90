@@ -66,6 +66,7 @@ MODULE OpenCMISS_Iron
   USE CONSTANTS
   USE CONTROL_LOOP_ROUTINES
   USE COORDINATE_ROUTINES
+  USE CUSTOM_PROFILING
   USE DATA_POINT_ROUTINES
   USE DATA_PROJECTION_ROUTINES
   USE DISTRIBUTED_MATRIX_VECTOR
@@ -96,6 +97,7 @@ MODULE OpenCMISS_Iron
   USE KINDS
   USE MESH_ROUTINES
   USE NODE_ROUTINES
+  USE PRINT_TYPES_ROUTINES
   USE PROBLEM_CONSTANTS
   USE PROBLEM_ROUTINES
   USE REGION_ROUTINES
@@ -331,6 +333,10 @@ MODULE OpenCMISS_Iron
     MODULE PROCEDURE cmfe_Fields_CreateRegion
   END INTERFACE cmfe_Fields_Create
 
+  PUBLIC cmfe_CustomTimingGet, cmfe_CustomTimingReset
+
+  PUBLIC cmfe_CustomSolverInfoGet, cmfe_CustomSolverInfoReset
+
   !PUBLIC cmfe_Finalise,cmfe_Initialise
   PUBLIC cmfe_Finalise,cmfe_Initialise
 
@@ -403,6 +409,17 @@ MODULE OpenCMISS_Iron
   PUBLIC cmfe_SolverType,cmfe_Solver_Finalise,cmfe_Solver_Initialise
 
   PUBLIC cmfe_SolverEquationsType,cmfe_SolverEquations_Finalise,cmfe_SolverEquations_Initialise
+
+  PUBLIC cmfe_CustomProfilingStart,cmfe_CustomProfilingStop,cmfe_CustomProfilingMemory,cmfe_CustomProfilingGetInfo, &
+    & cmfe_CustomProfilingGetDuration,cmfe_CustomProfilingGetMemory,cmfe_CustomProfilingGetSizePerElement, &
+    & cmfe_CustomProfilingGetNumberObjects, cmfe_CustomProfilingGetEnabled
+  PUBLIC cmfe_PrintMesh, cmfe_PrintFields, cmfe_PrintDistributedMatrix, cmfe_PrintRegion, cmfe_PrintMeshelementstype, &
+    & cmfe_PrintInterfacepointsconnectivitytype, cmfe_PrintQuadrature, cmfe_PrintSolverEquations, cmfe_PrintNodes, &
+    & cmfe_PrintDataPoints, cmfe_PrintSolver, cmfe_PrintField, cmfe_PrintCoordinateSystem, cmfe_PrintDataProjection, &
+    & cmfe_PrintProblem, cmfe_PrintGeneratedMesh, cmfe_PrintEquations, cmfe_PrintEquationsSet, cmfe_PrintDistributedVector, &
+    & cmfe_PrintInterfaceEquations, cmfe_PrintControlLoop, cmfe_PrintCellml, cmfe_PrintBoundaryConditions, cmfe_PrintBasis, &
+    & cmfe_PrintMeshnodestype, cmfe_PrintInterfaceCondition, cmfe_PrintInterfaceMeshConnectivity, cmfe_PrintInterface, &
+    & cmfe_PrintCellmlEquations, cmfe_PrintDecomposition, cmfe_PrintMeshEmbedding, cmfe_PrintHistory
 
 !!==================================================================================================================================
 !!
@@ -1337,6 +1354,7 @@ MODULE OpenCMISS_Iron
   INTEGER(INTG), PARAMETER :: CMFE_CONTROL_LOOP_NO_OUTPUT = CONTROL_LOOP_NO_OUTPUT !<No output from the control loop. \see OPENCMISS_ControlLoopOutputTypes,OPENCMISS
   INTEGER(INTG), PARAMETER :: CMFE_CONTROL_LOOP_PROGRESS_OUTPUT = CONTROL_LOOP_PROGRESS_OUTPUT !<Progress output from the control loop. \see OPENCMISS_ControlLoopOutputTypes,OPENCMISS
   INTEGER(INTG), PARAMETER :: CMFE_CONTROL_LOOP_TIMING_OUTPUT = CONTROL_LOOP_TIMING_OUTPUT !<Timing output from the control loop. \see OPENCMISS_ControlLoopOutputTypes,OPENCMISS
+  INTEGER(INTG), PARAMETER :: CMFE_CONTROL_LOOP_FILE_OUTPUT = CONTROL_LOOP_FILE_OUTPUT !<File output from the control loop. \see OPENCMISS_ControlLoopOutputTypes,OPENCMISS
   !>@}
   !>@}
 
@@ -1476,7 +1494,7 @@ MODULE OpenCMISS_Iron
 
   PUBLIC CMFE_CONTROL_LOOP_NODE
 
-  PUBLIC CMFE_CONTROL_LOOP_NO_OUTPUT,CMFE_CONTROL_LOOP_PROGRESS_OUTPUT,CMFE_CONTROL_LOOP_TIMING_OUTPUT
+  PUBLIC CMFE_CONTROL_LOOP_NO_OUTPUT,CMFE_CONTROL_LOOP_PROGRESS_OUTPUT,CMFE_CONTROL_LOOP_TIMING_OUTPUT,CMFE_CONTROL_LOOP_FILE_OUTPUT
 
   PUBLIC cmfe_ControlLoop_CurrentTimesGet
 
@@ -2299,6 +2317,10 @@ MODULE OpenCMISS_Iron
     & EQUATIONS_SET_COMPRESSIBLE_ACTIVECONTRACTION_SUBTYPE !<Compressible version for finite elasticity equations set with active contraction subtype \see OPENCMISS_EquationsSetSubtypes,OPENCMISS
   INTEGER(INTG), PARAMETER :: CMFE_EQUATIONS_SET_TRANSVERSE_ISOTROPIC_GUCCIONE_SUBTYPE = &
     & EQUATIONS_SET_TRANSVERSE_ISOTROPIC_GUCCIONE_SUBTYPE !< Transverse isotropic Guccione constitutive law for finite elasticity equations set subtype \see OPENCMISS_EquationsSetSubtypes,OPENCMISS
+  INTEGER(INTG), PARAMETER :: CMFE_EQUATIONS_SET_ACTIVE_STRAIN_SUBTYPE = &
+    & EQUATIONS_SET_ACTIVE_STRAIN_SUBTYPE !< Isotropic active strain constitutive law based on multiplicative decomposition of the deformation gradient subtype \see OPENCMISS_EquationsSetSubtypes,OPENCMISS
+  INTEGER(INTG), PARAMETER :: CMFE_EQUATIONS_SET_MULTISCALE_ACTIVE_STRAIN_SUBTYPE = &
+    & EQUATIONS_SET_MULTISCALE_ACTIVE_STRAIN_SUBTYPE !< Isotropic active strain constitutive law based on multiplicative decomposition of the deformation gradient and the cellular model of Razumova et al. (2000) subtype \see OPENCMISS_EquationsSetSubtypes,OPENCMISS
   INTEGER(INTG), PARAMETER :: CMFE_EQUATIONS_SET_GUCCIONE_ACTIVECONTRACTION_SUBTYPE = &
     & EQUATIONS_SET_GUCCIONE_ACTIVECONTRACTION_SUBTYPE !< Transverse isotropic Guccione constitutive law with active contraction subtype \see OPENCMISS_EquationsSetSubtypes,OPENCMISS
   INTEGER(INTG), PARAMETER :: CMFE_EQUATIONS_SET_INCOMPRESS_FINITE_ELASTICITY_DARCY_SUBTYPE= &
@@ -2323,6 +2345,8 @@ MODULE OpenCMISS_Iron
     & EQUATIONS_SET_ELASTICITY_FLUID_PRESSURE_STATIC_INRIA_SUBTYPE !< Static finite elasticity coupled with fluid pressure set subtype \see OPENCMISS_EquationsSetSubtypes,OPENCMISS
   INTEGER(INTG), PARAMETER :: CMFE_EQUATIONS_SET_ELASTICITY_FLUID_PRES_HOLMES_MOW_SUBTYPE= &
     & EQUATIONS_SET_ELASTICITY_FLUID_PRESSURE_HOLMES_MOW_SUBTYPE !<Holmes and Mow's poroelastic constitutive relation subtype \see OPENCMISS_EquationsSetSubtypes,OPENCMISS
+  INTEGER(INTG), PARAMETER :: CMFE_EQUATIONS_SET_ELASTI_FLUID_PRES_HOLMES_MOW_ACTIVE_SUBTYPE= &
+    & EQUATIONS_SET_ELASTICITY_FLUID_PRES_HOLMES_MOW_ACTIVE_SUBTYPE !<Holmes and Mow's poroelastic constitutive relation subtype with active contraction \see OPENCMISS_EquationsSetSubtypes,OPENCMISS
   INTEGER(INTG), PARAMETER :: CMFE_EQUATIONS_SET_TRANSVERSE_ISOTROPIC_POLYNOMIAL_SUBTYPE = &
     & EQUATIONS_SET_TRANSVERSE_ISOTROPIC_POLYNOMIAL_SUBTYPE !<Transverse isotropic constitutive law for finite elasticity equations set subtype \see OPENCMISS_EquationsSetSubtypes,OPENCMISS
   INTEGER(INTG), PARAMETER :: CMFE_EQUATIONS_SET_ANISOTROPIC_POLYNOMIAL_SUBTYPE = &
@@ -2532,6 +2556,8 @@ MODULE OpenCMISS_Iron
     & EQUATIONS_SET_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE !<Coupled 1D Monodomain 3D Elasticity equations set subtype with titin \see OPENCMISS_EquationsSetSubtypes,OPENCMISS
   INTEGER(INTG), PARAMETER :: CMFE_EQUATIONS_SET_MONODOMAIN_ELASTICITY_VELOCITY_SUBTYPE =  &
     & EQUATIONS_SET_MONODOMAIN_ELASTICITY_VELOCITY_SUBTYPE !<Coupled 1D Monodomain 3D Elasticity equations set subtype with force-velocity relation \see OPENCMISS_EquationsSetSubtypes,OPENCMISS
+  INTEGER(INTG), PARAMETER :: cmfe_EQUATIONS_SET_1D3D_MONODOMAIN_ACTIVE_STRAIN_SUBTYPE =  &
+    & EQUATIONS_SET_1D3D_MONODOMAIN_ACTIVE_STRAIN_SUBTYPE !<Coupled 1D Monodomain 3D Elasticity equations set subtype \see OPENCMISS_EquationsSetSubtypes,OPENCMISS
   INTEGER(INTG), PARAMETER :: CMFE_EQUATIONS_SET_FINITE_ELASTICITY_NAVIER_STOKES_ALE_SUBTYPE = &
     & EQUATIONS_SET_FINITE_ELASTICITY_NAVIER_STOKES_ALE_SUBTYPE !<Finite Elasticity Navier Stokes ALE equations set subtype \see OPENCMISS_EquationsSetSubtype,OPENCMISS
 
@@ -2796,11 +2822,14 @@ MODULE OpenCMISS_Iron
     & CMFE_EQUATIONS_SET_INCOMPRESSIBLE_ELASTICITY_DRIVEN_MR_SUBTYPE, &
     & CMFE_EQUATIONS_SET_INCOMPRESS_ELAST_MULTI_COMP_DARCY_SUBTYPE,CMFE_EQUATIONS_SET_TRANSVERSE_ISOTROPIC_GUCCIONE_SUBTYPE, &
     & CMFE_EQUATIONS_SET_GUCCIONE_ACTIVECONTRACTION_SUBTYPE, &
+    & CMFE_EQUATIONS_SET_ACTIVE_STRAIN_SUBTYPE, &
+    & CMFE_EQUATIONS_SET_MULTISCALE_ACTIVE_STRAIN_SUBTYPE, &
     & CMFE_EQUATIONS_SET_MEMBRANE_SUBTYPE, CMFE_EQUATIONS_SET_ORTHOTROPIC_HOLZAPFEL_OGDEN_SUBTYPE, &
     & CMFE_EQUATIONS_SET_HOLZAPFEL_OGDEN_ACTIVECONTRACTION_SUBTYPE,  &
     & CMFE_EQUATIONS_SET_ELASTICITY_FLUID_PRES_STATIC_INRIA_SUBTYPE, &
-    & CMFE_EQUATIONS_SET_ELASTICITY_FLUID_PRES_HOLMES_MOW_SUBTYPE,&
-    & CMFE_EQUATIONS_SET_TRANSVERSE_ISOTROPIC_HUMPHREY_YIN_SUBTYPE,&
+    & CMFE_EQUATIONS_SET_ELASTICITY_FLUID_PRES_HOLMES_MOW_SUBTYPE, &
+    & CMFE_EQUATIONS_SET_ELASTI_FLUID_PRES_HOLMES_MOW_ACTIVE_SUBTYPE, &
+    & CMFE_EQUATIONS_SET_TRANSVERSE_ISOTROPIC_HUMPHREY_YIN_SUBTYPE, &
     & CMFE_EQUATIONS_SET_STATIC_STOKES_SUBTYPE, CMFE_EQUATIONS_SET_LAPLACE_STOKES_SUBTYPE, &
     & CMFE_EQUATIONS_SET_TRANSIENT_STOKES_SUBTYPE,CMFE_EQUATIONS_SET_ALE_STOKES_SUBTYPE, &
     & CMFE_EQUATIONS_SET_ALE_NAVIER_STOKES_SUBTYPE, &
@@ -2872,6 +2901,7 @@ MODULE OpenCMISS_Iron
     & CMFE_EQUATIONS_SET_STATIC_BURGERS_SUBTYPE, &
     & CMFE_EQUATIONS_SET_INVISCID_BURGERS_SUBTYPE,CMFE_EQUATIONS_SET_STANDARD_MONODOMAIN_ELASTICITY_SUBTYPE, &
     & CMFE_EQUATIONS_SET_1D3D_MONODOMAIN_ELASTICITY_SUBTYPE,CMFE_EQUATIONS_SET_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE, &
+    & CMFE_EQUATIONS_SET_1D3D_MONODOMAIN_ACTIVE_STRAIN_SUBTYPE, &
     & CMFE_EQUATIONS_SET_CONSTIT_AND_GROWTH_LAW_IN_CELLML_SUBTYPE, &
     & CMFE_EQUATIONS_SET_MONODOMAIN_ELASTICITY_VELOCITY_SUBTYPE, &
     & CMFE_EQUATIONS_SET_FINITE_ELASTICITY_NAVIER_STOKES_ALE_SUBTYPE
@@ -3366,6 +3396,8 @@ MODULE OpenCMISS_Iron
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_PREVIOUS_PRESSURE_SET_TYPE = FIELD_PREVIOUS_PRESSURE_SET_TYPE !<The parameter set corresponding to the previous surface pressure values (at time T). \see OPENCMISS_FieldParameterSetTypes,OPENCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_IMPERMEABLE_FLAG_VALUES_SET_TYPE = FIELD_IMPERMEABLE_FLAG_VALUES_SET_TYPE !<The parameter set corresponding to the impermeable flag values. \see OPENCMISS_FieldParameterSetTypes,OPENCMISS
   INTEGER(INTG), PARAMETER :: CMFE_FIELD_INTEGRATED_NEUMANN_SET_TYPE = FIELD_INTEGRATED_NEUMANN_SET_TYPE !<Stores integrated Neumann values calculated from Neumann point values. \see OPENCMISS_FieldParameterSetTypes,OPENCMISS
+  INTEGER(INTG), PARAMETER :: CMFE_FIELD_MESH_DISPLACEMENT_SET_TYPE=FIELD_MESH_DISPLACEMENT_SET_TYPE !<The parameter set corresponding to the mesh displacement values for ALE \see OPENCMISS_FieldParameterSetTypes,OPENCMISS
+  INTEGER(INTG), PARAMETER :: CMFE_FIELD_MESH_VELOCITY_SET_TYPE=FIELD_MESH_VELOCITY_SET_TYPE !<The parameter set corresponding to the mesh velocity values for ALE \see OPENCMISS_FieldParameterSetTypes,OPENCMISS
   !>@}
   !> \addtogroup OPENCMISS_FieldScalingTypes OPENCMISS::Field::ScalingTypes
   !> \brief Field scaling type parameters
@@ -3960,7 +3992,8 @@ MODULE OpenCMISS_Iron
     & CMFE_FIELD_PREVIOUS_ACCELERATION_SET_TYPE, &
     & CMFE_FIELD_MEAN_PREDICTED_ACCELERATION_SET_TYPE, CMFE_FIELD_PRESSURE_VALUES_SET_TYPE, &
     & CMFE_FIELD_PREVIOUS_PRESSURE_SET_TYPE, &
-    & CMFE_FIELD_IMPERMEABLE_FLAG_VALUES_SET_TYPE,CMFE_FIELD_INTEGRATED_NEUMANN_SET_TYPE
+    & CMFE_FIELD_IMPERMEABLE_FLAG_VALUES_SET_TYPE,CMFE_FIELD_INTEGRATED_NEUMANN_SET_TYPE, &
+    & CMFE_FIELD_MESH_DISPLACEMENT_SET_TYPE,CMFE_FIELD_MESH_VELOCITY_SET_TYPE
 
   PUBLIC CMFE_FIELD_NO_SCALING,CMFE_FIELD_UNIT_SCALING,CMFE_FIELD_ARC_LENGTH_SCALING,CMFE_FIELD_ARITHMETIC_MEAN_SCALING, &
     & CMFE_FIELD_GEOMETRIC_MEAN_SCALING,CMFE_FIELD_HARMONIC_MEAN_SCALING
@@ -5488,13 +5521,16 @@ MODULE OpenCMISS_Iron
     & PROBLEM_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE !<Transient monodomain simple elasticity problem subtype with titin \see OPENCMISS_ProblemSubtypes,OPENCMISS
   INTEGER(INTG), PARAMETER :: CMFE_PROBLEM_MONODOMAIN_ELASTICITY_VELOCITY_SUBTYPE = & 
     & PROBLEM_MONODOMAIN_ELASTICITY_VELOCITY_SUBTYPE !<Transient monodomain simple elasticity problem subtype with force-velocity relation \see OPENCMISS_ProblemSubtypes,OPENCMISS
+  INTEGER(INTG), PARAMETER :: CMFE_PROBLEM_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE = & 
+    & PROBLEM_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE !<Transient monodomain active strain elasticity problem subtype \see OPENCMISS_ProblemSubtypes,OPENCMISS
   INTEGER(INTG), PARAMETER :: CMFE_PROBLEM_FINITE_ELASTICITY_NAVIER_STOKES_ALE_SUBTYPE = &
     & PROBLEM_FINITE_ELASTICITY_NAVIER_STOKES_ALE_SUBTYPE !<Coupled Finite Elasticity Navier Stokes moving mesh subtype \see OPENCMISS_ProblemSubtypes,OPENCMISS
 
   INTEGER(INTG), PARAMETER :: CMFE_PROBLEM_QUASISTATIC_FINITE_ELASTICITY_SUBTYPE = PROBLEM_QUASISTATIC_FINITE_ELASTICITY_SUBTYPE !<Quasistatic finite elasticity subtype \see OPENCMISS_ProblemSubtypes,OPENCMISS
   INTEGER(INTG), PARAMETER :: CMFE_PROBLEM_FINITE_ELASTICITY_CELLML_SUBTYPE = PROBLEM_FINITE_ELASTICITY_CELLML_SUBTYPE !<Quasistatic finite elasticity subtype \see OPENCMISS_ProblemSubtypes,OPENCMISS
+  INTEGER(INTG), PARAMETER :: CMFE_PROBLEM_MULTISCALE_FINITE_ELASTICITY_SUBTYPE = PROBLEM_MULTISCALE_FINITE_ELASTICITY_SUBTYPE !<Multiscale finite elasticity subtype \see OPENCMISS_ProblemSubtypes,OPENCMISS
   INTEGER(INTG), PARAMETER :: CMFE_PROBLEM_FINITE_ELASTICITY_WITH_GROWTH_CELLML_SUBTYPE =  &
-    & PROBLEM_FINITE_ELASTICITY_WITH_GROWTH_CELLML_SUBTYPE !<Quasistatic finite elasticity subtype \see OPENCMISS_QProblemSubtypes,OPENCMISS
+    & PROBLEM_FINITE_ELASTICITY_WITH_GROWTH_CELLML_SUBTYPE !<Quasistatic finite elasticity subtype \see OPENCMISS_ProblemSubtypes,OPENCMISS
 
   INTEGER(INTG), PARAMETER :: CMFE_PROBLEM_MONODOMAIN_GUDUNOV_SPLIT_SUBTYPE = PROBLEM_MONODOMAIN_GUDUNOV_SPLIT_SUBTYPE !<Monodomain Gudunov split problem subtype \see OPENCMISS_ProblemSubtypes,OPENCMISS
   INTEGER(INTG), PARAMETER :: CMFE_PROBLEM_MONODOMAIN_STRANG_SPLIT_SUBTYPE = PROBLEM_MONODOMAIN_STRANG_SPLIT_SUBTYPE !<Monodomain Gudunov split problem subtype \see OPENCMISS_ProblemSubtypes,OPENCMISS
@@ -5638,10 +5674,11 @@ MODULE OpenCMISS_Iron
    & CMFE_PROBLEM_STANDARD_MULTI_COMPARTMENT_TRANSPORT_SUBTYPE,CMFE_PROBLEM_STANDARD_ELASTICITY_FLUID_PRESSURE_SUBTYPE, &
    & CMFE_PROBLEM_GUDUNOV_MONODOMAIN_SIMPLE_ELASTICITY_SUBTYPE,CMFE_PROBLEM_GUDUNOV_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE, &
    & CMFE_PROBLEM_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE,CMFE_PROBLEM_MONODOMAIN_ELASTICITY_VELOCITY_SUBTYPE, &
+   & cmfe_PROBLEM_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE, &
    & CMFE_PROBLEM_FINITE_ELASTICITY_NAVIER_STOKES_ALE_SUBTYPE
 
   PUBLIC CMFE_PROBLEM_QUASISTATIC_FINITE_ELASTICITY_SUBTYPE,CMFE_PROBLEM_FINITE_ELASTICITY_CELLML_SUBTYPE, &
-    & CMFE_PROBLEM_FINITE_ELASTICITY_WITH_GROWTH_CELLML_SUBTYPE
+    & CMFE_PROBLEM_FINITE_ELASTICITY_WITH_GROWTH_CELLML_SUBTYPE,CMFE_PROBLEM_MULTISCALE_FINITE_ELASTICITY_SUBTYPE
   
 !!==================================================================================================================================
 !!
@@ -7157,6 +7194,105 @@ MODULE OpenCMISS_Iron
 
 CONTAINS
 
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_CustomTimingGet(CustomTimingOdeSolver, CustomTimingParabolicSolver, CustomTimingFESolver, Err)
+
+    REAL(DP), INTENT(OUT) :: CustomTimingOdeSolver
+    REAL(DP), INTENT(OUT) :: CustomTimingParabolicSolver
+    REAL(DP), INTENT(OUT) :: CustomTimingFESolver
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+
+    CustomTimingOdeSolver = TIMING_ODE_SOLVER
+    CustomTimingParabolicSolver = TIMING_PARABOLIC_SOLVER
+    CustomTimingFESolver = TIMING_FE_SOLVER
+
+    RETURN
+999 CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_CustomTimingGet
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_CustomTimingReset(Err)
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+
+    TIMING_ODE_SOLVER = 0_DP
+    TIMING_PARABOLIC_SOLVER = 0_DP
+    TIMING_FE_SOLVER = 0_DP
+
+    RETURN
+999 CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_CustomTimingReset
+  !
+  !================================================================================================================================
+  !
+
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_CustomSolverInfoGet( &
+    & CustomSolverConvergenceReasonParabolic, &
+    & CustomSolverConvergenceReasonNewton, &
+    & CustomSolverNumberIterationsParabolic, &
+    & CustomSolverNumberIterationsParabolicMin, &
+    & CustomSolverNumberIterationsParabolicMax, &
+    & CustomSolverNumberIterationsNewton, &
+    & CustomSolverNumberIterationsNewtonMin, &
+    & CustomSolverNumberIterationsNewtonMax, Err)
+
+    INTEGER(INTG), INTENT(OUT) :: CustomSolverConvergenceReasonParabolic
+    INTEGER(INTG), INTENT(OUT) :: CustomSolverConvergenceReasonNewton
+    INTEGER(INTG), INTENT(OUT) :: CustomSolverNumberIterationsParabolic
+    INTEGER(INTG), INTENT(OUT) :: CustomSolverNumberIterationsParabolicMin
+    INTEGER(INTG), INTENT(OUT) :: CustomSolverNumberIterationsParabolicMax
+    INTEGER(INTG), INTENT(OUT) :: CustomSolverNumberIterationsNewton
+    INTEGER(INTG), INTENT(OUT) :: CustomSolverNumberIterationsNewtonMin
+    INTEGER(INTG), INTENT(OUT) :: CustomSolverNumberIterationsNewtonMax
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+
+    CustomSolverConvergenceReasonParabolic = SOLVER_CONVERGENCE_REASON_PARABOLIC
+    CustomSolverConvergenceReasonNewton =    SOLVER_CONVERGENCE_REASON_NEWTON
+    CustomSolverNumberIterationsParabolic =  SOLVER_NUMBER_ITERATIONS_PARABOLIC
+    CustomSolverNumberIterationsParabolicMin = SOLVER_NUMBER_ITERATIONS_PARABOLIC_MIN
+    CustomSolverNumberIterationsParabolicMax = SOLVER_NUMBER_ITERATIONS_PARABOLIC_MAX
+    CustomSolverNumberIterationsNewton =     SOLVER_NUMBER_ITERATIONS_NEWTON
+    CustomSolverNumberIterationsNewtonMin =  SOLVER_NUMBER_ITERATIONS_NEWTON_MIN
+    CustomSolverNumberIterationsNewtonMax =  SOLVER_NUMBER_ITERATIONS_NEWTON_MAX
+
+    RETURN
+999 CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_CustomSolverInfoGet
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_CustomSolverInfoReset(Err)
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+
+    SOLVER_CONVERGENCE_REASON_PARABOLIC = 0
+    SOLVER_CONVERGENCE_REASON_NEWTON = 0
+    SOLVER_NUMBER_ITERATIONS_PARABOLIC = 0
+    SOLVER_NUMBER_ITERATIONS_PARABOLIC_MIN = HUGE(SOLVER_NUMBER_ITERATIONS_PARABOLIC_MIN)
+    SOLVER_NUMBER_ITERATIONS_PARABOLIC_MAX = 0
+    SOLVER_NUMBER_ITERATIONS_NEWTON = 0
+    SOLVER_NUMBER_ITERATIONS_NEWTON_MIN = HUGE(SOLVER_NUMBER_ITERATIONS_NEWTON_MIN)
+    SOLVER_NUMBER_ITERATIONS_NEWTON_MAX = 0
+
+    RETURN
+999 CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_CustomSolverInfoReset
   !
   !================================================================================================================================
   !
@@ -14050,7 +14186,7 @@ CONTAINS
     END IF
 
 #ifdef TAUPROF
-    CALL TAU_STATIC_PHASE_START('CellML Create')
+    !CALL TAU_STATIC_PHASE_START('CellML Create')
 #endif
 
     EXITS("cmfe_CellML_CreateFinishNumber")
@@ -14079,7 +14215,7 @@ CONTAINS
     CALL CELLML_CREATE_FINISH(CellML%CELLML,err,error,*999)
 
 #ifdef TAUPROF
-    CALL TAU_STATIC_PHASE_START('CellML Create')
+    !CALL TAU_STATIC_PHASE_START('CellML Create')
 #endif
 
     EXITS("cmfe_CellML_CreateFinishObj")
@@ -14110,7 +14246,7 @@ CONTAINS
     ENTERS("cmfe_CellML_CreateStartNumber",err,error,*999)
 
 #ifdef TAUPROF
-    CALL TAU_STATIC_PHASE_START('CellML Create')
+    !CALL TAU_STATIC_PHASE_START('CellML Create')
 #endif
 
     NULLIFY(REGION)
@@ -14150,7 +14286,7 @@ CONTAINS
     ENTERS("cmfe_CellML_CreateStartObj",err,error,*999)
 
 #ifdef TAUPROF
-    CALL TAU_STATIC_PHASE_START('CellML Create')
+    !CALL TAU_STATIC_PHASE_START('CellML Create')
 #endif
 
     CALL CELLML_CREATE_START(CellMLUserNumber,region%region,CellML%CELLML,err,error,*999)
@@ -14271,7 +14407,7 @@ CONTAINS
     END IF
 
 #ifdef TAUPROF
-    CALL TAU_STATIC_PHASE_START('CellML Create')
+    !CALL TAU_STATIC_PHASE_START('CellML Create')
 #endif
 
     EXITS("cmfe_CellML_FieldMapsCreateFinishNumber")
@@ -48126,7 +48262,15 @@ CONTAINS
     CALL TAU_STATIC_PHASE_START('problem Solve')
 #endif
 
+#ifdef USE_CUSTOM_PROFILING
+    CALL CustomProfilingStart('1. problem solve')
+#endif
+
     CALL PROBLEM_SOLVE(problem%problem,err,error,*999)
+
+#ifdef USE_CUSTOM_PROFILING
+    CALL CustomProfilingStop('1. problem solve')
+#endif
 
 #ifdef TAUPROF
     CALL TAU_STATIC_PHASE_STOP('problem Solve')
@@ -60411,7 +60555,7 @@ CONTAINS
 #else
     
     CALL FlagError("Must compile with WITH_FIELDML ON to use FieldML functionality.",ERR,error,*999)
-    
+
 #endif
 
     EXITS("cmfe_FieldML_InputCreateMeshComponentNumberVS")
@@ -61664,5 +61808,474 @@ CONTAINS
   !================================================================================================================================
   !
 
+  SUBROUTINE cmfe_CustomProfilingStart(Identifier, Err)
+    ! PARAMETERS
+    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
 
+    CALL CustomProfilingStart(Identifier)
+  END SUBROUTINE cmfe_CustomProfilingStart
+
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_CustomProfilingStop(Identifier, Err)
+    ! PARAMETERS
+    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+
+    CALL CustomProfilingStop(Identifier)
+  END SUBROUTINE cmfe_CustomProfilingStop
+
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_CustomProfilingMemory(Identifier, NumberOfElements, TotalSize, Err)
+    ! PARAMETERS
+    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
+    INTEGER(INTG), INTENT(IN) :: NumberOfElements  !< number of elements to record
+    INTEGER(INTG), INTENT(IN) :: TotalSize  !< MemoryConsumption to record
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+
+    CALL CustomProfilingMemory(Identifier, NumberOfElements, TotalSize)
+  END SUBROUTINE cmfe_CustomProfilingMemory
+
+  !
+  !================================================================================================================================
+  !
+
+  FUNCTION cmfe_CustomProfilingGetInfo(Err)
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    CHARACTER(LEN=200000) :: cmfe_CustomProfilingGetInfo
+
+    cmfe_CustomProfilingGetInfo = CustomProfilingGetInfo()
+  END FUNCTION cmfe_CustomProfilingGetInfo
+
+  !
+  !================================================================================================================================
+  !
+
+  FUNCTION cmfe_CustomProfilingGetDuration(Identifier, Err)
+    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    REAL(DP) :: cmfe_CustomProfilingGetDuration
+
+    cmfe_CustomProfilingGetDuration = CustomProfilingGetDuration(Identifier)
+  END FUNCTION cmfe_CustomProfilingGetDuration
+  !
+  !================================================================================================================================
+  !
+  FUNCTION cmfe_CustomProfilingGetMemory(Identifier, Err)
+    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    INTEGER(LINTG) :: cmfe_CustomProfilingGetMemory
+
+    cmfe_CustomProfilingGetMemory = CustomProfilingGetMemory(Identifier)
+  END FUNCTION cmfe_CustomProfilingGetMemory
+
+  !
+  !================================================================================================================================
+  !
+  FUNCTION cmfe_CustomProfilingGetSizePerElement(Identifier, Err)
+    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    INTEGER(INTG) :: cmfe_CustomProfilingGetSizePerElement
+
+    cmfe_CustomProfilingGetSizePerElement = CustomProfilingGetSizePerElement(Identifier)
+  END FUNCTION cmfe_CustomProfilingGetSizePerElement
+
+  !
+  !================================================================================================================================
+  !
+  FUNCTION cmfe_CustomProfilingGetNumberObjects(Identifier, Err)
+    CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    INTEGER(INTG) :: cmfe_CustomProfilingGetNumberObjects
+
+    cmfe_CustomProfilingGetNumberObjects = CustomProfilingGetNumberObjects(Identifier)
+  END FUNCTION cmfe_CustomProfilingGetNumberObjects
+
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_CustomProfilingGetEnabled(CustomProfilingEnabled, TauProfilingEnabled, Err)
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    LOGICAL, INTENT(OUT) :: CustomProfilingEnabled !< If custom profiling is compiled in
+    LOGICAL, INTENT(OUT) :: TauProfilingEnabled !< If TAU profiling is compiled in
+
+#ifdef TAUPROF
+    TauProfilingEnabled = .TRUE.
+#else
+    TauProfilingEnabled = .FALSE.
+#endif
+
+#ifdef USE_CUSTOM_PROFILING
+    CustomProfilingEnabled = .TRUE.
+#else
+    CustomProfilingEnabled = .FALSE.
+#endif
+  END SUBROUTINE cmfe_CustomProfilingGetEnabled
+
+
+!!==================================================================================================================================
+!!
+!! TYPES
+!!
+!!==================================================================================================================================
+
+
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintMesh(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_MeshType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_MESH(Variable%mesh, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintMesh
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintFields(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_FieldsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_FIELDS(Variable%fields, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintFields
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintDistributedMatrix(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_DistributedMatrixType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_DISTRIBUTED_MATRIX(Variable%distributedMatrix, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintDistributedMatrix
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintRegion(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_RegionType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_REGION(Variable%region, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintRegion
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintMeshelementstype(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_MeshElementsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_MeshElementsType_(Variable%meshElements, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintMeshelementstype
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintInterfacepointsconnectivitytype(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_InterfacePointsConnectivityType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_InterfacePointsConnectivityType_(Variable%pointsConnectivity, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintInterfacepointsconnectivitytype
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintQuadrature(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_QuadratureType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_QUADRATURE(Variable%quadrature, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintQuadrature
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintSolverEquations(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_SolverEquationsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_SOLVER_EQUATIONS(Variable%solverEquations, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintSolverEquations
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintNodes(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_NodesType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_NODES(Variable%nodes, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintNodes
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintDataPoints(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_DataPointsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_DATA_POINTS(Variable%dataPoints, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintDataPoints
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintSolver(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_SolverType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_SOLVER(Variable%solver, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintSolver
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintField(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_FieldType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_FIELD(Variable%field, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintField
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintCoordinateSystem(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_CoordinateSystemType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_COORDINATE_SYSTEM(Variable%coordinateSystem, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintCoordinateSystem
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintDataProjection(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_DataProjectionType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_DATA_PROJECTION(Variable%dataProjection, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintDataProjection
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintProblem(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_ProblemType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_PROBLEM(Variable%problem, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintProblem
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintGeneratedMesh(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_GeneratedMeshType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_GENERATED_MESH(Variable%generatedMesh, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintGeneratedMesh
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintEquations(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_EquationsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_EQUATIONS(Variable%equations, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintEquations
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintEquationsSet(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_EquationsSetType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_EQUATIONS_SET(Variable%equationsSet, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintEquationsSet
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintDistributedVector(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_DistributedVectorType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_DISTRIBUTED_VECTOR(Variable%distributedVector, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintDistributedVector
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintInterfaceEquations(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_InterfaceEquationsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_INTERFACE_EQUATIONS(Variable%interfaceEquations, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintInterfaceEquations
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintControlLoop(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_ControlLoopType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_CONTROL_LOOP(Variable%controlLoop, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintControlLoop
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintCellml(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_CellMLType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_CELLML(Variable%cellml, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintCellml
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintBoundaryConditions(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_BoundaryConditionsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_BOUNDARY_CONDITIONS(Variable%boundaryConditions, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintBoundaryConditions
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintBasis(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_BasisType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_BASIS(Variable%basis, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintBasis
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintMeshnodestype(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_MeshNodesType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_MeshNodesType_(Variable%meshNodes, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintMeshnodestype
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintInterfaceCondition(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_InterfaceConditionType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_INTERFACE_CONDITION(Variable%interfaceCondition, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintInterfaceCondition
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintInterfaceMeshConnectivity(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_InterfaceMeshConnectivityType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_INTERFACE_MESH_CONNECTIVITY(Variable%meshConnectivity, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintInterfaceMeshConnectivity
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintInterface(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_InterfaceType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_INTERFACE(Variable%interface, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintInterface
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintCellmlEquations(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_CellMLEquationsType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_CELLML_EQUATIONS(Variable%cellmlEquations, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintCellmlEquations
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintDecomposition(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_DecompositionType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_DECOMPOSITION(Variable%decomposition, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintDecomposition
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintMeshEmbedding(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_MeshEmbeddingType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_MESH_EMBEDDING(Variable%meshEmbedding, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintMeshEmbedding
+  
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_PrintHistory(Variable, MaxDepth, MaxArrayLength, Err)
+    TYPE(cmfe_HistoryType), INTENT(IN) :: Variable  !<The Variable to be printed
+    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
+    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    CALL Print_HISTORY(Variable%history, MaxDepth, MaxArrayLength)
+  END SUBROUTINE cmfe_PrintHistory
+  
 END MODULE OpenCMISS_Iron
