@@ -63,11 +63,14 @@ MODULE BIOELECTRIC_FINITE_ELASTICITY_ROUTINES
   USE ISO_VARYING_STRING
   USE KINDS
   USE MATHS
+#ifndef NOMPIMOD
+  USE MPI
+#endif
+  USE PRINT_TYPES_ROUTINES
   USE PROBLEM_CONSTANTS
   USE STRINGS
   USE SOLVER_ROUTINES
   USE TYPES
-
 #include "macros.h"
 
   IMPLICIT NONE
@@ -1649,11 +1652,33 @@ CONTAINS
     
   END SUBROUTINE BioelectricFiniteElasticity_ConvergenceCheck
 
+  SUBROUTINE gdbParallelDebuggingBarrier()
+    INTEGER(Intg) :: Gdb_Resume
+    INTEGER(Intg) :: MPI_IERROR
+    INTEGER(Intg) :: ComputationalNodeNumber, NumberOfComputationalNodes
+    Gdb_Resume = 0
+
+    CALL MPI_COMM_RANK(MPI_COMM_WORLD,ComputationalNodeNumber,MPI_IERROR)
+    CALL MPI_COMM_SIZE(MPI_COMM_WORLD,NumberOfComputationalNodes,MPI_IERROR)
+
+    IF (NumberOfComputationalNodes > 0) THEN
+      PRINT*, "Node ", ComputationalNodeNumber, ", UID ",GETPID()," is waiting for Gdb_Resume=", Gdb_Resume &
+        & , " to become 1 " // NEW_LINE('A') // "sudo gdb cuboid ",GETPID(), NEW_LINE('A') //"select-frame 2" // &
+        & NEW_LINE('A') // "set var gdb_resume = 1" // NEW_LINE('A') // &
+        & "info locals" // NEW_LINE('A') // "next"
+      DO WHILE (Gdb_Resume == 0)
+        CALL Sleep(1)
+      ENDDO
+      PRINT*, "Node ", ComputationalNodeNumber, " resumes because gdb_resume=", Gdb_Resume, "."
+    ENDIF
+
+  END SUBROUTINE gdbParallelDebuggingBarrier
+
   !
   !================================================================================================================================
   !
 
-  !>Update the the bioelectric equation geometric field from the finite elasticity dependent field (deformed geometry)
+  !>Update the bioelectric equation geometric field from the finite elasticity dependent field (deformed geometry)
   !>NOTE: this is only temporary - will be replaced once embedded meshes are available
   SUBROUTINE BioelectricFiniteElasticity_UpdateGeometricField(CONTROL_LOOP,CALC_CLOSEST_GAUSS_POINT,ERR,ERROR,*)
 
@@ -1681,13 +1706,14 @@ CONTAINS
     INTEGER(INTG) :: component_idx,element_idx,ne,start_elem,START_ELEMENT,start_element_idx
     INTEGER(INTG) :: DEPENDENT_FIELD_INTERPOLATION,GEOMETRIC_FIELD_INTERPOLATION
     INTEGER(INTG) :: node_idx,node_idx_2,GAUSS_POINT,gauss_idx,fibre_idx
-    INTEGER(INTG) :: nodes_in_Xi_1,nodes_in_Xi_2,nodes_in_Xi_3,n3,n2,n1,dof_idx,dof_idx2,idx,my_element_idx
+    INTEGER(INTG) :: nodes_in_Xi_1,nodes_in_Xi_2,nodes_in_Xi_3,nodes_in_Xi_1_small,n3,n2,n1,dof_idx,dof_idx2,idx,my_element_idx
     INTEGER(INTG) :: offset,n4
     REAL(DP) :: XVALUE_M,XVALUE_FE,DIST_LEFT,DIST_RIGHT,VALUE,VALUE_LEFT,VALUE_RIGHT,DISTANCE,VELOCITY,VELOCITY_MAX,OLD_DIST
     REAL(DP) :: OLD_DIST_2,OLD_DIST_3,OLD_DIST_4
     REAL(DP) :: XI(3),PREVIOUS_NODE(3),DIST_INIT,SARCO_LENGTH_INIT,TIME_STEP,DIST
     LOGICAL :: OUTSIDE_NODE
     REAL(DP), POINTER :: GAUSS_POSITIONS(:,:)
+    LOGICAL, PARAMETER :: DEBUGGING = .FALSE.   ! enable debugging output with this parameter
 
     ENTERS("BioelectricFiniteElasticity_UpdateGeometricField",ERR,ERROR,*999)
 
@@ -1716,6 +1742,12 @@ CONTAINS
     NULLIFY(FIELD_VAR_IND_M)
     NULLIFY(FIELD_VAR_IND_M_2)
     NULLIFY(GAUSS_POSITIONS)
+    
+    IF (DEBUGGING) THEN
+      PRINT*, "BioelectricFiniteElasticity_UpdateGeometricField, CALC_CLOSEST_GAUSS_POINT=",CALC_CLOSEST_GAUSS_POINT
+    ENDIF
+    
+    !CALL gdbParallelDebuggingBarrier()
     
     IF(ASSOCIATED(CONTROL_LOOP)) THEN
       IF(CONTROL_LOOP%NUMBER_OF_SUB_LOOPS==0) THEN
@@ -1878,6 +1910,7 @@ CONTAINS
               node_idx=0
               node_idx_2=0
               fibre_idx=0
+              nodes_in_Xi_1_small=0   
               CALL FIELD_VARIABLE_GET(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE,FIELD_VAR_DEP_M,ERR,ERROR,*999)
               CALL FIELD_VARIABLE_GET(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE,FIELD_VAR_GEO_M,ERR,ERROR,*999)
               CALL FIELD_VARIABLE_GET(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VAR_IND_FE,ERR,ERROR,*999)
@@ -1899,13 +1932,19 @@ CONTAINS
               
               !get the time step of the elasticity problem
               TIME_STEP=CONTROL_LOOP_PARENT%TIME_LOOP%TIME_INCREMENT
+              
+              ! loop element_idx loop over elements where fibres start
+              ! inner loop n3,n2 loops over fibre lines
 
+              IF (DEBUGGING) PRINT *, "loop over ",ELEMENTS_TOPOLOGY%NUMBER_OF_ELEMENTS," 3D finite elasticity elements"
 
               !loop over the elements of the finite elasticity mesh (internal and boundary elements)
               !no need to consider ghost elements here since only bioelectrical fields are changed
               DO element_idx=1,ELEMENTS_TOPOLOGY%NUMBER_OF_ELEMENTS
                 ne=ELEMENTS_TOPOLOGY%ELEMENTS(element_idx)%LOCAL_NUMBER
                 my_element_idx=element_idx
+
+                IF (DEBUGGING) PRINT *, "  element element_idx=", element_idx, ", local number ne=", ne
 
                 !the Field_V_Variable_Type of the FE independent field contains the number of nodes in each Xi-direction of the bioelectrics grid
                 dof_idx=FIELD_VAR_IND_FE%COMPONENTS(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
@@ -1917,6 +1956,14 @@ CONTAINS
                 dof_idx=FIELD_VAR_IND_FE%COMPONENTS(3)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
                 CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
                   & dof_idx,nodes_in_Xi_3,ERR,ERROR,*999)
+                  
+                ! There are two values for nodes_in_Xi_1: nodes_in_Xi_1_small and (nodes_in_Xi_1+1)
+                ! Needed for spacing in xi coordinate system is always the smaller value. 
+                ! Therefore it is extracted here and stored in nodes_in_Xi_1_small
+                IF (nodes_in_Xi_1_small == 0 .OR. nodes_in_Xi_1 < nodes_in_Xi_1_small) THEN
+                  nodes_in_Xi_1_small = nodes_in_Xi_1
+                ENDIF
+                
                 !beginning of a fibre in this element: 1=yes, 0=no
                 dof_idx=FIELD_VAR_IND_FE%COMPONENTS(4)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
                 CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
@@ -1925,16 +1972,31 @@ CONTAINS
                 !if there is no bioelectrics grid in this finite elasticity element, or the fibres don't begin in this element, jump to the next element
                 IF((nodes_in_Xi_1==0).OR.(nodes_in_Xi_2==0).OR.(nodes_in_Xi_3==0).OR.(start_elem==0)) CYCLE
                 
+                IF(DEBUGGING) PRINT*, "  element_idx=",element_idx,", local element no. ne=",ne,&
+                  & ", nodes_in_Xi_1=",nodes_in_Xi_1,", nodes_in_Xi_2=",nodes_in_Xi_2,", nodes_in_Xi_3=", &
+                  & nodes_in_Xi_3, ", start_elem=", start_elem
+                
                 START_ELEMENT=ne
                 start_element_idx=my_element_idx
                 
                 !assume Xi(1) to be normal to the seed surface, i.e. the seed points have Xi(1)=0
-                XI=[0.0_DP,1.0_DP/(REAL(2*nodes_in_Xi_2)),1.0_DP/(REAL(2*nodes_in_Xi_3))]
+                
+                !position of the bioelectrics node in the finite elasticity coordinate system ([0,1]^3)
+                !XI=[0.0_DP,1.0_DP/(REAL(2*nodes_in_Xi_2)),1.0_DP/(REAL(2*nodes_in_Xi_3))]    ! by tomo (why?)
+                XI=[0.0_DP,1.0_DP/(REAL(1+nodes_in_Xi_2)),1.0_DP/(REAL(1+nodes_in_Xi_3))]     ! by maierbn
+                
+                IF(DEBUGGING) PRINT*, "  loop over bioelectrics nodes, nodes_in_Xi_2=",nodes_in_Xi_2, &
+                  & ", nodes_in_Xi_3=",nodes_in_Xi_3
                 
                 !assume that the bioelectrics node numbers are increased in order Xi(1), Xi(2), Xi(3) 
+                !loop over fibres in the 3D element
                 DO n3=1,nodes_in_Xi_3
                   DO n2=1,nodes_in_Xi_2
                     fibre_idx=fibre_idx+1
+                    
+                    IF(DEBUGGING) PRINT *, "    Node in FE element n3=",n3,", n2=",n2, ", XI=",XI
+                    IF(DEBUGGING) PRINT *, "    fibre_idx=",fibre_idx
+                    
                     
                     !loop over the FE elements that contain nodes of the very same fibres
                     DO
@@ -1950,15 +2012,34 @@ CONTAINS
                         & MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(ne)%BASIS%QUADRATURE%QUADRATURE_SCHEME_MAP( &
                         & BASIS_DEFAULT_QUADRATURE_SCHEME)%PTR%GAUSS_POSITIONS
                       
+                      IF(DEBUGGING) PRINT *, "      loop over bioelectrics nodes in Xi1 direction, number: ",nodes_in_Xi_1
+                      
                       DO n1=1,nodes_in_Xi_1
                         node_idx=node_idx+1
+                        
+                        IF(DEBUGGING) PRINT *, "        node_idx=",node_idx
                         
                         !store the fibre number this bioelectrics node belongs to.
                         CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
                           & FIELD_VALUES_SET_TYPE,1,1,node_idx,3,fibre_idx,ERR,ERROR,*999) 
 
-                        !find the interpolated position of the bioelectric grid node from the FE dependent field
+                        !INDEPENDENT_FIELD_MONODOMAIN, 
+                        !   CMFE_FIELD_V_VARIABLE_TYPE 1) motor unit number   2) fibre type   3) fibre number   4) nearest Gauss point   5) in element number (LOCAL NODE NUMBERING!!!)
+  
+                        !find the interpolated position of the bioelectric grid node from the finite elasticity FE dependent field
                         CALL FIELD_INTERPOLATE_XI(NO_PART_DERIV,XI,INTERPOLATED_POINT,ERR,ERROR,*999)
+                        
+                        IF(DEBUGGING) THEN
+                          !PRINT*, "        ------- Node node_idx=",node_idx,"------------"
+                          !PRINT*, "        XI=",XI,", INTERPOLATED_POINT=",INTERPOLATED_POINT%VALUES(1:3,1)
+                          PRINT*, "        XI=",XI
+                        ENDIF
+  
+                        !DEPENDENT_FIELD_MONODOMAIN: 
+                        !   FIELD_U_VARIABLE_TYPE: 1) Vm
+                        !   FIELD_DELUDELN_VARIABLE_TYPE: 1) dVm/dn
+                        !   FIELD_V_VARIABLE_TYPE: 1),2),3) GeometryM3D, 3D-position of geometry
+                        
                         !update the bioelectrics dependent field Field_V_Variable_Type
                         !the Field_V_Variable_Type of the monodomain dependent field contains the nodal positions in 3D
                         CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
@@ -1968,7 +2049,12 @@ CONTAINS
                         CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
                           & FIELD_VALUES_SET_TYPE,1,1,node_idx,3,INTERPOLATED_POINT%VALUES(3,1),ERR,ERROR,*999)
 
-                        IF((n1==1).AND.(ne==START_ELEMENT)) THEN
+                        IF((n1==1).AND.(ne==START_ELEMENT)) THEN    ! n1=M-element no., ne=Fe-element no.
+                          IF(DEBUGGING) PRINT*, "        (first node of this fibre)"
+                        
+                          !GEOMETRIC_FIELD_MONODOMAIN
+                          !   CMFE_FIELD_U_VARIABLE_TYPE: 1) GeometryM
+                        
                           !a new line of bioelectrics grid nodes begins
                           CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
                             & FIELD_VALUES_SET_TYPE,1,1,node_idx,1,0.0_DP,ERR,ERROR,*999)
@@ -1987,15 +2073,17 @@ CONTAINS
                           CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
                             & FIELD_VALUES_SET_TYPE,dof_idx2,PREVIOUS_NODE(3),ERR,ERROR,*999)
 
-                          !compute the distance between the previous node and the actual node
+                          !compute the distance between the previous node and the current node
                           DIST=SQRT( &
                             & (INTERPOLATED_POINT%VALUES(1,1)-PREVIOUS_NODE(1))*(INTERPOLATED_POINT%VALUES(1,1)-PREVIOUS_NODE(1))+ &
                             & (INTERPOLATED_POINT%VALUES(2,1)-PREVIOUS_NODE(2))*(INTERPOLATED_POINT%VALUES(2,1)-PREVIOUS_NODE(2))+ &
                             & (INTERPOLATED_POINT%VALUES(3,1)-PREVIOUS_NODE(3))*(INTERPOLATED_POINT%VALUES(3,1)-PREVIOUS_NODE(3)))
 
+                          IF(DEBUGGING) THEN
+                            PRINT*, "        (not first node) position of previous node PREVIOUS_NODE=",PREVIOUS_NODE,", DIST=",DIST
+                          ENDIF
 
                           !CONTRACTION VELOCITY CALCULATION
-                          
                           !get the distance between the 2 nodes in the previous time step
                           dof_idx=FIELD_VAR_IND_M_2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)% &
                             & DERIVATIVES(1)%VERSIONS(1)
@@ -2022,6 +2110,8 @@ CONTAINS
                           
                           !compute the new contraction velocity
                           !VELOCITY=(DIST-OLD_DIST)/TIME_STEP
+                          ! v = 1/4 * (v1 + v2/(2dt) + v3/(3dt) + v4/(4dt))
+                          
                           VELOCITY=0.25_DP*((DIST-OLD_DIST)/TIME_STEP+(DIST-OLD_DIST_2)/(2.0_DP*TIME_STEP)+ &
                   			    & (DIST-OLD_DIST_3)/(3.0_DP*TIME_STEP)+(DIST-OLD_DIST_4)/(4.0_DP*TIME_STEP))
                           IF(.NOT. CALC_CLOSEST_GAUSS_POINT) THEN
@@ -2101,7 +2191,7 @@ CONTAINS
                           GAUSS_POINT=0
                           DO gauss_idx=1,SIZE(GAUSS_POSITIONS,2)
                             !compute the distance between the bioelectrics node and the Gauss point
-                            VALUE=SQRT( &
+                            VALUE=( &
                               & (Xi(1)-GAUSS_POSITIONS(1,gauss_idx))*(Xi(1)-GAUSS_POSITIONS(1,gauss_idx))+ &
                               & (Xi(2)-GAUSS_POSITIONS(2,gauss_idx))*(Xi(2)-GAUSS_POSITIONS(2,gauss_idx))+ &
                               & (Xi(3)-GAUSS_POSITIONS(3,gauss_idx))*(Xi(3)-GAUSS_POSITIONS(3,gauss_idx)))
@@ -2118,18 +2208,7 @@ CONTAINS
                             & FIELD_VALUES_SET_TYPE,1,1,node_idx,5,ne,ERR,ERROR,*999)
                         ENDIF !CALC_CLOSEST_GAUSS_POINT
                         
-                        IF(start_elem==1) THEN
-                          !fibres start in this element
-                          XI(1)=XI(1)+1.0_DP/(REAL(nodes_in_Xi_1-1))
-                        ELSEIF(start_elem==0) THEN
-                          !fibres don't start in this element
-                          XI(1)=XI(1)+1.0_DP/(REAL(nodes_in_Xi_1))
-                        ELSE
-                          LOCAL_ERROR="The start element index is incorrect. The index is "// &
-                            & TRIM(NUMBER_TO_VSTRING(start_elem,"*",ERR,ERROR))// &
-                            & " and should be zero or one." 
-                          CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
-                        ENDIF
+                        XI(1)=XI(1)+1.0_DP/(REAL(nodes_in_Xi_1_small))
                         
                       ENDDO !n1
                       
@@ -2249,24 +2328,33 @@ CONTAINS
 
 
                       !if there is not an adjacent element in positive XI_1 direction, go to the next FE element
-                      IF(ELEMENTS_TOPOLOGY%ELEMENTS(my_element_idx)%ADJACENT_ELEMENTS(1)%NUMBER_OF_ADJACENT_ELEMENTS==0) EXIT
+                      IF(ELEMENTS_TOPOLOGY%ELEMENTS(my_element_idx)%ADJACENT_ELEMENTS(1)%NUMBER_OF_ADJACENT_ELEMENTS==0) THEN
+                        IF (DEBUGGING) PRINT*, "      no adjacent 3D element in Xi1 direction"
+                        EXIT
+                      ENDIF
                       
                       !consider the adjacent element in positive XI_1 direction
                       ne=ELEMENTS_TOPOLOGY%ELEMENTS(my_element_idx)%ADJACENT_ELEMENTS(1)%ADJACENT_ELEMENTS(1)
+
+                      IF (DEBUGGING) PRINT*, "      adjacent 3D element in Xi1 direction: ne=",ne
 
                       !if a fibre starts in the next element, go to the next FE elem
                       dof_idx=FIELD_VAR_IND_FE%COMPONENTS(4)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
                       CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE, &
                         & FIELD_VALUES_SET_TYPE,dof_idx,start_elem,ERR,ERROR,*999)
+                      
                       !beginning of a fibre in this element: 1=yes, 0=no
                       IF (start_elem==1) THEN
                         ne=ELEMENTS_TOPOLOGY%ELEMENTS(element_idx)%LOCAL_NUMBER
+                        IF (DEBUGGING) PRINT*, "      adjacent 3D element in Xi1 direction has beginning of new fibre. "
+                        IF (DEBUGGING) PRINT*, "      Roll back to first element with ne=",ne
                         EXIT
                       ENDIF
                       
                       !find the element_idx that corresponds to ne
                       my_element_idx=0
-                      DO idx=1,ELEMENTS_TOPOLOGY%NUMBER_OF_ELEMENTS
+                      ! TODO: poor loop, tomo
+                      DO idx=1,ELEMENTS_TOPOLOGY%NUMBER_OF_ELEMENTS 
                         IF(ne==ELEMENTS_TOPOLOGY%ELEMENTS(idx)%ADJACENT_ELEMENTS(0)%ADJACENT_ELEMENTS(1)) THEN
                           my_element_idx=idx
                           EXIT
@@ -2280,7 +2368,10 @@ CONTAINS
                       
                       start_elem=0 !fibres don't start in this element
                       
-                      XI(1)=1.0_DP/(REAL(nodes_in_Xi_1))
+                      !XI(1)=1.0_DP/(REAL(nodes_in_Xi_1_small))
+                      XI(1) = 0.0_DP
+
+                      IF (DEBUGGING) PRINT*, "      adjacent 3D element element_idx=",element_idx,", nodes_in_Xi_1=",nodes_in_Xi_1
 
                     ENDDO !
                     !for the beginning of the next fibre, go back to the element in which the last fibre started
@@ -2294,10 +2385,15 @@ CONTAINS
                     start_elem=1 !fibres start in this element
                     XI(1)=0.0_DP
                     XI(2)=XI(2)+1.0_DP/(REAL(nodes_in_Xi_2))
+                    
+                    IF(DEBUGGING) PRINT *, "    roll back to 3D FE element where fibre started. "
+                    IF(DEBUGGING) PRINT *, "    my_element_idx=",my_element_idx,", ne=",ne," local coordinate XI=",XI
                   ENDDO !n2
                   XI(1)=0.0_DP
-                  XI(2)=1.0_DP/(REAL(2*nodes_in_Xi_2))
-                  XI(3)=Xi(3)+1.0_DP/(REAL(nodes_in_Xi_3))
+                  !XI(2)=1.0_DP/(REAL(2*nodes_in_Xi_2))     ! by tomo but I (maierbn) don't understand it
+                  XI(2)=XI(2)+1.0_DP/(REAL(1+nodes_in_Xi_2))  ! by maierbn
+                  !XI(3)=Xi(3)+1.0_DP/(REAL(nodes_in_Xi_3)) ! by tomo but I don't understand it
+                  XI(3)=Xi(3)+1.0_DP/(REAL(nodes_in_Xi_3))    ! by maierbn  
                 ENDDO !n3
 
               ENDDO !element_idx
