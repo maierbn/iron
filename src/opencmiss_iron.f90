@@ -7198,16 +7198,19 @@ CONTAINS
   !================================================================================================================================
   !
 
-  SUBROUTINE cmfe_CustomTimingGet(CustomTimingOdeSolver, CustomTimingParabolicSolver, CustomTimingFESolver, Err)
+  SUBROUTINE cmfe_CustomTimingGet(CustomTimingOdeSolver, CustomTimingParabolicSolver, CustomTimingFESolver, &
+    & CustomTimingFileOutput, Err)
 
     REAL(DP), INTENT(OUT) :: CustomTimingOdeSolver
     REAL(DP), INTENT(OUT) :: CustomTimingParabolicSolver
     REAL(DP), INTENT(OUT) :: CustomTimingFESolver
+    REAL(DP), INTENT(OUT) :: CustomTimingFileOutput
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
 
     CustomTimingOdeSolver = TIMING_ODE_SOLVER
     CustomTimingParabolicSolver = TIMING_PARABOLIC_SOLVER
     CustomTimingFESolver = TIMING_FE_SOLVER
+    CustomTimingFileOutput = TIMING_FILE_OUTPUT
 
     RETURN
 999 CALL cmfe_HandleError(err,error)
@@ -7224,6 +7227,7 @@ CONTAINS
     TIMING_ODE_SOLVER = 0_DP
     TIMING_PARABOLIC_SOLVER = 0_DP
     TIMING_FE_SOLVER = 0_DP
+    TIMING_FILE_OUTPUT = 0_DP
 
     RETURN
 999 CALL cmfe_HandleError(err,error)
