@@ -69,8 +69,9 @@ MODULE SOLVER_ROUTINES
   USE STRINGS
   USE TIMER
   USE TYPES
+  USE CUSTOM_PROFILING
 
-#include "macros.h"
+#include "macros.h"  
 
   IMPLICIT NONE
 
@@ -2371,10 +2372,24 @@ CONTAINS
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
 
+#ifdef TAUPROF
+                            CALL TAU_STATIC_PHASE_START('cellml call rhs')
+#endif
+#ifdef USE_CUSTOM_PROFILING
+                            CALL CustomProfilingStart('cellml call rhs')
+#endif
+
                             CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF), &
                               & RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF),PARAMETERS_DATA( &
                               & PARAMETER_START_DOF:PARAMETER_END_DOF))
+
+#ifdef USE_CUSTOM_PROFILING
+                            CALL CustomProfilingStop('cellml call rhs')
+#endif
+#ifdef TAUPROF
+                            CALL TAU_STATIC_PHASE_STOP('cellml call rhs')
+#endif
 
                             STATE_DATA(STATE_START_DOF:STATE_END_DOF)=STATE_DATA(STATE_START_DOF:STATE_END_DOF)+ &
                               & TIME_INCREMENT*RATES(1:NUMBER_STATES)
@@ -2543,9 +2558,40 @@ CONTAINS
 !!TODO: Maybe move this getting of fields earlier up the DAE solver chain? For now keep here.
 
                       !Make sure CellML fields have been updated to the current value of any mapped fields
+
+#ifdef TAUPROF
+                      CALL TAU_STATIC_PHASE_START('1.1.1. cellml field2cellml update')
+#endif
+#ifdef USE_CUSTOM_PROFILING
+                      CALL CustomProfilingStart('1.1.1. cellml field2cellml update')
+#endif
+
                       CALL CELLML_FIELD_TO_CELLML_UPDATE(CELLML_ENVIRONMENT,ERR,ERROR,*999)
 
+#ifdef USE_CUSTOM_PROFILING
+                      CALL CustomProfilingStop('1.1.1. cellml field2cellml update')
+#endif
+#ifdef TAUPROF
+                      CALL TAU_STATIC_PHASE_STOP('1.1.1. cellml field2cellml update')
+                      CALL TAU_STATIC_PHASE_START('1.1.2. cellml field var get')
+#endif
+#ifdef USE_CUSTOM_PROFILING
+                      CALL CustomProfilingStart('1.1.2. cellml field var get')
+#endif
+
                       CALL FIELD_VARIABLE_GET(MODELS_FIELD,FIELD_U_VARIABLE_TYPE,MODELS_VARIABLE,ERR,ERROR,*999)
+
+#ifdef USE_CUSTOM_PROFILING
+                      CALL CustomProfilingStop('1.1.2. cellml field var get')
+#endif
+#ifdef TAUPROF
+                      CALL TAU_STATIC_PHASE_STOP('1.1.2. cellml field var get')
+                      CALL TAU_STATIC_PHASE_START('1.1.3. cellml data get')
+#endif
+#ifdef USE_CUSTOM_PROFILING
+                      CALL CustomProfilingStart('1.1.3. cellml data get')
+#endif
+
                       CALL FIELD_PARAMETER_SET_DATA_GET(MODELS_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
                         & MODELS_DATA,ERR,ERROR,*999)
 
@@ -2576,12 +2622,34 @@ CONTAINS
                         ENDIF
                       ENDIF
 
+#ifdef USE_CUSTOM_PROFILING
+                      CALL CustomProfilingStop('1.1.3. cellml data get')
+#endif
+#ifdef TAUPROF
+                      CALL TAU_STATIC_PHASE_STOP('1.1.3. cellml data get')
+                      CALL TAU_STATIC_PHASE_START('1.1.4. cellml integrate')
+#endif
+#ifdef USE_CUSTOM_PROFILING
+                      CALL CustomProfilingStart('1.1.4. cellml integrate')
+#endif
+
                       !Integrate these CellML equations
                       CALL SOLVER_DAE_EULER_FORWARD_INTEGRATE(FORWARD_EULER_SOLVER,CELLML_ENVIRONMENT,MODELS_VARIABLE% &
                         & TOTAL_NUMBER_OF_DOFS,DAE_SOLVER%START_TIME,DAE_SOLVER%END_TIME,DAE_SOLVER%INITIAL_STEP, &
                         & CELLML_ENVIRONMENT%MODELS_FIELD%ONLY_ONE_MODEL_INDEX,MODELS_DATA,CELLML_ENVIRONMENT% &
                         & MAXIMUM_NUMBER_OF_STATE,STATE_DATA,CELLML_ENVIRONMENT%MAXIMUM_NUMBER_OF_PARAMETERS, &
                         & PARAMETERS_DATA,CELLML_ENVIRONMENT%MAXIMUM_NUMBER_OF_INTERMEDIATE,INTERMEDIATE_DATA,ERR,ERROR,*999)
+
+#ifdef USE_CUSTOM_PROFILING
+                      CALL CustomProfilingStop('1.1.4. cellml integrate')
+#endif
+#ifdef TAUPROF
+                      CALL TAU_STATIC_PHASE_STOP('1.1.4. cellml integrate')
+                      CALL TAU_STATIC_PHASE_START('1.1.5. cellml data restore')
+#endif
+#ifdef USE_CUSTOM_PROFILING
+                      CALL CustomProfilingStart('1.1.5. cellml data restore')
+#endif
 
                       !Restore field data
                       CALL FIELD_PARAMETER_SET_DATA_RESTORE(MODELS_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
@@ -2593,8 +2661,26 @@ CONTAINS
                       IF(ASSOCIATED(INTERMEDIATE_FIELD)) CALL FIELD_PARAMETER_SET_DATA_RESTORE(INTERMEDIATE_FIELD, &
                         & FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,INTERMEDIATE_DATA,ERR,ERROR,*999)
 
+#ifdef USE_CUSTOM_PROFILING
+                      CALL CustomProfilingStop('1.1.5. cellml data restore')
+#endif
+#ifdef TAUPROF
+                      CALL TAU_STATIC_PHASE_STOP('1.1.5. cellml data restore')
+                      CALL TAU_STATIC_PHASE_START('1.1.6. cellml field update')
+#endif
+#ifdef USE_CUSTOM_PROFILING
+                      CALL CustomProfilingStart('1.1.6. cellml field update')
+#endif
+
                       !Make sure fields have been updated to the current value of any mapped CellML fields
                       CALL CELLML_CELLML_TO_FIELD_UPDATE(CELLML_ENVIRONMENT,ERR,ERROR,*999)
+
+#ifdef USE_CUSTOM_PROFILING
+                      CALL CustomProfilingStop('1.1.6. cellml field update')
+#endif
+#ifdef TAUPROF
+                      CALL TAU_STATIC_PHASE_STOP('1.1.6. cellml field update')
+#endif
 
                     ELSE
                       LOCAL_ERROR="The CellML models field is not associated for CellML index "// &
@@ -3447,7 +3533,8 @@ CONTAINS
             CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
           END SELECT
         ELSE
-          CALL FlagError("The GL differential-algebraic equation solver is not associated with the chosen solver library.",ERR,ERROR,*999)
+          CALL FlagError("The GL differential-algebraic equation solver is not associated with the chosen solver library."&
+            & ,ERR,ERROR,*999)
         ENDIF
       CASE(SOLVER_DAE_RUSH_LARSON)
         RUSH_LARSON_DAE_SOLVER=>DAE_SOLVER%RUSH_LARSON_SOLVER
@@ -7131,14 +7218,63 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
             LINEAR_SOLVER=>DYNAMIC_SOLVER%LINEAR_SOLVER
             IF(ASSOCIATED(LINEAR_SOLVER)) THEN
               IF(DYNAMIC_SOLVER%SOLVER_INITIALISED) THEN
+
+#ifdef TAUPROF
+                CALL TAU_STATIC_PHASE_START('1.2.3.1 dynamic mean predicted calculate')
+#endif
+#ifdef USE_CUSTOM_PROFILING
+                CALL CustomProfilingStart("1.2.3.1 dynamic mean predicted calculate")
+#endif
                 !Assemble the solver equations
                 CALL SOLVER_DYNAMIC_MEAN_PREDICTED_CALCULATE(SOLVER,ERR,ERROR,*999)
+
+#ifdef USE_CUSTOM_PROFILING
+                CALL CustomProfilingStop("1.2.3.1 dynamic mean predicted calculate")
+#endif
+#ifdef TAUPROF
+                CALL TAU_STATIC_PHASE_STOP('1.2.3.1 dynamic mean predicted calculate')
+                CALL TAU_STATIC_PHASE_START('1.2.3.2 dynamic assemble')
+#endif
+#ifdef USE_CUSTOM_PROFILING
+                CALL CustomProfilingStart("1.2.3.2 dynamic assemble")
+#endif
+
                 CALL SOLVER_MATRICES_DYNAMIC_ASSEMBLE(SOLVER,SOLVER_MATRICES_LINEAR_ONLY,ERR,ERROR,*999)
+#ifdef USE_CUSTOM_PROFILING
+                CALL CustomProfilingStop("1.2.3.2 dynamic assemble")
+#endif
+#ifdef TAUPROF
+                CALL TAU_STATIC_PHASE_STOP('1.2.3.2 dynamic assemble')
+                CALL TAU_STATIC_PHASE_START('1.2.3.3 solve linear system')
+#endif
+#ifdef USE_CUSTOM_PROFILING
+                CALL CustomProfilingStart("1.2.3.3 solve linear system")
+#endif
+
                 !Solve the linear system
                 CALL SOLVER_SOLVE(LINEAR_SOLVER,ERR,ERROR,*999)
+
+#ifdef USE_CUSTOM_PROFILING
+                CALL CustomProfilingStop("1.2.3.3 solve linear system")
+#endif
+#ifdef TAUPROF
+                CALL TAU_STATIC_PHASE_STOP('1.2.3.3 solve linear system')
+                CALL TAU_STATIC_PHASE_START('1.2.3.4 update dependent field')
+#endif
+#ifdef USE_CUSTOM_PROFILING
+                CALL CustomProfilingStart("1.2.3.4 update dependent field")
+#endif
+
                 !Update dependent field with solution
                 CALL SOLVER_VARIABLES_DYNAMIC_FIELD_UPDATE(SOLVER,ERR,ERROR,*999)
-              ELSE
+
+#ifdef USE_CUSTOM_PROFILING
+                CALL CustomProfilingStop("1.2.3.4 update dependent field")
+#endif
+#ifdef TAUPROF
+                CALL TAU_STATIC_PHASE_STOP('1.2.3.4 update dependent field')
+#endif
+             ELSE
                 !If we need to initialise the solver
                 IF((DYNAMIC_SOLVER%ORDER==SOLVER_DYNAMIC_FIRST_ORDER.AND.DYNAMIC_SOLVER%DEGREE>SOLVER_DYNAMIC_FIRST_DEGREE).OR. &
                   & (DYNAMIC_SOLVER%ORDER==SOLVER_DYNAMIC_SECOND_ORDER.AND.DYNAMIC_SOLVER%DEGREE>SOLVER_DYNAMIC_SECOND_DEGREE)) THEN
@@ -19499,8 +19635,20 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                           !Zero the solution vector
                           CALL DISTRIBUTED_VECTOR_ALL_VALUES_SET(SOLVER_VECTOR,0.0_DP,ERR,ERROR,*999)
                         CASE(SOLVER_SOLUTION_INITIALISE_CURRENT_FIELD)
+#ifdef TAUPROF
+                          CALL TAU_STATIC_PHASE_START('1.3.3.1.3.1 newton update solution vector')
+#endif
+#ifdef USE_CUSTOM_PROFILING
+                          CALL CustomProfilingStart("1.3.3.1.3.1 newton update solution vector")
+#endif
                           !Make sure the solver vector contains the current dependent field values
                           CALL SOLVER_SOLUTION_UPDATE(SOLVER,ERR,ERROR,*999)
+#ifdef USE_CUSTOM_PROFILING
+                          CALL CustomProfilingStop("1.3.3.1.3.1 newton update solution vector")
+#endif
+#ifdef TAUPROF
+                          CALL TAU_STATIC_PHASE_STOP('1.3.3.1.3.1 newton update solution vector')
+#endif
                         CASE(SOLVER_SOLUTION_INITIALISE_NO_CHANGE)
                           !Do nothing
                         CASE DEFAULT
@@ -19509,9 +19657,29 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                             & " is invalid."
                           CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                         END SELECT
+
+#ifdef TAUPROF
+                        CALL TAU_STATIC_PHASE_START('1.3.3.1.3.2 newton Petsc solve')
+#endif
+#ifdef USE_CUSTOM_PROFILING
+                        CALL CustomProfilingStart("1.3.3.1.3.2 newton Petsc solve")
+#endif
                         !Solve the nonlinear equations
                         CALL Petsc_SnesSolve(LINESEARCH_SOLVER%snes,RHS_VECTOR%PETSC%VECTOR,SOLVER_VECTOR%PETSC%VECTOR, &
                           & ERR,ERROR,*999)
+
+#ifdef USE_CUSTOM_PROFILING
+                        CALL CustomProfilingStop("1.3.3.1.3.2 newton Petsc solve")
+#endif
+
+#ifdef TAUPROF
+                        CALL TAU_STATIC_PHASE_STOP('1.3.3.1.3.2 newton Petsc solve')
+                        CALL TAU_STATIC_PHASE_START('1.3.3.1.3.3 newton diagnostics')
+#endif
+#ifdef USE_CUSTOM_PROFILING
+                        CALL CustomProfilingStart("1.3.3.1.3.3 newton diagnostics")
+#endif
+
                         !Check for convergence
                         CALL Petsc_SnesGetConvergedReason(LINESEARCH_SOLVER%snes,CONVERGED_REASON,ERR,ERROR,*999)
 
@@ -19590,6 +19758,14 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                             CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"Converged Reason = PETSc converged iterating.",ERR,ERROR,*999)
                           END SELECT
                         ENDIF
+
+#ifdef USE_CUSTOM_PROFILING
+                        CALL CustomProfilingStop("1.3.3.1.3.3 newton diagnostics")
+#endif
+
+#ifdef TAUPROF
+                        CALL TAU_STATIC_PHASE_STOP('1.3.3.1.3.3 newton diagnostics')
+#endif
                       CASE DEFAULT
                         LOCAL_ERROR="The Newton line search solver library type of "// &
                           & TRIM(NumberToVString(LINESEARCH_SOLVER%SOLVER_LIBRARY,"*",ERR,ERROR))//" is invalid."
