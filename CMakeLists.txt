@@ -70,7 +70,6 @@ if(NOT IRON_BUILD_SHARED_LIBRARY AND NOT IRON_BUILD_STATIC_LIBRARY )
   message(FATAL_ERROR "You have to build at least one of the types of libraries (shared or static)." )
 endif()
 
-# The following scripts are missing:
 #include(OCMiscFunctions)
 #include(OCMultiConfigEnvironment)
 
