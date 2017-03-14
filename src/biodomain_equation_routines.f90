@@ -74,7 +74,7 @@ MODULE BIODOMAIN_EQUATION_ROUTINES
 
   PRIVATE
   
-  REAL(DP), PUBLIC :: TIMING_FILE_OUTPUT = 0_DP
+  REAL(DP), PUBLIC :: TIMING_FILE_OUTPUT2 = 0_DP
 
   !Module parameters
 
@@ -213,7 +213,13 @@ CONTAINS
           ENDIF
           
           CALL CPU_TIMER(USER_CPU, TIME2, ERR,ERROR,*999)
-          TIMING_FILE_OUTPUT = TIMING_FILE_OUTPUT + (TIME2(1) - TIME1(1))
+          TIMING_FILE_OUTPUT2 = TIMING_FILE_OUTPUT2 + (TIME2(1) - TIME1(1))
+          
+          ! output to console
+          !PRINT *, "duration file output: user: ", TIME1(1), " to ", TIME2(1), " = ", (TIME2(1)-TIME1(1))
+          !CALL CPU_TIMER(SYSTEM_CPU, TIME2, ERR,ERROR,*999)
+          !PRINT *, "                      system: ", TIME1(1), " to ", TIME2(1), (TIME2(1)-TIME1(1)),&
+          ! & ", new total duration: ",TIMING_FILE_OUTPUT2
           
         CASE(PROBLEM_CONTROL_WHILE_LOOP_TYPE)
           !do nothing
