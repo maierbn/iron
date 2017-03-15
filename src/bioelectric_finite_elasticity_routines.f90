@@ -70,6 +70,7 @@ MODULE BIOELECTRIC_FINITE_ELASTICITY_ROUTINES
   USE PROBLEM_CONSTANTS
   USE STRINGS
   USE SOLVER_ROUTINES
+  USE TIMER
   USE TYPES
 #include "macros.h"
 
@@ -91,6 +92,9 @@ MODULE BIOELECTRIC_FINITE_ELASTICITY_ROUTINES
   
   PUBLIC BioelectricFiniteElasticity_UpdateGeometricField
 
+  REAL(DP), PUBLIC :: TIMING_FILE_OUTPUT_USER = 0_DP
+  REAL(DP), PUBLIC :: TIMING_FILE_OUTPUT_SYSTEM = 0_DP
+  
 CONTAINS
 
   !
@@ -1366,6 +1370,7 @@ CONTAINS
     TYPE(SOLVERS_TYPE), POINTER :: SOLVERS
     TYPE(VARYING_STRING) :: FILENAME,LOCAL_ERROR,METHOD
     TYPE(CONTROL_LOOP_TYPE), POINTER :: ELASTICITY_SUB_LOOP,BIOELECTRIC_SUB_LOOP
+    REAL(SP) :: TIME_USER_START(1), TIME_USER_STOP(1), TIME_SYSTEM_START(1), TIME_SYSTEM_STOP(1)
 
     ENTERS("BioelectricFiniteElasticity_ControlLoopPostLoop",ERR,ERROR,*999)
 
@@ -1401,61 +1406,31 @@ CONTAINS
           CALL FlagError("Control loop problem is not associated.",ERR,ERROR,*999)
         ENDIF
       ELSE
-        !the main time loop - output the finite elasticity fields 
-        IF(CONTROL_LOOP%OUTPUT_TYPE>=CONTROL_LOOP_PROGRESS_OUTPUT) THEN
-          !Export the dependent field for this time step
+        !the main time loop - output the finite elasticity fields MainTime_1_i and MainTime_M_2_<i>
+        IF(CONTROL_LOOP%OUTPUT_TYPE>=CONTROL_LOOP_PROGRESS_OUTPUT .OR. CONTROL_LOOP%OUTPUT_TYPE == CONTROL_LOOP_FILE_OUTPUT) THEN
           TIME_LOOP=>CONTROL_LOOP%TIME_LOOP
-          IF(ASSOCIATED(TIME_LOOP)) THEN
-            PROBLEM=>CONTROL_LOOP%PROBLEM
-            IF(ASSOCIATED(PROBLEM)) THEN
-              NULLIFY(SOLVERS)
-              NULLIFY(SOLVER)
-              NULLIFY(SOLVER_EQUATIONS)
-              NULLIFY(ELASTICITY_SUB_LOOP)
-              !Get the solver. The first solver of the second sub loop will contain the finite elasticity dependent field equation set
-              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,2,ELASTICITY_SUB_LOOP,ERR,ERROR,*999)
-              CALL CONTROL_LOOP_SOLVERS_GET(ELASTICITY_SUB_LOOP,SOLVERS,ERR,ERROR,*999)
-              CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,ERR,ERROR,*999)
-              CALL SOLVER_SOLVER_EQUATIONS_GET(SOLVER,SOLVER_EQUATIONS,ERR,ERROR,*999)
-              !Loop over the equations sets associated with the solver
-              IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
-                SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
-                IF(ASSOCIATED(SOLVER_MAPPING)) THEN
-                  DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-                    EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
-                    IF(ASSOCIATED(EQUATIONS_SET)) THEN
-                      DEPENDENT_FIELD=>EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD
-                      NULLIFY(DEPENDENT_REGION)
-                      CALL FIELD_REGION_GET(DEPENDENT_FIELD,DEPENDENT_REGION,ERR,ERROR,*999)
-                      FILENAME="MainTime_"//TRIM(NUMBER_TO_VSTRING(DEPENDENT_REGION%USER_NUMBER,"*",ERR,ERROR))// &
-                        & "_"//TRIM(NUMBER_TO_VSTRING(TIME_LOOP%GLOBAL_ITERATION_NUMBER,"*",ERR,ERROR))
-                      METHOD="FORTRAN"
-                      CALL FIELD_IO_NODES_EXPORT(DEPENDENT_REGION%FIELDS,FILENAME,METHOD,ERR,ERROR,*999)
-                    ELSE
-                      LOCAL_ERROR="Equations set is not associated for equations set index "// &
-                        & TRIM(NUMBER_TO_VSTRING(equations_set_idx,"*",ERR,ERROR))// &
-                        & " in the solver mapping."
-                      CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
-                    ENDIF
-                  ENDDO !equations_set_idx
-                ELSE
-                  CALL FlagError("Solver equations solver mapping is not associated.",ERR,ERROR,*999)
-                ENDIF
-              ELSE
-                CALL FlagError("Solver solver equations are not associated.",ERR,ERROR,*999)
-              ENDIF
-              IF((PROBLEM%SPECIFICATION(3)==PROBLEM_GUDUNOV_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE).OR. &
-               & (PROBLEM%SPECIFICATION(3)==PROBLEM_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE).OR. &
-               & (PROBLEM%SPECIFICATION(3)==PROBLEM_MONODOMAIN_ELASTICITY_VELOCITY_SUBTYPE).OR. &
-               & (PROBLEM%SPECIFICATION(3)==PROBLEM_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE)) THEN
+          
+          ! Only export in every nth time step, n=TIME_LOOP%OUTPUT_NUMBER, can be set via cmfe_ControlLoop_TimeOutputSet(ControlLoopMain,OUTPUT_FREQUENCY,Err)
+          IF(MOD(TIME_LOOP%GLOBAL_ITERATION_NUMBER, TIME_LOOP%OUTPUT_NUMBER) == 0) THEN
+            
+            CALL CPU_TIMER(USER_CPU, TIME_USER_START, ERR,ERROR,*999)
+            CALL CPU_TIMER(SYSTEM_CPU, TIME_SYSTEM_START, ERR,ERROR,*999)
+            
+            !Export the dependent field for this time step
+            IF(ASSOCIATED(TIME_LOOP)) THEN
+              PROBLEM=>CONTROL_LOOP%PROBLEM
+              IF(ASSOCIATED(PROBLEM)) THEN
+                
+                
+              
                 NULLIFY(SOLVERS)
                 NULLIFY(SOLVER)
                 NULLIFY(SOLVER_EQUATIONS)
-                NULLIFY(BIOELECTRIC_SUB_LOOP)
-                !Get the solver. The second solver of the first sub loop will contain the bioelectrics equation set
-                CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,1,BIOELECTRIC_SUB_LOOP,ERR,ERROR,*999)
-                CALL CONTROL_LOOP_SOLVERS_GET(BIOELECTRIC_SUB_LOOP,SOLVERS,ERR,ERROR,*999)
-                CALL SOLVERS_SOLVER_GET(SOLVERS,2,SOLVER,ERR,ERROR,*999)
+                NULLIFY(ELASTICITY_SUB_LOOP)
+                !Get the solver. The first solver of the second sub loop will contain the finite elasticity dependent field equation set
+                CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,2,ELASTICITY_SUB_LOOP,ERR,ERROR,*999)
+                CALL CONTROL_LOOP_SOLVERS_GET(ELASTICITY_SUB_LOOP,SOLVERS,ERR,ERROR,*999)
+                CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,ERR,ERROR,*999)
                 CALL SOLVER_SOLVER_EQUATIONS_GET(SOLVER,SOLVER_EQUATIONS,ERR,ERROR,*999)
                 !Loop over the equations sets associated with the solver
                 IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
@@ -1467,13 +1442,10 @@ CONTAINS
                         DEPENDENT_FIELD=>EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD
                         NULLIFY(DEPENDENT_REGION)
                         CALL FIELD_REGION_GET(DEPENDENT_FIELD,DEPENDENT_REGION,ERR,ERROR,*999)
-                        FILENAME="MainTime_M_"//TRIM(NUMBER_TO_VSTRING(DEPENDENT_REGION%USER_NUMBER,"*",ERR,ERROR))// &
+                        FILENAME="MainTime_"//TRIM(NUMBER_TO_VSTRING(DEPENDENT_REGION%USER_NUMBER,"*",ERR,ERROR))// &
                           & "_"//TRIM(NUMBER_TO_VSTRING(TIME_LOOP%GLOBAL_ITERATION_NUMBER,"*",ERR,ERROR))
                         METHOD="FORTRAN"
                         CALL FIELD_IO_NODES_EXPORT(DEPENDENT_REGION%FIELDS,FILENAME,METHOD,ERR,ERROR,*999)
-                        
-                        WRITE(*,*) TIME_LOOP%ITERATION_NUMBER
-                        
                       ELSE
                         LOCAL_ERROR="Equations set is not associated for equations set index "// &
                           & TRIM(NUMBER_TO_VSTRING(equations_set_idx,"*",ERR,ERROR))// &
@@ -1487,12 +1459,65 @@ CONTAINS
                 ELSE
                   CALL FlagError("Solver solver equations are not associated.",ERR,ERROR,*999)
                 ENDIF
-              ENDIF !PROBLEM_GUDUNOV_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE,PROBLEM_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE
+                IF((PROBLEM%SPECIFICATION(3)==PROBLEM_GUDUNOV_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE).OR. &
+                 & (PROBLEM%SPECIFICATION(3)==PROBLEM_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE).OR. &
+                 & (PROBLEM%SPECIFICATION(3)==PROBLEM_MONODOMAIN_ELASTICITY_VELOCITY_SUBTYPE).OR. &
+                 & (PROBLEM%SPECIFICATION(3)==PROBLEM_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE)) THEN
+                  NULLIFY(SOLVERS)
+                  NULLIFY(SOLVER)
+                  NULLIFY(SOLVER_EQUATIONS)
+                  NULLIFY(BIOELECTRIC_SUB_LOOP)
+                  !Get the solver. The second solver of the first sub loop will contain the bioelectrics equation set
+                  CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP,1,BIOELECTRIC_SUB_LOOP,ERR,ERROR,*999)
+                  CALL CONTROL_LOOP_SOLVERS_GET(BIOELECTRIC_SUB_LOOP,SOLVERS,ERR,ERROR,*999)
+                  CALL SOLVERS_SOLVER_GET(SOLVERS,2,SOLVER,ERR,ERROR,*999)
+                  CALL SOLVER_SOLVER_EQUATIONS_GET(SOLVER,SOLVER_EQUATIONS,ERR,ERROR,*999)
+                  !Loop over the equations sets associated with the solver
+                  IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
+                    SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
+                    IF(ASSOCIATED(SOLVER_MAPPING)) THEN
+                      DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
+                        EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+                        IF(ASSOCIATED(EQUATIONS_SET)) THEN
+                          DEPENDENT_FIELD=>EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD
+                          NULLIFY(DEPENDENT_REGION)
+                          CALL FIELD_REGION_GET(DEPENDENT_FIELD,DEPENDENT_REGION,ERR,ERROR,*999)
+                          FILENAME="MainTime_M_"//TRIM(NUMBER_TO_VSTRING(DEPENDENT_REGION%USER_NUMBER,"*",ERR,ERROR))// &
+                            & "_"//TRIM(NUMBER_TO_VSTRING(TIME_LOOP%GLOBAL_ITERATION_NUMBER,"*",ERR,ERROR))
+                          METHOD="FORTRAN"
+                          CALL FIELD_IO_NODES_EXPORT(DEPENDENT_REGION%FIELDS,FILENAME,METHOD,ERR,ERROR,*999)
+                          
+                          !WRITE(*,*) TIME_LOOP%ITERATION_NUMBER
+                          
+                        ELSE
+                          LOCAL_ERROR="Equations set is not associated for equations set index "// &
+                            & TRIM(NUMBER_TO_VSTRING(equations_set_idx,"*",ERR,ERROR))// &
+                            & " in the solver mapping."
+                          CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                        ENDIF
+                      ENDDO !equations_set_idx
+                    ELSE
+                      CALL FlagError("Solver equations solver mapping is not associated.",ERR,ERROR,*999)
+                    ENDIF
+                  ELSE
+                    CALL FlagError("Solver solver equations are not associated.",ERR,ERROR,*999)
+                  ENDIF
+                ENDIF !PROBLEM_GUDUNOV_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE,PROBLEM_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE
+              ELSE
+                CALL FlagError("Control loop problem is not associated.",ERR,ERROR,*999)
+              ENDIF
             ELSE
-              CALL FlagError("Control loop problem is not associated.",ERR,ERROR,*999)
+              CALL FlagError("Time loop is not associated.",ERR,ERROR,*999)
             ENDIF
-          ELSE
-            CALL FlagError("Time loop is not associated.",ERR,ERROR,*999)
+          
+            CALL CPU_TIMER(USER_CPU, TIME_USER_STOP, ERR,ERROR,*999)
+            CALL CPU_TIMER(SYSTEM_CPU, TIME_SYSTEM_STOP, ERR,ERROR,*999)
+            TIMING_FILE_OUTPUT_USER = TIMING_FILE_OUTPUT_USER + (TIME_USER_STOP(1) - TIME_USER_START(1))
+            TIMING_FILE_OUTPUT_SYSTEM = TIMING_FILE_OUTPUT_SYSTEM + (TIME_SYSTEM_STOP(1) - TIME_SYSTEM_START(1))
+            PRINT *, "duration file output: user: ", (TIME_USER_STOP(1) - TIME_USER_START(1))
+            PRINT *, "                      system: ",(TIME_SYSTEM_STOP(1) - TIME_SYSTEM_START(1)), &
+             & ", new total duration: ",TIMING_FILE_OUTPUT_USER,",",TIMING_FILE_OUTPUT_SYSTEM
+          
           ENDIF
         ENDIF
       ENDIF
