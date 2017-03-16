@@ -1679,7 +1679,7 @@ CONTAINS
 
   SUBROUTINE gdbParallelDebuggingBarrier()
     INTEGER(Intg) :: Gdb_Resume
-    INTEGER(Intg) :: MPI_IERROR
+    INTEGER(Intg) :: MPI_IERROR, MPI_COMM_WORLD
     INTEGER(Intg) :: ComputationalNodeNumber, NumberOfComputationalNodes
     Gdb_Resume = 0
 
