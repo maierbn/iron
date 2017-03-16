@@ -417,7 +417,7 @@ MODULE OpenCMISS_Iron
     & cmfe_PrintProblem, cmfe_PrintGeneratedMesh, cmfe_PrintEquations, cmfe_PrintEquationsSet, cmfe_PrintDistributedVector, &
     & cmfe_PrintInterfaceEquations, cmfe_PrintControlLoop, cmfe_PrintCellml, cmfe_PrintBoundaryConditions, cmfe_PrintBasis, &
     & cmfe_PrintMeshnodestype, cmfe_PrintInterfaceCondition, cmfe_PrintInterfaceMeshConnectivity, cmfe_PrintInterface, &
-    & cmfe_PrintCellmlEquations, cmfe_PrintDecomposition, cmfe_PrintMeshEmbedding, cmfe_PrintHistory, cmfe_PrintSolverEquationsM
+    & cmfe_PrintCellmlEquations, cmfe_PrintDecomposition, cmfe_PrintMeshEmbedding, cmfe_PrintHistory
 
 !!==================================================================================================================================
 !!
@@ -62050,29 +62050,9 @@ CONTAINS
     INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
     INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
     INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    
     CALL Print_SOLVER(Variable%solver, MaxDepth, MaxArrayLength)
   END SUBROUTINE cmfe_PrintSolver
   
-  !
-  !================================================================================================================================
-  !
-  SUBROUTINE cmfe_PrintSolverEquationsM(SolverEquationsM, MaxDepth, MaxArrayLength, Err)
-    TYPE(cmfe_SolverEquationsType), INTENT(IN) :: SolverEquationsM
-    INTEGER(INTG), INTENT(IN) :: MaxDepth      !< The maximum recursion depth down to which data is printed
-    INTEGER(INTG), INTENT(IN) :: MaxArrayLength   !< The maximum array length that is printed  
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    
-    TYPE(SOLVER_TYPE), POINTER :: Solver
-    
-    Solver=>SolverEquationsM%solverEquations%SOLVER%SOLVERS%SOLVERS(2)%PTR
-    
-    CALL Print_SOLVER(Solver, MaxDepth, MaxArrayLength)
-    !CALL Print_SOLVER(Variable%solver, MaxDepth, MaxArrayLength)
-  END SUBROUTINE cmfe_PrintSolverEquationsM
-  
-  
-  !
   !
   !================================================================================================================================
   !
