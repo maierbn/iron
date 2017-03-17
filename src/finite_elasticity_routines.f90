@@ -3909,13 +3909,19 @@ CONTAINS
       delta_t=0.001_DP;
       velo=(dist2-dist1)/delta_t ! velo>0 == lengthening
       !conversion of velocity at the continuum macroscale to the micromechanical cell model half-sarcomere velocity
-      velo=velo*5.0e-8_DP 
+      velo=velo*5.0e-8_DP  
 !      velo=velo*5.0e-2_DP
 !      velo=velo*5.0e-7_DP 
 
       CALL FIELD_PARAMETER_SET_UPDATE_GAUSS_POINT(DEPENDENT_FIELD,FIELD_U1_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,GAUSS_POINT_NUMBER, &
         & ELEMENT_NUMBER,2,velo,ERR,ERROR,*999)
 
+      !NULLIFY(FIELD_VARIABLE)
+      !CALL FIELD_VARIABLE_GET(DEPENDENT_FIELD,FIELD_U1_VARIABLE_TYPE,FIELD_VARIABLE,ERR,ERROR,*999)
+      !dof_idx=FIELD_VARIABLE%COMPONENTS(2)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(GAUSS_POINT_NUMBER, &
+      !  & ELEMENT_NUMBER)
+      !CALL DISTRIBUTED_VECTOR_VALUES_SET(FIELD_VARIABLE%PARAMETER_SETS%SET_TYPE(FIELD_VALUES_SET_TYPE)%PTR%PARAMETERS,dof_idx, &
+      !  & velo,ERR,ERROR,*999)
       
       !--------------------------------------------------------------------------------------------
       NULLIFY(INDEPENDENT_FIELD)
@@ -4292,13 +4298,19 @@ CONTAINS
         !passive anisotropic stiffness -- only in the tension range
         IF(AZL(1,1) > 1.0_DP) THEN
           PIOLA_TENSOR(1,1)=PIOLA_TENSOR(1,1)+C(3)/AZL(1,1)*(AZL(1,1)**(C(4)/2.0_DP)-1.0_DP)
+          PRINT*, "PIOLA_TENSOR(1,1): ",PIOLA_TENSOR(1,1)
         ENDIF
         !active stress component
         CALL Field_ParameterSetGetLocalGaussPoint(EQUATIONS_SET%INDEPENDENT%INDEPENDENT_FIELD, & 
           &  FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,GAUSS_POINT_NUMBER,ELEMENT_NUMBER,1,VALUE, &
           & ERR,ERROR,*999)
+          
+        PRINT*, "get value of active stress component: ", VALUE
+          
         !divide by lambda and multiply by P_max
         VALUE=VALUE/SQRT(AZL(1,1))*C(5)
+        
+        PRINT*, "AZL(1,1): ", AZL(1,1), ", C(5): ", C(5), ", normalized: ", VALUE
         
         !HINDAWI paper - force-length relation at the continuum level
 !        if((SQRT(AZL(1,1))>0.72_DP).AND.(SQRT(AZL(1,1))<1.68_DP)) then
