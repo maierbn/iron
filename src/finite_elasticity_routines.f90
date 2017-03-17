@@ -1753,15 +1753,16 @@ CONTAINS
                       & GAUSS_WEIGHT*Jxxi*Jznu*THICKNESS*cauchyTensor(component_idx,component_idx2)* &
                       & DFDZ(parameter_idx,component_idx2,component_idx)
                       
-                    
-                    PRINT*, "element ",element_dof_idx,", cauchyTensor indices: (",component_idx,",",component_idx2,"), " // &
-                     & "cauchyTensor value: ", cauchyTensor(component_idx,component_idx2),",  GAUSS_WEIGHT=", GAUSS_WEIGHT, &
-                     & ", Jxxi=", Jxxi, ", Jznu=", Jznu, ", THICKNESS=", THICKNESS, &
-                     & ", DFDZ=", DFDZ(parameter_idx,component_idx2,component_idx), &
-                     & ", increment: ", GAUSS_WEIGHT*Jxxi*Jznu*THICKNESS*cauchyTensor(component_idx,component_idx2)* &
-                     & DFDZ(parameter_idx,component_idx2,component_idx), &
-                     & ", -> new sum: ", NONLINEAR_MATRICES%ELEMENT_RESIDUAL%VECTOR(element_dof_idx)
-                    PRINT*, ""
+                    IF (.FALSE.) THEN
+                      PRINT*, "element ",element_dof_idx,", cauchyTensor indices: (",component_idx,",",component_idx2,"), " // &
+                       & "cauchyTensor value: ", cauchyTensor(component_idx,component_idx2),",  GAUSS_WEIGHT=", GAUSS_WEIGHT, &
+                       & ", Jxxi=", Jxxi, ", Jznu=", Jznu, ", THICKNESS=", THICKNESS, &
+                       & ", DFDZ=", DFDZ(parameter_idx,component_idx2,component_idx), &
+                       & ", increment: ", GAUSS_WEIGHT*Jxxi*Jznu*THICKNESS*cauchyTensor(component_idx,component_idx2)* &
+                       & DFDZ(parameter_idx,component_idx2,component_idx), &
+                       & ", -> new sum: ", NONLINEAR_MATRICES%ELEMENT_RESIDUAL%VECTOR(element_dof_idx)
+                      PRINT*, ""
+                    ENDIF
                      
                   ENDDO ! component_idx2 (inner component index)
                 ENDDO ! parameter_idx (residual vector loop)
@@ -1793,8 +1794,8 @@ CONTAINS
                       & GAUSS_WEIGHT*Jxxi*COMPONENT_QUADRATURE_SCHEME%GAUSS_BASIS_FNS(parameter_idx,1,gauss_idx)* &
                       & (Jznu-1.0_DP)
                       
-                    PRINT *, "element_dof_idx=", element_dof_idx, " new value: ", &
-                     & NONLINEAR_MATRICES%ELEMENT_RESIDUAL%VECTOR(element_dof_idx)
+                    !PRINT *, "element_dof_idx=", element_dof_idx, " new value: ", &
+                    ! & NONLINEAR_MATRICES%ELEMENT_RESIDUAL%VECTOR(element_dof_idx)
                   ENDIF
                 ENDDO
               ELSEIF(DEPENDENT_COMPONENT_INTERPOLATION_TYPE==FIELD_ELEMENT_BASED_INTERPOLATION) THEN !element based
@@ -4311,6 +4312,12 @@ CONTAINS
           VALUE = 0.0_DP
         ELSE
           PRINT*, "Value is not NaN."
+        ENDIF
+        
+        IF (VALUE == VALUE) THEN
+          PRINT*, "VALUE == VALUE"
+        ELSE
+          PRINT*, "VALUE != VALUE"
         ENDIF
           
         !divide by lambda and multiply by P_max
