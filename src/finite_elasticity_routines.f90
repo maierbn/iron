@@ -1666,7 +1666,7 @@ CONTAINS
           & EQUATIONS_SET_TRANSVERSE_ISOTROPIC_ACTIVE_SUBTYPE,EQUATIONS_SET_TRANS_ISOTROPIC_ACTIVE_TRANSITION_SUBTYPE, &
           & EQUATIONS_SET_ANISOTROPIC_POLYNOMIAL_SUBTYPE,EQUATIONS_SET_ANISOTROPIC_POLYNOMIAL_ACTIVE_SUBTYPE, &
           & EQUATIONS_SET_INCOMPRESSIBLE_MOONEY_RIVLIN_SUBTYPE, EQUATIONS_SET_HOLZAPFEL_OGDEN_ACTIVECONTRACTION_SUBTYPE) ! 4 dependent components
-
+          PRINT*, "Loop over gauss points and add residuals: elastictiy_routines.f90: 1669"
           !Loop over gauss points and add residuals
           DO gauss_idx=1,DEPENDENT_NUMBER_OF_GAUSS_POINTS
             GAUSS_WEIGHT=DEPENDENT_QUADRATURE_SCHEME%GAUSS_WEIGHTS(gauss_idx)
@@ -1741,10 +1741,23 @@ CONTAINS
                 DO parameter_idx=1,NUMBER_OF_FIELD_COMPONENT_INTERPOLATION_PARAMETERS
                   element_dof_idx=element_dof_idx+1
                   DO component_idx2=1,NUMBER_OF_DIMENSIONS
+                  
+                  
                     NONLINEAR_MATRICES%ELEMENT_RESIDUAL%VECTOR(element_dof_idx)= &
                       & NONLINEAR_MATRICES%ELEMENT_RESIDUAL%VECTOR(element_dof_idx)+ &
                       & GAUSS_WEIGHT*Jxxi*Jznu*THICKNESS*cauchyTensor(component_idx,component_idx2)* &
                       & DFDZ(parameter_idx,component_idx2,component_idx)
+                      
+                    
+                    PRINT*, "element ",element_dof_idx,", cauchyTensor indices: (",component_idx,",",component_idx2,"), " // &
+                     & "cauchyTensor value: ", cauchyTensor(component_idx,component_idx2),",  GAUSS_WEIGHT=", GAUSS_WEIGHT, &
+                     & ", Jxxi=", Jxxi, ", Jznu=", Jznu, ", THICKNESS=", THICKNESS, &
+                     & ", DFDZ=", DFDZ(parameter_idx,component_idx2,component_idx), &
+                     & ", increment: ", GAUSS_WEIGHT*Jxxi*Jznu*THICKNESS*cauchyTensor(component_idx,component_idx2)* &
+                     & DFDZ(parameter_idx,component_idx2,component_idx), &
+                     & ", -> new sum: ", NONLINEAR_MATRICES%ELEMENT_RESIDUAL%VECTOR(element_dof_idx)
+                    PRINT*, ""
+                     
                   ENDDO ! component_idx2 (inner component index)
                 ENDDO ! parameter_idx (residual vector loop)
               ELSEIF(DEPENDENT_COMPONENT_INTERPOLATION_TYPE==FIELD_ELEMENT_BASED_INTERPOLATION) THEN
@@ -1774,6 +1787,9 @@ CONTAINS
                       & NONLINEAR_MATRICES%ELEMENT_RESIDUAL%VECTOR(element_dof_idx)+ &
                       & GAUSS_WEIGHT*Jxxi*COMPONENT_QUADRATURE_SCHEME%GAUSS_BASIS_FNS(parameter_idx,1,gauss_idx)* &
                       & (Jznu-1.0_DP)
+                      
+                    PRINT *, "element_dof_idx=", element_dof_idx, " new value: ", &
+                     & NONLINEAR_MATRICES%ELEMENT_RESIDUAL%VECTOR(element_dof_idx)
                   ENDIF
                 ENDDO
               ELSEIF(DEPENDENT_COMPONENT_INTERPOLATION_TYPE==FIELD_ELEMENT_BASED_INTERPOLATION) THEN !element based
