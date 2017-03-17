@@ -42,7 +42,7 @@
 !> the terms of any one of the MPL, the GPL or the LGPL.
 !>
 !> This module contains a print routine for each type in types.f90
-!> The routines were created automatically at 2017-02-10 13:47:39.
+!> The routines were created automatically at 2017-03-16 19:03:37.
 
 MODULE PRINT_TYPES_ROUTINES
   USE TYPES
@@ -86,6 +86,7 @@ RECURSIVE SUBROUTINE Print_DECOMPOSITION_ADJACENT_ELEMENT_TYPE(Variable, Depth, 
 
 
   TYPE(DECOMPOSITION_ADJACENT_ELEMENT_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -156,6 +157,7 @@ RECURSIVE SUBROUTINE Print_VARIABLE_TO_SOLVER_COL_MAP_TYPE(Variable, Depth, MaxD
 
 
   TYPE(VARIABLE_TO_SOLVER_COL_MAP_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -329,6 +331,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_MESH_CONNECTIVITY_TYPE(Variable, CheckVaria
   TYPE(MESH_TYPE), POINTER :: Ptr1
 
   TYPE(INTERFACE_MESH_CONNECTIVITY_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -688,6 +691,7 @@ RECURSIVE SUBROUTINE Print_MeshComponentTopologyType(Variable, CheckVariable0, C
   TYPE(MeshDataPointsType), POINTER :: Ptr4
 
   TYPE(MeshComponentTopologyType), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -1096,6 +1100,7 @@ RECURSIVE SUBROUTINE Print_FIELD_TYPE(Variable, CheckVariable0, CheckVariable1, 
   TYPE(DATA_PROJECTION_TYPE), POINTER :: Ptr7
 
   TYPE(FIELD_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -1928,6 +1933,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_SET_PTR_TYPE(Variable, CheckVariable0, Chec
   TYPE(EQUATIONS_SET_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -2090,6 +2096,7 @@ RECURSIVE SUBROUTINE Print_NEWTON_LINESEARCH_SOLVER_TYPE(Variable, CheckVariable
 
   TYPE(NEWTON_LINESEARCH_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -2190,9 +2197,59 @@ RECURSIVE SUBROUTINE Print_NEWTON_LINESEARCH_SOLVER_TYPE(Variable, CheckVariable
     PRINT*, TRIM(PrintIndent),"TYPE(NEWTON_SOLVER_TYPE), POINTER :: " // &
       & "NEWTON_SOLVER (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%SOLVER_LIBRARY == 1) THEN
+    Comment = "SOLVER_CMISS_LIBRARY " // & 
+      & "!CMISS (internal) solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 2) THEN
+    Comment = "SOLVER_PETSC_LIBRARY " // & 
+      & "!PETSc solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 3) THEN
+    Comment = "SOLVER_MUMPS_LIBRARY " // & 
+      & "!MUMPS solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 4) THEN
+    Comment = "SOLVER_SUPERLU_LIBRARY " // & 
+      & "!SuperLU solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 5) THEN
+    Comment = "SOLVER_SPOOLES_LIBRARY " // & 
+      & "!Spooles solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 6) THEN
+    Comment = "SOLVER_UMFPACK_LIBRARY " // & 
+      & "!UMFPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 7) THEN
+    Comment = "SOLVER_LUSOL_LIBRARY " // & 
+      & "!LUSOL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 8) THEN
+    Comment = "SOLVER_ESSL_LIBRARY " // & 
+      & "!ESSL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 9) THEN
+    Comment = "SOLVER_LAPACK_LIBRARY " // & 
+      & "!LAPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 10) THEN
+    Comment = "SOLVER_TAO_LIBRARY " // & 
+      & "!TAO solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 11) THEN
+    Comment = "SOLVER_HYPRE_LIBRARY " // & 
+      & "!Hypre solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 12) THEN
+    Comment = "SOLVER_PASTIX_LIBRARY " // & 
+      & "!PaStiX solver library"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_LIBRARY:                  ", &
-    & Variable%SOLVER_LIBRARY
+    & Variable%SOLVER_LIBRARY, " ", TRIM(Comment)
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_MATRICES_LIBRARY:         ", &
     & Variable%SOLVER_MATRICES_LIBRARY
@@ -2267,6 +2324,7 @@ RECURSIVE SUBROUTINE Print_FIELD_PTR_TYPE(Variable, CheckVariable0, CheckVariabl
   TYPE(FIELD_TYPE), POINTER :: Ptr0
 
   TYPE(FIELD_PTR_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -2401,6 +2459,7 @@ RECURSIVE SUBROUTINE Print_DOMAIN_LINE_PTR_TYPE(Variable, Depth, MaxDepth, MaxAr
   TYPE(DOMAIN_LINE_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -2456,6 +2515,7 @@ RECURSIVE SUBROUTINE Print_BoundaryConditionsCoupledDofsType(Variable, Depth, Ma
 
 
   TYPE(BoundaryConditionsCoupledDofsType), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -2642,6 +2702,7 @@ RECURSIVE SUBROUTINE Print_DOMAIN_TYPE(Variable, CheckVariable0, CheckVariable1,
   TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: Ptr4
 
   TYPE(DOMAIN_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -3118,6 +3179,7 @@ RECURSIVE SUBROUTINE Print_FIELD_DATA_POINT_PARAM_TO_DOF_MAP_TYPE(Variable, Dept
   TYPE(FIELD_DATA_POINT_PARAM_TO_DOF_MAP_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -3183,6 +3245,7 @@ RECURSIVE SUBROUTINE Print_FIELD_PHYSICAL_POINT_PTR_TYPE(Variable, Depth, MaxDep
 
 
   TYPE(FIELD_PHYSICAL_POINT_PTR_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -3266,6 +3329,7 @@ RECURSIVE SUBROUTINE Print_CELLML_MODEL_MAP_TYPE(Variable, Depth, MaxDepth, MaxA
 
 
   TYPE(CELLML_MODEL_MAP_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -3465,6 +3529,7 @@ RECURSIVE SUBROUTINE Print_GENERATED_MESH_CYLINDER_TYPE(Variable, CheckVariable0
   TYPE(GENERATED_MESH_TYPE), POINTER :: Ptr0
 
   TYPE(GENERATED_MESH_CYLINDER_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -3783,6 +3848,7 @@ RECURSIVE SUBROUTINE Print_CELLML_ENVIRONMENTS_TYPE(Variable, CheckVariable0, Ch
   TYPE(CELLML_ENVIRONMENTS_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -4046,6 +4112,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_EQUATIONS_TYPE(Variable, CheckVariable0, Ch
   TYPE(INTERFACE_MATRICES_TYPE), POINTER :: Ptr3
 
   TYPE(INTERFACE_EQUATIONS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -4382,6 +4449,7 @@ RECURSIVE SUBROUTINE Print_CELLML_STATE_FIELD_TYPE(Variable, CheckVariable0, Che
   TYPE(CELLML_STATE_FIELD_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -4676,6 +4744,7 @@ RECURSIVE SUBROUTINE Print_CellMLPETScContextType(Variable, Depth, MaxDepth, Max
 
 
   TYPE(CellMLPETScContextType), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -5005,6 +5074,7 @@ RECURSIVE SUBROUTINE Print_MeshDataPointType(Variable, Depth, MaxDepth, MaxArray
   TYPE(MeshDataPointType), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -5050,6 +5120,7 @@ RECURSIVE SUBROUTINE Print_FIELD_SCALING_TYPE(Variable, Depth, MaxDepth, MaxArra
 
 
   TYPE(FIELD_SCALING_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -5155,6 +5226,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_MAPPING_RHS_TYPE(Variable, CheckVariable0, 
   TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: Ptr0
 
   TYPE(EQUATIONS_MAPPING_RHS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -5441,6 +5513,7 @@ RECURSIVE SUBROUTINE Print_FORWARD_EULER_DAE_SOLVER_TYPE(Variable, CheckVariable
 
   TYPE(FORWARD_EULER_DAE_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -5541,9 +5614,59 @@ RECURSIVE SUBROUTINE Print_FORWARD_EULER_DAE_SOLVER_TYPE(Variable, CheckVariable
     PRINT*, TRIM(PrintIndent),"TYPE(EULER_DAE_SOLVER_TYPE), POINTER :: " // &
       & "EULER_DAE_SOLVER (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%SOLVER_LIBRARY == 1) THEN
+    Comment = "SOLVER_CMISS_LIBRARY " // & 
+      & "!CMISS (internal) solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 2) THEN
+    Comment = "SOLVER_PETSC_LIBRARY " // & 
+      & "!PETSc solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 3) THEN
+    Comment = "SOLVER_MUMPS_LIBRARY " // & 
+      & "!MUMPS solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 4) THEN
+    Comment = "SOLVER_SUPERLU_LIBRARY " // & 
+      & "!SuperLU solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 5) THEN
+    Comment = "SOLVER_SPOOLES_LIBRARY " // & 
+      & "!Spooles solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 6) THEN
+    Comment = "SOLVER_UMFPACK_LIBRARY " // & 
+      & "!UMFPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 7) THEN
+    Comment = "SOLVER_LUSOL_LIBRARY " // & 
+      & "!LUSOL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 8) THEN
+    Comment = "SOLVER_ESSL_LIBRARY " // & 
+      & "!ESSL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 9) THEN
+    Comment = "SOLVER_LAPACK_LIBRARY " // & 
+      & "!LAPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 10) THEN
+    Comment = "SOLVER_TAO_LIBRARY " // & 
+      & "!TAO solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 11) THEN
+    Comment = "SOLVER_HYPRE_LIBRARY " // & 
+      & "!Hypre solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 12) THEN
+    Comment = "SOLVER_PASTIX_LIBRARY " // & 
+      & "!PaStiX solver library"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_LIBRARY:                  ", &
-    & Variable%SOLVER_LIBRARY
+    & Variable%SOLVER_LIBRARY, " ", TRIM(Comment)
 
   
 END SUBROUTINE Print_FORWARD_EULER_DAE_SOLVER_TYPE
@@ -5595,6 +5718,7 @@ RECURSIVE SUBROUTINE Print_DATA_PROJECTION_PTR_TYPE(Variable, CheckVariable0, Ch
   TYPE(DATA_PROJECTION_TYPE), POINTER :: Ptr0
 
   TYPE(DATA_PROJECTION_PTR_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -5760,6 +5884,7 @@ RECURSIVE SUBROUTINE Print_GENERATED_MESH_TYPE(Variable, CheckVariable0, CheckVa
   TYPE(MESH_TYPE), POINTER :: Ptr6
 
   TYPE(GENERATED_MESH_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -6403,6 +6528,7 @@ RECURSIVE SUBROUTINE Print_FIELD_GAUSS_POINT_PARAM_TO_DOF_MAP_TYPE(Variable, Dep
   TYPE(FIELD_GAUSS_POINT_PARAM_TO_DOF_MAP_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -6519,6 +6645,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_SET_INDEPENDENT_TYPE(Variable, CheckVariabl
   TYPE(FIELD_TYPE), POINTER :: Ptr1
 
   TYPE(EQUATIONS_SET_INDEPENDENT_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -6775,6 +6902,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_TO_SOLVER_MAPS_TYPE(Variable, Depth, MaxDep
   TYPE(INTERFACE_TO_SOLVER_MAPS_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -6910,6 +7038,7 @@ RECURSIVE SUBROUTINE Print_SOLVER_ROW_TO_EQUATIONS_MAPS_TYPE(Variable, Depth, Ma
 
 
   TYPE(SOLVER_ROW_TO_EQUATIONS_MAPS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -7086,6 +7215,7 @@ RECURSIVE SUBROUTINE Print_InterfacePointsConnectivityType(Variable, CheckVariab
   TYPE(MESH_TYPE), POINTER :: Ptr1
 
   TYPE(InterfacePointsConnectivityType), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -7481,6 +7611,7 @@ RECURSIVE SUBROUTINE Print_RUSH_LARSON_DAE_SOLVER_TYPE(Variable, CheckVariable0,
 
   TYPE(RUSH_LARSON_DAE_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -7618,9 +7749,59 @@ RECURSIVE SUBROUTINE Print_RUSH_LARSON_DAE_SOLVER_TYPE(Variable, CheckVariable0,
     PRINT*, TRIM(PrintIndent),"TYPE(DAE_SOLVER_TYPE), POINTER :: " // &
       & "DAE_SOLVER (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%SOLVER_LIBRARY == 1) THEN
+    Comment = "SOLVER_CMISS_LIBRARY " // & 
+      & "!CMISS (internal) solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 2) THEN
+    Comment = "SOLVER_PETSC_LIBRARY " // & 
+      & "!PETSc solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 3) THEN
+    Comment = "SOLVER_MUMPS_LIBRARY " // & 
+      & "!MUMPS solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 4) THEN
+    Comment = "SOLVER_SUPERLU_LIBRARY " // & 
+      & "!SuperLU solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 5) THEN
+    Comment = "SOLVER_SPOOLES_LIBRARY " // & 
+      & "!Spooles solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 6) THEN
+    Comment = "SOLVER_UMFPACK_LIBRARY " // & 
+      & "!UMFPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 7) THEN
+    Comment = "SOLVER_LUSOL_LIBRARY " // & 
+      & "!LUSOL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 8) THEN
+    Comment = "SOLVER_ESSL_LIBRARY " // & 
+      & "!ESSL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 9) THEN
+    Comment = "SOLVER_LAPACK_LIBRARY " // & 
+      & "!LAPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 10) THEN
+    Comment = "SOLVER_TAO_LIBRARY " // & 
+      & "!TAO solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 11) THEN
+    Comment = "SOLVER_HYPRE_LIBRARY " // & 
+      & "!Hypre solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 12) THEN
+    Comment = "SOLVER_PASTIX_LIBRARY " // & 
+      & "!PaStiX solver library"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_LIBRARY:                  ", &
-    & Variable%SOLVER_LIBRARY
+    & Variable%SOLVER_LIBRARY, " ", TRIM(Comment)
 
   
 END SUBROUTINE Print_RUSH_LARSON_DAE_SOLVER_TYPE
@@ -7649,6 +7830,7 @@ RECURSIVE SUBROUTINE Print_MESH_ELEMENT_TYPE(Variable, Depth, MaxDepth, MaxArray
 
 
   TYPE(MESH_ELEMENT_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -7906,6 +8088,7 @@ RECURSIVE SUBROUTINE Print_BACKWARD_EULER_DAE_SOLVER_TYPE(Variable, CheckVariabl
 
   TYPE(BACKWARD_EULER_DAE_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -8006,9 +8189,59 @@ RECURSIVE SUBROUTINE Print_BACKWARD_EULER_DAE_SOLVER_TYPE(Variable, CheckVariabl
     PRINT*, TRIM(PrintIndent),"TYPE(EULER_DAE_SOLVER_TYPE), POINTER :: " // &
       & "EULER_DAE_SOLVER (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%SOLVER_LIBRARY == 1) THEN
+    Comment = "SOLVER_CMISS_LIBRARY " // & 
+      & "!CMISS (internal) solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 2) THEN
+    Comment = "SOLVER_PETSC_LIBRARY " // & 
+      & "!PETSc solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 3) THEN
+    Comment = "SOLVER_MUMPS_LIBRARY " // & 
+      & "!MUMPS solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 4) THEN
+    Comment = "SOLVER_SUPERLU_LIBRARY " // & 
+      & "!SuperLU solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 5) THEN
+    Comment = "SOLVER_SPOOLES_LIBRARY " // & 
+      & "!Spooles solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 6) THEN
+    Comment = "SOLVER_UMFPACK_LIBRARY " // & 
+      & "!UMFPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 7) THEN
+    Comment = "SOLVER_LUSOL_LIBRARY " // & 
+      & "!LUSOL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 8) THEN
+    Comment = "SOLVER_ESSL_LIBRARY " // & 
+      & "!ESSL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 9) THEN
+    Comment = "SOLVER_LAPACK_LIBRARY " // & 
+      & "!LAPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 10) THEN
+    Comment = "SOLVER_TAO_LIBRARY " // & 
+      & "!TAO solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 11) THEN
+    Comment = "SOLVER_HYPRE_LIBRARY " // & 
+      & "!Hypre solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 12) THEN
+    Comment = "SOLVER_PASTIX_LIBRARY " // & 
+      & "!PaStiX solver library"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_LIBRARY:                  ", &
-    & Variable%SOLVER_LIBRARY
+    & Variable%SOLVER_LIBRARY, " ", TRIM(Comment)
 
   
 END SUBROUTINE Print_BACKWARD_EULER_DAE_SOLVER_TYPE
@@ -8035,6 +8268,7 @@ RECURSIVE SUBROUTINE Print_VECTOR_TYPE(Variable, Depth, MaxDepth, MaxArrayLength
 
 
   TYPE(VECTOR_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -8231,6 +8465,7 @@ RECURSIVE SUBROUTINE Print_REGION_PTR_TYPE(Variable, CheckVariable0, CheckVariab
   TYPE(REGION_TYPE), POINTER :: Ptr0
 
   TYPE(REGION_PTR_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -8449,6 +8684,7 @@ RECURSIVE SUBROUTINE Print_GeometricTransformationSolverType(Variable, CheckVari
   TYPE(FIELD_TYPE), POINTER :: Ptr1
 
   TYPE(GeometricTransformationSolverType), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -8849,6 +9085,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_MATRIX_TO_VAR_MAP_TYPE(Variable, CheckVaria
   TYPE(INTERFACE_EQUATIONS_TYPE), POINTER :: Ptr0
 
   TYPE(INTERFACE_MATRIX_TO_VAR_MAP_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -9274,6 +9511,7 @@ RECURSIVE SUBROUTINE Print_CELLML_TYPE(Variable, CheckVariable0, CheckVariable1,
   TYPE(CELLML_PARAMETERS_FIELD_TYPE), POINTER :: Ptr6
 
   TYPE(CELLML_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -9924,6 +10162,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_CONDITION_TO_SOLVER_MAP_TYPE(Variable, Chec
   TYPE(INTERFACE_CONDITION_TO_SOLVER_MAP_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -10276,6 +10515,7 @@ RECURSIVE SUBROUTINE Print_DOMAIN_ADJACENT_DOMAIN_TYPE(Variable, Depth, MaxDepth
   TYPE(DOMAIN_ADJACENT_DOMAIN_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -10381,6 +10621,7 @@ RECURSIVE SUBROUTINE Print_DISTRIBUTED_MATRIX_CMISS_TYPE(Variable, CheckVariable
   TYPE(DISTRIBUTED_MATRIX_TYPE), POINTER :: Ptr0
 
   TYPE(DISTRIBUTED_MATRIX_CMISS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -10496,6 +10737,7 @@ RECURSIVE SUBROUTINE Print_CONTROL_LOOP_LOAD_INCREMENT_TYPE(Variable, CheckVaria
   TYPE(CONTROL_LOOP_TYPE), POINTER :: Ptr0
 
   TYPE(CONTROL_LOOP_LOAD_INCREMENT_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -10638,6 +10880,7 @@ RECURSIVE SUBROUTINE Print_SOLVER_MATRIX_PTR_TYPE(Variable, CheckVariable0, Chec
   TYPE(SOLVER_MATRIX_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -10709,6 +10952,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_COLUMN_TO_SOLVER_ROWS_MAP_TYPE(Variable, De
 
 
   TYPE(INTERFACE_COLUMN_TO_SOLVER_ROWS_MAP_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -10783,6 +11027,7 @@ RECURSIVE SUBROUTINE Print_DECOMPOSITION_FACES_TYPE(Variable, CheckVariable0, Ch
   TYPE(DECOMPOSITION_TYPE), POINTER :: Ptr0
 
   TYPE(DECOMPOSITION_FACES_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -10956,6 +11201,7 @@ RECURSIVE SUBROUTINE Print_MESH_ADJACENT_ELEMENT_TYPE(Variable, Depth, MaxDepth,
   TYPE(MESH_ADJACENT_ELEMENT_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -11080,6 +11326,7 @@ RECURSIVE SUBROUTINE Print_SOLVER_EQUATIONS_TYPE(Variable, CheckVariable0, Check
 
   TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -11230,9 +11477,19 @@ RECURSIVE SUBROUTINE Print_SOLVER_EQUATIONS_TYPE(Variable, CheckVariable0, Check
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "TIME_DEPENDENCE:                 ", &
     & Variable%TIME_DEPENDENCE
+  Comment = ""
+  IF (Variable%SPARSITY_TYPE == 1) THEN
+    Comment = "SOLVER_SPARSE_MATRICES " // & 
+      & "!Use sparse solver matrices"
+  ENDIF
+  IF (Variable%SPARSITY_TYPE == 2) THEN
+    Comment = "SOLVER_FULL_MATRICES " // & 
+      & "!Use fully populated solver matrices"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SPARSITY_TYPE:                   ", &
-    & Variable%SPARSITY_TYPE
+    & Variable%SPARSITY_TYPE, " ", TRIM(Comment)
   
   ! Variable%SOLVER_MAPPING
   ! case pointer
@@ -11511,6 +11768,7 @@ RECURSIVE SUBROUTINE Print_FIELDS_TYPE(Variable, CheckVariable0, CheckVariable1,
   TYPE(FIELD_PTR_TYPE), POINTER :: Ptr2
 
   TYPE(FIELDS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -11834,6 +12092,7 @@ RECURSIVE SUBROUTINE Print_DOMAIN_FACE_TYPE(Variable, Depth, MaxDepth, MaxArrayL
   TYPE(DOMAIN_FACE_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -11980,6 +12239,7 @@ RECURSIVE SUBROUTINE Print_DOMAIN_NODE_TYPE(Variable, Depth, MaxDepth, MaxArrayL
 
 
   TYPE(DOMAIN_NODE_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -12197,6 +12457,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_DEPENDENT_TYPE(Variable, CheckVariable0, Ch
   TYPE(INTERFACE_CONDITION_TYPE), POINTER :: Ptr0
 
   TYPE(INTERFACE_DEPENDENT_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -12499,6 +12760,7 @@ RECURSIVE SUBROUTINE Print_NODE_TYPE(Variable, Depth, MaxDepth, MaxArrayLength)
   TYPE(NODE_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -12540,6 +12802,7 @@ RECURSIVE SUBROUTINE Print_FIELD_GRID_POINT_PARAM_TO_DOF_MAP_TYPE(Variable, Dept
 
 
   TYPE(FIELD_GRID_POINT_PARAM_TO_DOF_MAP_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -12609,6 +12872,7 @@ RECURSIVE SUBROUTINE Print_DecompositionElementDataPointsType(Variable, Depth, M
 
 
   TYPE(DecompositionElementDataPointsType), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -12685,6 +12949,7 @@ RECURSIVE SUBROUTINE Print_FIELD_CREATE_VALUES_CACHE_TYPE(Variable, Depth, MaxDe
 
 
   TYPE(FIELD_CREATE_VALUES_CACHE_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -13317,6 +13582,7 @@ RECURSIVE SUBROUTINE Print_SOLVERS_TYPE(Variable, CheckVariable0, CheckVariable1
   TYPE(SOLVERS_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -13546,6 +13812,7 @@ RECURSIVE SUBROUTINE Print_OPTIMISER_SOLVER_TYPE(Variable, CheckVariable0, Check
 
   TYPE(OPTIMISER_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -13682,9 +13949,59 @@ RECURSIVE SUBROUTINE Print_OPTIMISER_SOLVER_TYPE(Variable, CheckVariable0, Check
     PRINT*, TRIM(PrintIndent),"TYPE(SOLVER_TYPE), POINTER :: " // &
       & "SOLVER (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%SOLVER_LIBRARY == 1) THEN
+    Comment = "SOLVER_CMISS_LIBRARY " // & 
+      & "!CMISS (internal) solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 2) THEN
+    Comment = "SOLVER_PETSC_LIBRARY " // & 
+      & "!PETSc solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 3) THEN
+    Comment = "SOLVER_MUMPS_LIBRARY " // & 
+      & "!MUMPS solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 4) THEN
+    Comment = "SOLVER_SUPERLU_LIBRARY " // & 
+      & "!SuperLU solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 5) THEN
+    Comment = "SOLVER_SPOOLES_LIBRARY " // & 
+      & "!Spooles solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 6) THEN
+    Comment = "SOLVER_UMFPACK_LIBRARY " // & 
+      & "!UMFPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 7) THEN
+    Comment = "SOLVER_LUSOL_LIBRARY " // & 
+      & "!LUSOL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 8) THEN
+    Comment = "SOLVER_ESSL_LIBRARY " // & 
+      & "!ESSL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 9) THEN
+    Comment = "SOLVER_LAPACK_LIBRARY " // & 
+      & "!LAPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 10) THEN
+    Comment = "SOLVER_TAO_LIBRARY " // & 
+      & "!TAO solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 11) THEN
+    Comment = "SOLVER_HYPRE_LIBRARY " // & 
+      & "!Hypre solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 12) THEN
+    Comment = "SOLVER_PASTIX_LIBRARY " // & 
+      & "!PaStiX solver library"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_LIBRARY:                  ", &
-    & Variable%SOLVER_LIBRARY
+    & Variable%SOLVER_LIBRARY, " ", TRIM(Comment)
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_MATRICES_LIBRARY:         ", &
     & Variable%SOLVER_MATRICES_LIBRARY
@@ -13758,6 +14075,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_SET_GEOMETRY_TYPE(Variable, CheckVariable0,
   TYPE(FIELD_TYPE), POINTER :: Ptr1
 
   TYPE(EQUATIONS_SET_GEOMETRY_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -14088,6 +14406,7 @@ RECURSIVE SUBROUTINE Print_JACOBIAN_TO_SOLVER_MAP_PTR_TYPE(Variable, CheckVariab
   TYPE(JACOBIAN_TO_SOLVER_MAP_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -14171,6 +14490,7 @@ RECURSIVE SUBROUTINE Print_SOLVER_MATRIX_TYPE(Variable, CheckVariable0, CheckVar
   TYPE(SOLVER_MATRICES_TYPE), POINTER :: Ptr0
 
   TYPE(SOLVER_MATRIX_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -14395,6 +14715,7 @@ RECURSIVE SUBROUTINE Print_GENERATED_MESHES_TYPE(Variable, CheckVariable0, Check
   TYPE(GENERATED_MESH_PTR_TYPE), POINTER :: Ptr2
 
   TYPE(GENERATED_MESHES_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -14736,6 +15057,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_EQUATIONS_INTERPOLATION_TYPE(Variable, Chec
   TYPE(INTERFACE_EQUATIONS_INTERPOLATION_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -14907,6 +15229,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_JACOBIAN_TO_VAR_MAP_TYPE(Variable, Depth, M
 
 
   TYPE(EQUATIONS_JACOBIAN_TO_VAR_MAP_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -15104,6 +15427,7 @@ RECURSIVE SUBROUTINE Print_MeshNodeDerivativeType(Variable, Depth, MaxDepth, Max
   TYPE(MeshNodeDerivativeType), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -15207,6 +15531,7 @@ RECURSIVE SUBROUTINE Print_NewtonSolverConvergenceTest(Variable, Depth, MaxDepth
   TYPE(NewtonSolverConvergenceTest), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -15255,6 +15580,7 @@ RECURSIVE SUBROUTINE Print_BOUNDARY_CONDITIONS_VARIABLE_PTR_TYPE(Variable, Check
   TYPE(BOUNDARY_CONDITIONS_VARIABLE_TYPE), POINTER :: Ptr0
 
   TYPE(BOUNDARY_CONDITIONS_VARIABLE_PTR_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -15365,6 +15691,7 @@ RECURSIVE SUBROUTINE Print_DOMAIN_TOPOLOGY_TYPE(Variable, CheckVariable0, CheckV
   TYPE(DOMAIN_LINES_TYPE), POINTER :: Ptr5
 
   TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -15728,6 +16055,7 @@ RECURSIVE SUBROUTINE Print_CONTROL_LOOP_TYPE(Variable, CheckVariable0, CheckVari
   TYPE(HISTORY_TYPE), POINTER :: Ptr8
 
   TYPE(CONTROL_LOOP_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -16409,6 +16737,7 @@ RECURSIVE SUBROUTINE Print_DOMAIN_MAPPINGS_TYPE(Variable, CheckVariable0, CheckV
   TYPE(DOMAIN_MAPPINGS_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -16649,6 +16978,7 @@ RECURSIVE SUBROUTINE Print_ADAMS_MOULTON_DAE_SOLVER_TYPE(Variable, CheckVariable
 
   TYPE(ADAMS_MOULTON_DAE_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -16786,9 +17116,59 @@ RECURSIVE SUBROUTINE Print_ADAMS_MOULTON_DAE_SOLVER_TYPE(Variable, CheckVariable
     PRINT*, TRIM(PrintIndent),"TYPE(DAE_SOLVER_TYPE), POINTER :: " // &
       & "DAE_SOLVER (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%SOLVER_LIBRARY == 1) THEN
+    Comment = "SOLVER_CMISS_LIBRARY " // & 
+      & "!CMISS (internal) solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 2) THEN
+    Comment = "SOLVER_PETSC_LIBRARY " // & 
+      & "!PETSc solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 3) THEN
+    Comment = "SOLVER_MUMPS_LIBRARY " // & 
+      & "!MUMPS solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 4) THEN
+    Comment = "SOLVER_SUPERLU_LIBRARY " // & 
+      & "!SuperLU solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 5) THEN
+    Comment = "SOLVER_SPOOLES_LIBRARY " // & 
+      & "!Spooles solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 6) THEN
+    Comment = "SOLVER_UMFPACK_LIBRARY " // & 
+      & "!UMFPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 7) THEN
+    Comment = "SOLVER_LUSOL_LIBRARY " // & 
+      & "!LUSOL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 8) THEN
+    Comment = "SOLVER_ESSL_LIBRARY " // & 
+      & "!ESSL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 9) THEN
+    Comment = "SOLVER_LAPACK_LIBRARY " // & 
+      & "!LAPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 10) THEN
+    Comment = "SOLVER_TAO_LIBRARY " // & 
+      & "!TAO solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 11) THEN
+    Comment = "SOLVER_HYPRE_LIBRARY " // & 
+      & "!Hypre solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 12) THEN
+    Comment = "SOLVER_PASTIX_LIBRARY " // & 
+      & "!PaStiX solver library"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_LIBRARY:                  ", &
-    & Variable%SOLVER_LIBRARY
+    & Variable%SOLVER_LIBRARY, " ", TRIM(Comment)
 
   
 END SUBROUTINE Print_ADAMS_MOULTON_DAE_SOLVER_TYPE
@@ -16820,6 +17200,7 @@ RECURSIVE SUBROUTINE Print_DISTRIBUTED_VECTOR_PETSC_TYPE(Variable, CheckVariable
   TYPE(DISTRIBUTED_VECTOR_TYPE), POINTER :: Ptr0
 
   TYPE(DISTRIBUTED_VECTOR_PETSC_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -16954,6 +17335,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_MATRICES_RHS_TYPE(Variable, CheckVariable0,
   TYPE(EQUATIONS_MATRICES_TYPE), POINTER :: Ptr0
 
   TYPE(EQUATIONS_MATRICES_RHS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -17140,6 +17522,7 @@ RECURSIVE SUBROUTINE Print_EquationsSetDerivedType(Variable, CheckVariable0, Che
   TYPE(FIELD_TYPE), POINTER :: Ptr1
 
   TYPE(EquationsSetDerivedType), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -17468,6 +17851,7 @@ RECURSIVE SUBROUTINE Print_QUASI_NEWTON_SOLVER_TYPE(Variable, CheckVariable0, Ch
 
   TYPE(QUASI_NEWTON_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -17623,27 +18007,125 @@ RECURSIVE SUBROUTINE Print_QUASI_NEWTON_SOLVER_TYPE(Variable, CheckVariable0, Ch
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SCALE_TYPE:                      ", &
     & Variable%SCALE_TYPE
+  Comment = ""
+  IF (Variable%SOLUTION_INITIALISE_TYPE == 0) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_ZERO " // & 
+      & "!Initialise the solution by zeroing it before a solve"
+  ENDIF
+  IF (Variable%SOLUTION_INITIALISE_TYPE == 1) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_CURRENT_FIELD " // & 
+      & "!Initialise the solution by copying in the current dependent field values"
+  ENDIF
+  IF (Variable%SOLUTION_INITIALISE_TYPE == 2) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_NO_CHANGE " // & 
+      & "!Do not change the solution before a solve"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLUTION_INITIALISE_TYPE:        ", &
-    & Variable%SOLUTION_INITIALISE_TYPE
+    & Variable%SOLUTION_INITIALISE_TYPE, " ", TRIM(Comment)
+  Comment = ""
+  IF (Variable%TOTAL_NUMBER_OF_FUNCTION_EVALUATIONS == 0) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_ZERO " // & 
+      & "!Initialise the solution by zeroing it before a solve"
+  ENDIF
+  IF (Variable%TOTAL_NUMBER_OF_FUNCTION_EVALUATIONS == 1) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_CURRENT_FIELD " // & 
+      & "!Initialise the solution by copying in the current dependent field values"
+  ENDIF
+  IF (Variable%TOTAL_NUMBER_OF_FUNCTION_EVALUATIONS == 2) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_NO_CHANGE " // & 
+      & "!Do not change the solution before a solve"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "TOTAL_NUMBER_OF_FUNCTION_EVALUATIONS: ", &
-    & Variable%TOTAL_NUMBER_OF_FUNCTION_EVALUATIONS
+    & Variable%TOTAL_NUMBER_OF_FUNCTION_EVALUATIONS, " ", TRIM(Comment)
+  Comment = ""
+  IF (Variable%TOTAL_NUMBER_OF_JACOBIAN_EVALUATIONS == 0) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_ZERO " // & 
+      & "!Initialise the solution by zeroing it before a solve"
+  ENDIF
+  IF (Variable%TOTAL_NUMBER_OF_JACOBIAN_EVALUATIONS == 1) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_CURRENT_FIELD " // & 
+      & "!Initialise the solution by copying in the current dependent field values"
+  ENDIF
+  IF (Variable%TOTAL_NUMBER_OF_JACOBIAN_EVALUATIONS == 2) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_NO_CHANGE " // & 
+      & "!Do not change the solution before a solve"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "TOTAL_NUMBER_OF_JACOBIAN_EVALUATIONS: ", &
-    & Variable%TOTAL_NUMBER_OF_JACOBIAN_EVALUATIONS
+    & Variable%TOTAL_NUMBER_OF_JACOBIAN_EVALUATIONS, " ", TRIM(Comment)
+  Comment = ""
+  IF (Variable%MAXIMUM_NUMBER_OF_ITERATIONS == 0) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_ZERO " // & 
+      & "!Initialise the solution by zeroing it before a solve"
+  ENDIF
+  IF (Variable%MAXIMUM_NUMBER_OF_ITERATIONS == 1) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_CURRENT_FIELD " // & 
+      & "!Initialise the solution by copying in the current dependent field values"
+  ENDIF
+  IF (Variable%MAXIMUM_NUMBER_OF_ITERATIONS == 2) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_NO_CHANGE " // & 
+      & "!Do not change the solution before a solve"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "MAXIMUM_NUMBER_OF_ITERATIONS:    ", &
-    & Variable%MAXIMUM_NUMBER_OF_ITERATIONS
+    & Variable%MAXIMUM_NUMBER_OF_ITERATIONS, " ", TRIM(Comment)
+  Comment = ""
+  IF (Variable%MAXIMUM_NUMBER_OF_FUNCTION_EVALUATIONS == 0) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_ZERO " // & 
+      & "!Initialise the solution by zeroing it before a solve"
+  ENDIF
+  IF (Variable%MAXIMUM_NUMBER_OF_FUNCTION_EVALUATIONS == 1) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_CURRENT_FIELD " // & 
+      & "!Initialise the solution by copying in the current dependent field values"
+  ENDIF
+  IF (Variable%MAXIMUM_NUMBER_OF_FUNCTION_EVALUATIONS == 2) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_NO_CHANGE " // & 
+      & "!Do not change the solution before a solve"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "MAXIMUM_NUMBER_OF_FUNCTION_EVALUATIONS: ", &
-    & Variable%MAXIMUM_NUMBER_OF_FUNCTION_EVALUATIONS
+    & Variable%MAXIMUM_NUMBER_OF_FUNCTION_EVALUATIONS, " ", TRIM(Comment)
+  Comment = ""
+  IF (Variable%JACOBIAN_CALCULATION_TYPE == 1) THEN
+    Comment = "SOLVER_NEWTON_JACOBIAN_NOT_CALCULATED " // & 
+      & "!The Jacobian values will not be calculated for the nonlinear equations set"
+  ENDIF
+  IF (Variable%JACOBIAN_CALCULATION_TYPE == 2) THEN
+    Comment = "SOLVER_NEWTON_JACOBIAN_EQUATIONS_CALCULATED " // & 
+      & "!The Jacobian values will be calculated analytically for the nonlinear equations set"
+  ENDIF
+  IF (Variable%JACOBIAN_CALCULATION_TYPE == 3) THEN
+    Comment = "SOLVER_NEWTON_JACOBIAN_FD_CALCULATED " // & 
+      & "!The Jacobian values will be calculated using finite differences for the nonlinear equations set"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "JACOBIAN_CALCULATION_TYPE:       ", &
-    & Variable%JACOBIAN_CALCULATION_TYPE
+    & Variable%JACOBIAN_CALCULATION_TYPE, " ", TRIM(Comment)
+  Comment = ""
+  IF (Variable%convergenceTestType == 1) THEN
+    Comment = "SOLVER_NEWTON_CONVERGENCE_PETSC_DEFAULT " // & 
+      & "!Petsc default convergence test"
+  ENDIF
+  IF (Variable%convergenceTestType == 2) THEN
+    Comment = "SOLVER_NEWTON_CONVERGENCE_ENERGY_NORM " // & 
+      & "!Energy norm convergence test"
+  ENDIF
+  IF (Variable%convergenceTestType == 3) THEN
+    Comment = "SOLVER_NEWTON_CONVERGENCE_DIFFERENTIATED_RATIO " // & 
+      & "!Sum of differentiated ratios of unconstrained to constrained residuals convergence test"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "convergenceTestType:             ", &
-    & Variable%convergenceTestType
+    & Variable%convergenceTestType, " ", TRIM(Comment)
   PRINT*, TRIM(PrintIndent),"REAL(DP) :: " // &
     & "ABSOLUTE_TOLERANCE:          ", &
     & Variable%ABSOLUTE_TOLERANCE
@@ -18057,6 +18539,7 @@ RECURSIVE SUBROUTINE Print_FIELD_INTERPOLATED_POINT_PTR_TYPE(Variable, Depth, Ma
   TYPE(FIELD_INTERPOLATED_POINT_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -18167,6 +18650,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_TYPE(Variable, CheckVariable0, CheckVariabl
   TYPE(INTERFACE_CONDITIONS_TYPE), POINTER :: Ptr10
 
   TYPE(INTERFACE_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -19252,6 +19736,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_SET_ANALYTIC_TYPE(Variable, CheckVariable0,
   TYPE(EQUATIONS_SET_ANALYTIC_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -19547,6 +20032,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_MAPPING_TYPE(Variable, CheckVariable0, Chec
   TYPE(EQUATIONS_MAPPING_SOURCE_TYPE), POINTER :: Ptr6
 
   TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -19957,6 +20443,7 @@ RECURSIVE SUBROUTINE Print_QUADRATURE_SCHEME_TYPE(Variable, CheckVariable0, Chec
   TYPE(QUADRATURE_SCHEME_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -20287,6 +20774,7 @@ RECURSIVE SUBROUTINE Print_FIELD_INTERPOLATED_POINT_METRICS_PTR_TYPE(Variable, D
   TYPE(FIELD_INTERPOLATED_POINT_METRICS_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -20363,6 +20851,7 @@ RECURSIVE SUBROUTINE Print_SOLVER_COL_TO_EQUATIONS_SET_MAP_TYPE(Variable, CheckV
 
 
   TYPE(SOLVER_COL_TO_EQUATIONS_SET_MAP_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -20598,6 +21087,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_PENALTY_TYPE(Variable, CheckVariable0, Chec
   TYPE(FIELD_TYPE), POINTER :: Ptr1
 
   TYPE(INTERFACE_PENALTY_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -20873,6 +21363,7 @@ RECURSIVE SUBROUTINE Print_QUASI_NEWTON_TRUSTREGION_SOLVER_TYPE(Variable, CheckV
 
   TYPE(QUASI_NEWTON_TRUSTREGION_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -20973,9 +21464,59 @@ RECURSIVE SUBROUTINE Print_QUASI_NEWTON_TRUSTREGION_SOLVER_TYPE(Variable, CheckV
     PRINT*, TRIM(PrintIndent),"TYPE(QUASI_NEWTON_SOLVER_TYPE), POINTER :: " // &
       & "QUASI_NEWTON_SOLVER (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%SOLVER_LIBRARY == 1) THEN
+    Comment = "SOLVER_CMISS_LIBRARY " // & 
+      & "!CMISS (internal) solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 2) THEN
+    Comment = "SOLVER_PETSC_LIBRARY " // & 
+      & "!PETSc solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 3) THEN
+    Comment = "SOLVER_MUMPS_LIBRARY " // & 
+      & "!MUMPS solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 4) THEN
+    Comment = "SOLVER_SUPERLU_LIBRARY " // & 
+      & "!SuperLU solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 5) THEN
+    Comment = "SOLVER_SPOOLES_LIBRARY " // & 
+      & "!Spooles solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 6) THEN
+    Comment = "SOLVER_UMFPACK_LIBRARY " // & 
+      & "!UMFPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 7) THEN
+    Comment = "SOLVER_LUSOL_LIBRARY " // & 
+      & "!LUSOL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 8) THEN
+    Comment = "SOLVER_ESSL_LIBRARY " // & 
+      & "!ESSL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 9) THEN
+    Comment = "SOLVER_LAPACK_LIBRARY " // & 
+      & "!LAPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 10) THEN
+    Comment = "SOLVER_TAO_LIBRARY " // & 
+      & "!TAO solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 11) THEN
+    Comment = "SOLVER_HYPRE_LIBRARY " // & 
+      & "!Hypre solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 12) THEN
+    Comment = "SOLVER_PASTIX_LIBRARY " // & 
+      & "!PaStiX solver library"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_LIBRARY:                  ", &
-    & Variable%SOLVER_LIBRARY
+    & Variable%SOLVER_LIBRARY, " ", TRIM(Comment)
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_MATRICES_LIBRARY:         ", &
     & Variable%SOLVER_MATRICES_LIBRARY
@@ -21038,6 +21579,7 @@ RECURSIVE SUBROUTINE Print_DOMAIN_DOFS_TYPE(Variable, CheckVariable0, CheckVaria
   TYPE(DOMAIN_TYPE), POINTER :: Ptr0
 
   TYPE(DOMAIN_DOFS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -21222,6 +21764,7 @@ RECURSIVE SUBROUTINE Print_REAL_DP_PTR_TYPE(Variable, Depth, MaxDepth, MaxArrayL
   TYPE(REAL_DP_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -21303,6 +21846,7 @@ RECURSIVE SUBROUTINE Print_CELLML_PTR_TYPE(Variable, CheckVariable0, CheckVariab
   TYPE(CELLML_TYPE), POINTER :: Ptr0
 
   TYPE(CELLML_PTR_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -21418,6 +21962,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_MATRIX_PTR_TYPE(Variable, Depth, MaxDepth, 
   TYPE(EQUATIONS_MATRIX_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -21472,6 +22017,7 @@ RECURSIVE SUBROUTINE Print_FIELD_INTERPOLATION_PARAMETERS_PTR_TYPE(Variable, Che
 
 
   TYPE(FIELD_INTERPOLATION_PARAMETERS_PTR_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -21572,6 +22118,7 @@ RECURSIVE SUBROUTINE Print_NODES_TYPE(Variable, CheckVariable0, CheckVariable1, 
   TYPE(INTERFACE_TYPE), POINTER :: Ptr1
 
   TYPE(NODES_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -21925,6 +22472,7 @@ RECURSIVE SUBROUTINE Print_QUASI_NEWTON_LINESEARCH_SOLVER_TYPE(Variable, CheckVa
 
   TYPE(QUASI_NEWTON_LINESEARCH_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -22025,9 +22573,59 @@ RECURSIVE SUBROUTINE Print_QUASI_NEWTON_LINESEARCH_SOLVER_TYPE(Variable, CheckVa
     PRINT*, TRIM(PrintIndent),"TYPE(QUASI_NEWTON_SOLVER_TYPE), POINTER :: " // &
       & "QUASI_NEWTON_SOLVER (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%SOLVER_LIBRARY == 1) THEN
+    Comment = "SOLVER_CMISS_LIBRARY " // & 
+      & "!CMISS (internal) solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 2) THEN
+    Comment = "SOLVER_PETSC_LIBRARY " // & 
+      & "!PETSc solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 3) THEN
+    Comment = "SOLVER_MUMPS_LIBRARY " // & 
+      & "!MUMPS solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 4) THEN
+    Comment = "SOLVER_SUPERLU_LIBRARY " // & 
+      & "!SuperLU solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 5) THEN
+    Comment = "SOLVER_SPOOLES_LIBRARY " // & 
+      & "!Spooles solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 6) THEN
+    Comment = "SOLVER_UMFPACK_LIBRARY " // & 
+      & "!UMFPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 7) THEN
+    Comment = "SOLVER_LUSOL_LIBRARY " // & 
+      & "!LUSOL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 8) THEN
+    Comment = "SOLVER_ESSL_LIBRARY " // & 
+      & "!ESSL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 9) THEN
+    Comment = "SOLVER_LAPACK_LIBRARY " // & 
+      & "!LAPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 10) THEN
+    Comment = "SOLVER_TAO_LIBRARY " // & 
+      & "!TAO solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 11) THEN
+    Comment = "SOLVER_HYPRE_LIBRARY " // & 
+      & "!Hypre solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 12) THEN
+    Comment = "SOLVER_PASTIX_LIBRARY " // & 
+      & "!PaStiX solver library"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_LIBRARY:                  ", &
-    & Variable%SOLVER_LIBRARY
+    & Variable%SOLVER_LIBRARY, " ", TRIM(Comment)
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_MATRICES_LIBRARY:         ", &
     & Variable%SOLVER_MATRICES_LIBRARY
@@ -22097,6 +22695,7 @@ RECURSIVE SUBROUTINE Print_DOMAIN_PTR_TYPE(Variable, CheckVariable0, CheckVariab
   TYPE(DOMAIN_TYPE), POINTER :: Ptr0
 
   TYPE(DOMAIN_PTR_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -22272,6 +22871,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_SET_SOURCE_TYPE(Variable, CheckVariable0, C
   TYPE(FIELD_TYPE), POINTER :: Ptr1
 
   TYPE(EQUATIONS_SET_SOURCE_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -22522,6 +23122,7 @@ RECURSIVE SUBROUTINE Print_EMBEDDING_GAUSSPOINT_TYPE(Variable, Depth, MaxDepth, 
   TYPE(EMBEDDING_GAUSSPOINT_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -22620,6 +23221,7 @@ RECURSIVE SUBROUTINE Print_DOMAIN_NODE_DERIVATIVE_TYPE(Variable, Depth, MaxDepth
 
 
   TYPE(DOMAIN_NODE_DERIVATIVE_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -22727,6 +23329,7 @@ RECURSIVE SUBROUTINE Print_DOMAIN_LINE_TYPE(Variable, Depth, MaxDepth, MaxArrayL
 
 
   TYPE(DOMAIN_LINE_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -22869,6 +23472,7 @@ RECURSIVE SUBROUTINE Print_DOMAIN_MAPPING_TYPE(Variable, Depth, MaxDepth, MaxArr
 
 
   TYPE(DOMAIN_MAPPING_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -23198,6 +23802,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_EQUATIONS_INTERPOLATION_SET_TYPE(Variable, 
   TYPE(INTERFACE_EQUATIONS_INTERPOLATION_SET_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -23364,6 +23969,7 @@ RECURSIVE SUBROUTINE Print_DYNAMIC_SOLVER_TYPE(Variable, CheckVariable0, CheckVa
 
   TYPE(DYNAMIC_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -23500,24 +24106,194 @@ RECURSIVE SUBROUTINE Print_DYNAMIC_SOLVER_TYPE(Variable, CheckVariable0, CheckVa
     PRINT*, TRIM(PrintIndent),"TYPE(SOLVER_TYPE), POINTER :: " // &
       & "SOLVER (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%SOLVER_LIBRARY == 1) THEN
+    Comment = "SOLVER_CMISS_LIBRARY " // & 
+      & "!CMISS (internal) solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 2) THEN
+    Comment = "SOLVER_PETSC_LIBRARY " // & 
+      & "!PETSc solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 3) THEN
+    Comment = "SOLVER_MUMPS_LIBRARY " // & 
+      & "!MUMPS solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 4) THEN
+    Comment = "SOLVER_SUPERLU_LIBRARY " // & 
+      & "!SuperLU solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 5) THEN
+    Comment = "SOLVER_SPOOLES_LIBRARY " // & 
+      & "!Spooles solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 6) THEN
+    Comment = "SOLVER_UMFPACK_LIBRARY " // & 
+      & "!UMFPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 7) THEN
+    Comment = "SOLVER_LUSOL_LIBRARY " // & 
+      & "!LUSOL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 8) THEN
+    Comment = "SOLVER_ESSL_LIBRARY " // & 
+      & "!ESSL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 9) THEN
+    Comment = "SOLVER_LAPACK_LIBRARY " // & 
+      & "!LAPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 10) THEN
+    Comment = "SOLVER_TAO_LIBRARY " // & 
+      & "!TAO solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 11) THEN
+    Comment = "SOLVER_HYPRE_LIBRARY " // & 
+      & "!Hypre solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 12) THEN
+    Comment = "SOLVER_PASTIX_LIBRARY " // & 
+      & "!PaStiX solver library"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_LIBRARY:                  ", &
-    & Variable%SOLVER_LIBRARY
+    & Variable%SOLVER_LIBRARY, " ", TRIM(Comment)
   PRINT*, TRIM(PrintIndent),"LOGICAL :: " // &
     & "SOLVER_INITIALISED:                              ", &
     & Variable%SOLVER_INITIALISED
+  Comment = ""
+  IF (Variable%LINEARITY == 1) THEN
+    Comment = "SOLVER_DYNAMIC_LINEAR " // & 
+      & "!Dynamic solver has linear terms"
+  ENDIF
+  IF (Variable%LINEARITY == 2) THEN
+    Comment = "SOLVER_DYNAMIC_NONLINEAR " // & 
+      & "!Dynamic solver has nonlinear terms"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "LINEARITY:                       ", &
-    & Variable%LINEARITY
+    & Variable%LINEARITY, " ", TRIM(Comment)
+  Comment = ""
+  IF (Variable%ORDER == 1) THEN
+    Comment = "SOLVER_DYNAMIC_FIRST_ORDER " // & 
+      & "!Dynamic solver has first order terms"
+  ENDIF
+  IF (Variable%ORDER == 2) THEN
+    Comment = "SOLVER_DYNAMIC_SECOND_ORDER " // & 
+      & "!Dynamic solver has second order terms"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "ORDER:                           ", &
-    & Variable%ORDER
+    & Variable%ORDER, " ", TRIM(Comment)
+  Comment = ""
+  IF (Variable%DEGREE == 1) THEN
+    Comment = "SOLVER_DYNAMIC_FIRST_DEGREE " // & 
+      & "!Dynamic solver uses a first degree polynomial for time interpolation"
+  ENDIF
+  IF (Variable%DEGREE == 2) THEN
+    Comment = "SOLVER_DYNAMIC_SECOND_DEGREE " // & 
+      & "!Dynamic solver uses a second degree polynomial for time interpolation"
+  ENDIF
+  IF (Variable%DEGREE == 3) THEN
+    Comment = "SOLVER_DYNAMIC_THIRD_DEGREE " // & 
+      & "!Dynamic solver uses a third degree polynomial for time interpolation"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "DEGREE:                          ", &
-    & Variable%DEGREE
+    & Variable%DEGREE, " ", TRIM(Comment)
+  Comment = ""
+  IF (Variable%SCHEME == 1) THEN
+    Comment = "SOLVER_DYNAMIC_EULER_SCHEME " // & 
+      & "!Euler (explicit) dynamic solver"
+  ENDIF
+  IF (Variable%SCHEME == 2) THEN
+    Comment = "SOLVER_DYNAMIC_BACKWARD_EULER_SCHEME " // & 
+      & "!Backward Euler (implicit) dynamic solver"
+  ENDIF
+  IF (Variable%SCHEME == 3) THEN
+    Comment = "SOLVER_DYNAMIC_CRANK_NICOLSON_SCHEME " // & 
+      & "!Crank-Nicolson dynamic solver"
+  ENDIF
+  IF (Variable%SCHEME == 4) THEN
+    Comment = "SOLVER_DYNAMIC_GALERKIN_SCHEME " // & 
+      & "!Galerkin dynamic solver"
+  ENDIF
+  IF (Variable%SCHEME == 5) THEN
+    Comment = "SOLVER_DYNAMIC_ZLAMAL_SCHEME " // & 
+      & "!Zlamal dynamic solver"
+  ENDIF
+  IF (Variable%SCHEME == 6) THEN
+    Comment = "SOLVER_DYNAMIC_SECOND_DEGREE_GEAR_SCHEME " // & 
+      & "!2nd degree Gear dynamic solver"
+  ENDIF
+  IF (Variable%SCHEME == 7) THEN
+    Comment = "SOLVER_DYNAMIC_SECOND_DEGREE_LINIGER1_SCHEME " // & 
+      & "!1st 2nd degree Liniger dynamic solver"
+  ENDIF
+  IF (Variable%SCHEME == 8) THEN
+    Comment = "SOLVER_DYNAMIC_SECOND_DEGREE_LINIGER2_SCHEME " // & 
+      & "!2nd 2nd degree Liniger dynamic solver"
+  ENDIF
+  IF (Variable%SCHEME == 9) THEN
+    Comment = "SOLVER_DYNAMIC_NEWMARK1_SCHEME " // & 
+      & "!1st Newmark dynamic solver"
+  ENDIF
+  IF (Variable%SCHEME == 10) THEN
+    Comment = "SOLVER_DYNAMIC_NEWMARK2_SCHEME " // & 
+      & "!2nd Newmark dynamic solver"
+  ENDIF
+  IF (Variable%SCHEME == 11) THEN
+    Comment = "SOLVER_DYNAMIC_NEWMARK3_SCHEME " // & 
+      & "!3rd Newmark dynamic solver"
+  ENDIF
+  IF (Variable%SCHEME == 12) THEN
+    Comment = "SOLVER_DYNAMIC_THIRD_DEGREE_GEAR_SCHEME " // & 
+      & "!3rd degree Gear dynamic solver"
+  ENDIF
+  IF (Variable%SCHEME == 13) THEN
+    Comment = "SOLVER_DYNAMIC_THIRD_DEGREE_LINIGER1_SCHEME " // & 
+      & "!1st 3rd degree Liniger dynamic solver"
+  ENDIF
+  IF (Variable%SCHEME == 14) THEN
+    Comment = "SOLVER_DYNAMIC_THIRD_DEGREE_LINIGER2_SCHEME " // & 
+      & "!2nd 3rd degree Liniger dynamic solver"
+  ENDIF
+  IF (Variable%SCHEME == 15) THEN
+    Comment = "SOLVER_DYNAMIC_HOUBOLT_SCHEME " // & 
+      & "!Houbolt dynamic solver"
+  ENDIF
+  IF (Variable%SCHEME == 16) THEN
+    Comment = "SOLVER_DYNAMIC_WILSON_SCHEME " // & 
+      & "!Wilson dynamic solver"
+  ENDIF
+  IF (Variable%SCHEME == 17) THEN
+    Comment = "SOLVER_DYNAMIC_BOSSAK_NEWMARK1_SCHEME " // & 
+      & "!1st Bossak-Newmark dynamic solver"
+  ENDIF
+  IF (Variable%SCHEME == 18) THEN
+    Comment = "SOLVER_DYNAMIC_BOSSAK_NEWMARK2_SCHEME " // & 
+      & "!2nd Bossak-Newmark dynamic solver"
+  ENDIF
+  IF (Variable%SCHEME == 19) THEN
+    Comment = "SOLVER_DYNAMIC_HILBERT_HUGHES_TAYLOR1_SCHEME " // & 
+      & "!1st Hilbert-Hughes-Taylor dynamic solver"
+  ENDIF
+  IF (Variable%SCHEME == 20) THEN
+    Comment = "SOLVER_DYNAMIC_HILBERT_HUGHES_TAYLOR2_SCHEME " // & 
+      & "!1st Hilbert-Hughes-Taylor dynamic solver"
+  ENDIF
+  IF (Variable%SCHEME == 21) THEN
+    Comment = "SOLVER_DYNAMIC_USER_DEFINED_SCHEME " // & 
+      & "!User specified degree and theta dynamic solver"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SCHEME:                          ", &
-    & Variable%SCHEME
+    & Variable%SCHEME, " ", TRIM(Comment)
   
   ! Variable%THETA(:)
   ! case allocatable
@@ -23851,6 +24627,7 @@ RECURSIVE SUBROUTINE Print_CONTROL_LOOP_WHILE_TYPE(Variable, CheckVariable0, Che
   TYPE(CONTROL_LOOP_WHILE_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -23988,6 +24765,7 @@ RECURSIVE SUBROUTINE Print_FIELD_SCALINGS_TYPE(Variable, Depth, MaxDepth, MaxArr
   TYPE(FIELD_SCALINGS_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -24102,6 +24880,7 @@ RECURSIVE SUBROUTINE Print_CRANK_NICOLSON_DAE_SOLVER_TYPE(Variable, CheckVariabl
 
   TYPE(CRANK_NICOLSON_DAE_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -24239,9 +25018,59 @@ RECURSIVE SUBROUTINE Print_CRANK_NICOLSON_DAE_SOLVER_TYPE(Variable, CheckVariabl
     PRINT*, TRIM(PrintIndent),"TYPE(DAE_SOLVER_TYPE), POINTER :: " // &
       & "DAE_SOLVER (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%SOLVER_LIBRARY == 1) THEN
+    Comment = "SOLVER_CMISS_LIBRARY " // & 
+      & "!CMISS (internal) solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 2) THEN
+    Comment = "SOLVER_PETSC_LIBRARY " // & 
+      & "!PETSc solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 3) THEN
+    Comment = "SOLVER_MUMPS_LIBRARY " // & 
+      & "!MUMPS solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 4) THEN
+    Comment = "SOLVER_SUPERLU_LIBRARY " // & 
+      & "!SuperLU solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 5) THEN
+    Comment = "SOLVER_SPOOLES_LIBRARY " // & 
+      & "!Spooles solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 6) THEN
+    Comment = "SOLVER_UMFPACK_LIBRARY " // & 
+      & "!UMFPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 7) THEN
+    Comment = "SOLVER_LUSOL_LIBRARY " // & 
+      & "!LUSOL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 8) THEN
+    Comment = "SOLVER_ESSL_LIBRARY " // & 
+      & "!ESSL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 9) THEN
+    Comment = "SOLVER_LAPACK_LIBRARY " // & 
+      & "!LAPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 10) THEN
+    Comment = "SOLVER_TAO_LIBRARY " // & 
+      & "!TAO solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 11) THEN
+    Comment = "SOLVER_HYPRE_LIBRARY " // & 
+      & "!Hypre solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 12) THEN
+    Comment = "SOLVER_PASTIX_LIBRARY " // & 
+      & "!PaStiX solver library"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_LIBRARY:                  ", &
-    & Variable%SOLVER_LIBRARY
+    & Variable%SOLVER_LIBRARY, " ", TRIM(Comment)
 
   
 END SUBROUTINE Print_CRANK_NICOLSON_DAE_SOLVER_TYPE
@@ -24269,6 +25098,7 @@ RECURSIVE SUBROUTINE Print_QUADRATURE_SCHEME_PTR_TYPE(Variable, CheckVariable0, 
   TYPE(QUADRATURE_SCHEME_TYPE), POINTER :: Ptr0
 
   TYPE(QUADRATURE_SCHEME_PTR_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -24384,6 +25214,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_TYPE(Variable, CheckVariable0, CheckVariabl
   TYPE(EQUATIONS_MATRICES_TYPE), POINTER :: Ptr3
 
   TYPE(EQUATIONS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -24714,6 +25545,7 @@ RECURSIVE SUBROUTINE Print_FIELD_PARAMETER_SET_PTR_TYPE(Variable, Depth, MaxDept
   TYPE(FIELD_PARAMETER_SET_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -24800,6 +25632,7 @@ RECURSIVE SUBROUTINE Print_FIELD_INTERPOLATION_PARAMETERS_TYPE(Variable, CheckVa
   TYPE(FIELD_TYPE), POINTER :: Ptr0
 
   TYPE(FIELD_INTERPOLATION_PARAMETERS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -25152,6 +25985,7 @@ RECURSIVE SUBROUTINE Print_DECOMPOSITION_ELEMENT_TYPE(Variable, Depth, MaxDepth,
   TYPE(DECOMPOSITION_ELEMENT_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -25293,6 +26127,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_ELEMENT_CONNECTIVITY_TYPE(Variable, Depth, 
   TYPE(INTERFACE_ELEMENT_CONNECTIVITY_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -25375,6 +26210,7 @@ RECURSIVE SUBROUTINE Print_MeshElementDataPointType(Variable, Depth, MaxDepth, M
   TYPE(MeshElementDataPointType), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -25437,6 +26273,7 @@ RECURSIVE SUBROUTINE Print_SOLVER_COL_TO_INTERFACE_MAP_TYPE(Variable, CheckVaria
 
 
   TYPE(SOLVER_COL_TO_INTERFACE_MAP_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -25640,6 +26477,7 @@ RECURSIVE SUBROUTINE Print_HISTORY_TYPE(Variable, CheckVariable0, CheckVariable1
   TYPE(CONTROL_LOOP_TYPE), POINTER :: Ptr0
 
   TYPE(HISTORY_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -25921,6 +26759,7 @@ RECURSIVE SUBROUTINE Print_BDF_DAE_SOLVER_TYPE(Variable, CheckVariable0, CheckVa
 
   TYPE(BDF_DAE_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -26058,9 +26897,59 @@ RECURSIVE SUBROUTINE Print_BDF_DAE_SOLVER_TYPE(Variable, CheckVariable0, CheckVa
     PRINT*, TRIM(PrintIndent),"TYPE(DAE_SOLVER_TYPE), POINTER :: " // &
       & "DAE_SOLVER (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%SOLVER_LIBRARY == 1) THEN
+    Comment = "SOLVER_CMISS_LIBRARY " // & 
+      & "!CMISS (internal) solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 2) THEN
+    Comment = "SOLVER_PETSC_LIBRARY " // & 
+      & "!PETSc solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 3) THEN
+    Comment = "SOLVER_MUMPS_LIBRARY " // & 
+      & "!MUMPS solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 4) THEN
+    Comment = "SOLVER_SUPERLU_LIBRARY " // & 
+      & "!SuperLU solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 5) THEN
+    Comment = "SOLVER_SPOOLES_LIBRARY " // & 
+      & "!Spooles solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 6) THEN
+    Comment = "SOLVER_UMFPACK_LIBRARY " // & 
+      & "!UMFPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 7) THEN
+    Comment = "SOLVER_LUSOL_LIBRARY " // & 
+      & "!LUSOL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 8) THEN
+    Comment = "SOLVER_ESSL_LIBRARY " // & 
+      & "!ESSL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 9) THEN
+    Comment = "SOLVER_LAPACK_LIBRARY " // & 
+      & "!LAPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 10) THEN
+    Comment = "SOLVER_TAO_LIBRARY " // & 
+      & "!TAO solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 11) THEN
+    Comment = "SOLVER_HYPRE_LIBRARY " // & 
+      & "!Hypre solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 12) THEN
+    Comment = "SOLVER_PASTIX_LIBRARY " // & 
+      & "!PaStiX solver library"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_LIBRARY:                  ", &
-    & Variable%SOLVER_LIBRARY
+    & Variable%SOLVER_LIBRARY, " ", TRIM(Comment)
 
   
 END SUBROUTINE Print_BDF_DAE_SOLVER_TYPE
@@ -26087,6 +26976,7 @@ RECURSIVE SUBROUTINE Print_BOUNDARY_CONDITIONS_DIRICHLET_TYPE(Variable, Depth, M
 
 
   TYPE(BOUNDARY_CONDITIONS_DIRICHLET_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -26238,6 +27128,7 @@ RECURSIVE SUBROUTINE Print_BOUNDARY_CONDITIONS_PRESSURE_INCREMENTED_TYPE(Variabl
   TYPE(BOUNDARY_CONDITIONS_PRESSURE_INCREMENTED_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -26303,6 +27194,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_COL_TO_SOLVER_COLS_MAP_TYPE(Variable, Depth
 
 
   TYPE(EQUATIONS_COL_TO_SOLVER_COLS_MAP_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -26402,6 +27294,7 @@ RECURSIVE SUBROUTINE Print_ELEMENT_MATRIX_TYPE(Variable, Depth, MaxDepth, MaxArr
 
 
   TYPE(ELEMENT_MATRIX_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -26574,6 +27467,7 @@ RECURSIVE SUBROUTINE Print_CONTROL_LOOP_SIMPLE_TYPE(Variable, CheckVariable0, Ch
   TYPE(CONTROL_LOOP_SIMPLE_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -26697,6 +27591,7 @@ RECURSIVE SUBROUTINE Print_CELLML_MODEL_MAPS_TYPE(Variable, Depth, MaxDepth, Max
 
 
   TYPE(CELLML_MODEL_MAPS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -26836,6 +27731,7 @@ RECURSIVE SUBROUTINE Print_DecompositionDataPointsType(Variable, CheckVariable0,
   TYPE(DECOMPOSITION_TYPE), POINTER :: Ptr0
 
   TYPE(DecompositionDataPointsType), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -27131,6 +28027,7 @@ RECURSIVE SUBROUTINE Print_CELLML_MODEL_PTR_TYPE(Variable, CheckVariable0, Check
   TYPE(CELLML_MODEL_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -27217,6 +28114,7 @@ RECURSIVE SUBROUTINE Print_DISTRIBUTED_VECTOR_TYPE(Variable, CheckVariable0, Che
   TYPE(DISTRIBUTED_VECTOR_PETSC_TYPE), POINTER :: Ptr1
 
   TYPE(DISTRIBUTED_VECTOR_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -27404,6 +28302,7 @@ RECURSIVE SUBROUTINE Print_DECOMPOSITION_TYPE(Variable, CheckVariable0, CheckVar
   TYPE(DOMAIN_PTR_TYPE), POINTER :: Ptr3
 
   TYPE(DECOMPOSITION_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -27865,6 +28764,7 @@ RECURSIVE SUBROUTINE Print_REGIONS_TYPE(Variable, Depth, MaxDepth, MaxArrayLengt
   TYPE(REGIONS_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -28042,6 +28942,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_MAPPING_NONLINEAR_TYPE(Variable, CheckVaria
   TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: Ptr0
 
   TYPE(EQUATIONS_MAPPING_NONLINEAR_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -28312,6 +29213,7 @@ RECURSIVE SUBROUTINE Print_MeshElementDataPointsType(Variable, Depth, MaxDepth, 
   TYPE(MeshElementDataPointsType), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -28386,6 +29288,7 @@ RECURSIVE SUBROUTINE Print_NodalVectorType(Variable, Depth, MaxDepth, MaxArrayLe
 
 
   TYPE(NodalVectorType), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -28512,6 +29415,7 @@ RECURSIVE SUBROUTINE Print_FIELD_GEOMETRIC_PARAMETERS_TYPE(Variable, CheckVariab
   TYPE(FIELD_PTR_TYPE), POINTER :: Ptr0
 
   TYPE(FIELD_GEOMETRIC_PARAMETERS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -28754,6 +29658,7 @@ RECURSIVE SUBROUTINE Print_DISTRIBUTED_VECTOR_CMISS_TYPE(Variable, CheckVariable
   TYPE(DISTRIBUTED_VECTOR_TYPE), POINTER :: Ptr0
 
   TYPE(DISTRIBUTED_VECTOR_CMISS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -29007,6 +29912,7 @@ RECURSIVE SUBROUTINE Print_FIELD_PARAMETER_SETS_TYPE(Variable, CheckVariable0, C
   TYPE(FIELD_PARAMETER_SETS_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -29174,6 +30080,7 @@ RECURSIVE SUBROUTINE Print_DECOMPOSITION_LINE_TYPE(Variable, Depth, MaxDepth, Ma
   TYPE(DECOMPOSITION_LINE_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -29314,6 +30221,7 @@ RECURSIVE SUBROUTINE Print_DECOMPOSITION_PTR_TYPE(Variable, CheckVariable0, Chec
   TYPE(DECOMPOSITION_TYPE), POINTER :: Ptr0
 
   TYPE(DECOMPOSITION_PTR_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -29468,6 +30376,7 @@ RECURSIVE SUBROUTINE Print_PROBLEM_TYPE(Variable, CheckVariable0, CheckVariable1
   TYPE(CONTROL_LOOP_TYPE), POINTER :: Ptr1
 
   TYPE(PROBLEM_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -29726,6 +30635,7 @@ RECURSIVE SUBROUTINE Print_BOUNDARY_CONDITIONS_TYPE(Variable, CheckVariable0, Ch
 
   TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -29920,9 +30830,19 @@ RECURSIVE SUBROUTINE Print_BOUNDARY_CONDITIONS_TYPE(Variable, CheckVariable0, Ch
     PRINT*, TRIM(PrintIndent),"TYPE(BOUNDARY_CONDITIONS_VARIABLE_PTR_TYPE), ALLOCATABLE :: " // &
       & "BOUNDARY_CONDITIONS_VARIABLES(:) (not allocated)"
   ENDIF ! IF (IsAllocated)
+  Comment = ""
+  IF (Variable%neumannMatrixSparsity == 1) THEN
+    Comment = "SOLVER_SPARSE_MATRICES " // & 
+      & "!Use sparse solver matrices"
+  ENDIF
+  IF (Variable%neumannMatrixSparsity == 2) THEN
+    Comment = "SOLVER_FULL_MATRICES " // & 
+      & "!Use fully populated solver matrices"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "neumannMatrixSparsity:           ", &
-    & Variable%neumannMatrixSparsity
+    & Variable%neumannMatrixSparsity, " ", TRIM(Comment)
 
   
 END SUBROUTINE Print_BOUNDARY_CONDITIONS_TYPE
@@ -29947,6 +30867,7 @@ RECURSIVE SUBROUTINE Print_LIST_PTR_TYPE(Variable, Depth, MaxDepth, MaxArrayLeng
 
 
   TYPE(LIST_PTR_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -30004,6 +30925,7 @@ RECURSIVE SUBROUTINE Print_SolverMappingDofCouplingsType(Variable, Depth, MaxDep
 
 
   TYPE(SolverMappingDofCouplingsType), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -30108,6 +31030,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_TO_SOLVER_MATRIX_MAPS_EQUATIONS_TYPE(Variab
 
 
   TYPE(INTERFACE_TO_SOLVER_MATRIX_MAPS_EQUATIONS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -30278,6 +31201,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_PTR_TYPE(Variable, Depth, MaxDepth, MaxArra
   TYPE(EQUATIONS_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -30417,6 +31341,7 @@ RECURSIVE SUBROUTINE Print_MeshNodesType(Variable, CheckVariable0, CheckVariable
   TYPE(MeshComponentTopologyType), POINTER :: Ptr0
 
   TYPE(MeshNodesType), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -30615,6 +31540,7 @@ RECURSIVE SUBROUTINE Print_DOMAIN_FACES_TYPE(Variable, CheckVariable0, CheckVari
   TYPE(DOMAIN_FACES_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -30788,6 +31714,7 @@ RECURSIVE SUBROUTINE Print_LIST_TYPE(Variable, Depth, MaxDepth, MaxArrayLength)
 
 
   TYPE(LIST_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -31094,6 +32021,7 @@ RECURSIVE SUBROUTINE Print_CONTROL_LOOP_TIME_TYPE(Variable, CheckVariable0, Chec
   TYPE(CONTROL_LOOP_TIME_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -31285,6 +32213,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_SET_EQUATIONS_SET_FIELD_TYPE(Variable, Chec
   TYPE(FIELD_TYPE), POINTER :: Ptr1
 
   TYPE(EQUATIONS_SET_EQUATIONS_SET_FIELD_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -31558,6 +32487,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_MAPPING_RHS_TYPE(Variable, CheckVariable0, 
   TYPE(INTERFACE_MAPPING_RHS_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -31806,6 +32736,7 @@ RECURSIVE SUBROUTINE Print_BOUNDARY_CONDITIONS_SPARSITY_INDICES_TYPE(Variable, D
   TYPE(BOUNDARY_CONDITIONS_SPARSITY_INDICES_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -31901,6 +32832,7 @@ RECURSIVE SUBROUTINE Print_FIELD_NODE_PARAM_TO_DOF_MAP_DERIVATIVE_TYPE(Variable,
 
 
   TYPE(FIELD_NODE_PARAM_TO_DOF_MAP_DERIVATIVE_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -32000,6 +32932,7 @@ RECURSIVE SUBROUTINE Print_DECOMPOSITION_TOPOLOGY_TYPE(Variable, CheckVariable0,
   TYPE(DecompositionDataPointsType), POINTER :: Ptr4
 
   TYPE(DECOMPOSITION_TOPOLOGY_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -32389,6 +33322,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_LAGRANGE_TYPE(Variable, CheckVariable0, Che
   TYPE(INTERFACE_LAGRANGE_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -32676,6 +33610,7 @@ RECURSIVE SUBROUTINE Print_BOUNDARY_CONDITIONS_VARIABLE_TYPE(Variable, CheckVari
   TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: Ptr0
 
   TYPE(BOUNDARY_CONDITIONS_VARIABLE_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -33108,6 +34043,7 @@ RECURSIVE SUBROUTINE Print_DOMAIN_LINES_TYPE(Variable, CheckVariable0, CheckVari
   TYPE(DOMAIN_LINES_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -33322,6 +34258,7 @@ RECURSIVE SUBROUTINE Print_DATA_POINTS_TYPE(Variable, CheckVariable0, CheckVaria
   TYPE(INTERFACE_TYPE), POINTER :: Ptr1
 
   TYPE(DATA_POINTS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -33713,6 +34650,7 @@ RECURSIVE SUBROUTINE Print_INTEGER_INTG_PTR_TYPE(Variable, Depth, MaxDepth, MaxA
   TYPE(INTEGER_INTG_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -33807,6 +34745,7 @@ RECURSIVE SUBROUTINE Print_FIELD_VARIABLE_TYPE(Variable, CheckVariable0, CheckVa
   TYPE(REGION_TYPE), POINTER :: Ptr1
 
   TYPE(FIELD_VARIABLE_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -34150,6 +35089,7 @@ RECURSIVE SUBROUTINE Print_FIELD_PARAM_TO_DOF_MAP_TYPE(Variable, Depth, MaxDepth
   TYPE(FIELD_PARAM_TO_DOF_MAP_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -34236,6 +35176,7 @@ RECURSIVE SUBROUTINE Print_DATA_PROJECTION_TYPE(Variable, CheckVariable0, CheckV
   TYPE(MESH_TYPE), POINTER :: Ptr2
 
   TYPE(DATA_PROJECTION_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -34728,6 +35669,7 @@ RECURSIVE SUBROUTINE Print_SOLVER_COL_TO_STATIC_EQUATIONS_MAP_TYPE(Variable, Dep
   TYPE(SOLVER_COL_TO_STATIC_EQUATIONS_MAP_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -34899,6 +35841,7 @@ RECURSIVE SUBROUTINE Print_CELLML_PARAMETERS_FIELD_TYPE(Variable, CheckVariable0
   TYPE(FIELD_TYPE), POINTER :: Ptr1
 
   TYPE(CELLML_PARAMETERS_FIELD_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -35171,6 +36114,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_MATRICES_TYPE(Variable, CheckVariable0, Che
   TYPE(INTERFACE_RHS_TYPE), POINTER :: Ptr3
 
   TYPE(INTERFACE_MATRICES_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -35501,6 +36445,7 @@ RECURSIVE SUBROUTINE Print_DISTRIBUTED_MATRIX_PETSC_TYPE(Variable, CheckVariable
   TYPE(DISTRIBUTED_MATRIX_PETSC_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -35767,6 +36712,7 @@ RECURSIVE SUBROUTINE Print_MeshNodeType(Variable, Depth, MaxDepth, MaxArrayLengt
   TYPE(MeshNodeType), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -35889,6 +36835,7 @@ RECURSIVE SUBROUTINE Print_PROBLEMS_TYPE(Variable, CheckVariable0, CheckVariable
   TYPE(PROBLEM_PTR_TYPE), POINTER :: Ptr0
 
   TYPE(PROBLEMS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -36021,6 +36968,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_CONDITION_PTR_TYPE(Variable, CheckVariable0
   TYPE(INTERFACE_CONDITION_TYPE), POINTER :: Ptr0
 
   TYPE(INTERFACE_CONDITION_PTR_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -36200,6 +37148,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_SET_MATERIALS_TYPE(Variable, CheckVariable0
   TYPE(FIELD_TYPE), POINTER :: Ptr1
 
   TYPE(EQUATIONS_SET_MATERIALS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -36483,6 +37432,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_MAPPING_TYPE(Variable, CheckVariable0, Chec
   TYPE(INTERFACE_MAPPING_RHS_TYPE), POINTER :: Ptr1
 
   TYPE(INTERFACE_MAPPING_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -36853,6 +37803,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_TO_SOLVER_MATRIX_MAPS_SM_TYPE(Variable, Dep
   TYPE(INTERFACE_TO_SOLVER_MATRIX_MAPS_SM_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -37184,6 +38135,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_MATRICES_LINEAR_TYPE(Variable, CheckVariabl
   TYPE(EQUATIONS_MATRICES_LINEAR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -37358,6 +38310,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_EQUATIONS_DOMAIN_INTERPOLATION_TYPE(Variabl
   TYPE(FIELD_TYPE), POINTER :: Ptr1
 
   TYPE(INTERFACE_EQUATIONS_DOMAIN_INTERPOLATION_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -37882,6 +38835,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_CONDITIONS_TYPE(Variable, CheckVariable0, C
   TYPE(INTERFACE_CONDITIONS_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -38143,6 +39097,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_MAPPING_SOURCE_TYPE(Variable, CheckVariable
   TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: Ptr0
 
   TYPE(EQUATIONS_MAPPING_SOURCE_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -38408,6 +39363,7 @@ RECURSIVE SUBROUTINE Print_BASIS_FUNCTIONS_TYPE(Variable, Depth, MaxDepth, MaxAr
   TYPE(BASIS_FUNCTIONS_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -38477,6 +39433,7 @@ RECURSIVE SUBROUTINE Print_MATRIX_TYPE(Variable, Depth, MaxDepth, MaxArrayLength
 
 
   TYPE(MATRIX_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -38755,6 +39712,7 @@ RECURSIVE SUBROUTINE Print_INTERFACES_TYPE(Variable, CheckVariable0, CheckVariab
   TYPE(INTERFACES_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -38976,6 +39934,7 @@ RECURSIVE SUBROUTINE Print_SOLVER_MAPPING_VARIABLES_TYPE(Variable, Depth, MaxDep
   TYPE(SOLVER_MAPPING_VARIABLES_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -39095,6 +40054,7 @@ RECURSIVE SUBROUTINE Print_NEWTON_SOLVER_TYPE(Variable, CheckVariable0, CheckVar
 
   TYPE(NEWTON_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -39238,27 +40198,125 @@ RECURSIVE SUBROUTINE Print_NEWTON_SOLVER_TYPE(Variable, CheckVariable0, CheckVar
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "NEWTON_SOLVE_TYPE:               ", &
     & Variable%NEWTON_SOLVE_TYPE
+  Comment = ""
+  IF (Variable%SOLUTION_INITIALISE_TYPE == 0) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_ZERO " // & 
+      & "!Initialise the solution by zeroing it before a solve"
+  ENDIF
+  IF (Variable%SOLUTION_INITIALISE_TYPE == 1) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_CURRENT_FIELD " // & 
+      & "!Initialise the solution by copying in the current dependent field values"
+  ENDIF
+  IF (Variable%SOLUTION_INITIALISE_TYPE == 2) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_NO_CHANGE " // & 
+      & "!Do not change the solution before a solve"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLUTION_INITIALISE_TYPE:        ", &
-    & Variable%SOLUTION_INITIALISE_TYPE
+    & Variable%SOLUTION_INITIALISE_TYPE, " ", TRIM(Comment)
+  Comment = ""
+  IF (Variable%TOTAL_NUMBER_OF_FUNCTION_EVALUATIONS == 0) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_ZERO " // & 
+      & "!Initialise the solution by zeroing it before a solve"
+  ENDIF
+  IF (Variable%TOTAL_NUMBER_OF_FUNCTION_EVALUATIONS == 1) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_CURRENT_FIELD " // & 
+      & "!Initialise the solution by copying in the current dependent field values"
+  ENDIF
+  IF (Variable%TOTAL_NUMBER_OF_FUNCTION_EVALUATIONS == 2) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_NO_CHANGE " // & 
+      & "!Do not change the solution before a solve"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "TOTAL_NUMBER_OF_FUNCTION_EVALUATIONS: ", &
-    & Variable%TOTAL_NUMBER_OF_FUNCTION_EVALUATIONS
+    & Variable%TOTAL_NUMBER_OF_FUNCTION_EVALUATIONS, " ", TRIM(Comment)
+  Comment = ""
+  IF (Variable%TOTAL_NUMBER_OF_JACOBIAN_EVALUATIONS == 0) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_ZERO " // & 
+      & "!Initialise the solution by zeroing it before a solve"
+  ENDIF
+  IF (Variable%TOTAL_NUMBER_OF_JACOBIAN_EVALUATIONS == 1) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_CURRENT_FIELD " // & 
+      & "!Initialise the solution by copying in the current dependent field values"
+  ENDIF
+  IF (Variable%TOTAL_NUMBER_OF_JACOBIAN_EVALUATIONS == 2) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_NO_CHANGE " // & 
+      & "!Do not change the solution before a solve"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "TOTAL_NUMBER_OF_JACOBIAN_EVALUATIONS: ", &
-    & Variable%TOTAL_NUMBER_OF_JACOBIAN_EVALUATIONS
+    & Variable%TOTAL_NUMBER_OF_JACOBIAN_EVALUATIONS, " ", TRIM(Comment)
+  Comment = ""
+  IF (Variable%MAXIMUM_NUMBER_OF_ITERATIONS == 0) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_ZERO " // & 
+      & "!Initialise the solution by zeroing it before a solve"
+  ENDIF
+  IF (Variable%MAXIMUM_NUMBER_OF_ITERATIONS == 1) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_CURRENT_FIELD " // & 
+      & "!Initialise the solution by copying in the current dependent field values"
+  ENDIF
+  IF (Variable%MAXIMUM_NUMBER_OF_ITERATIONS == 2) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_NO_CHANGE " // & 
+      & "!Do not change the solution before a solve"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "MAXIMUM_NUMBER_OF_ITERATIONS:    ", &
-    & Variable%MAXIMUM_NUMBER_OF_ITERATIONS
+    & Variable%MAXIMUM_NUMBER_OF_ITERATIONS, " ", TRIM(Comment)
+  Comment = ""
+  IF (Variable%MAXIMUM_NUMBER_OF_FUNCTION_EVALUATIONS == 0) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_ZERO " // & 
+      & "!Initialise the solution by zeroing it before a solve"
+  ENDIF
+  IF (Variable%MAXIMUM_NUMBER_OF_FUNCTION_EVALUATIONS == 1) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_CURRENT_FIELD " // & 
+      & "!Initialise the solution by copying in the current dependent field values"
+  ENDIF
+  IF (Variable%MAXIMUM_NUMBER_OF_FUNCTION_EVALUATIONS == 2) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_NO_CHANGE " // & 
+      & "!Do not change the solution before a solve"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "MAXIMUM_NUMBER_OF_FUNCTION_EVALUATIONS: ", &
-    & Variable%MAXIMUM_NUMBER_OF_FUNCTION_EVALUATIONS
+    & Variable%MAXIMUM_NUMBER_OF_FUNCTION_EVALUATIONS, " ", TRIM(Comment)
+  Comment = ""
+  IF (Variable%JACOBIAN_CALCULATION_TYPE == 1) THEN
+    Comment = "SOLVER_NEWTON_JACOBIAN_NOT_CALCULATED " // & 
+      & "!The Jacobian values will not be calculated for the nonlinear equations set"
+  ENDIF
+  IF (Variable%JACOBIAN_CALCULATION_TYPE == 2) THEN
+    Comment = "SOLVER_NEWTON_JACOBIAN_EQUATIONS_CALCULATED " // & 
+      & "!The Jacobian values will be calculated analytically for the nonlinear equations set"
+  ENDIF
+  IF (Variable%JACOBIAN_CALCULATION_TYPE == 3) THEN
+    Comment = "SOLVER_NEWTON_JACOBIAN_FD_CALCULATED " // & 
+      & "!The Jacobian values will be calculated using finite differences for the nonlinear equations set"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "JACOBIAN_CALCULATION_TYPE:       ", &
-    & Variable%JACOBIAN_CALCULATION_TYPE
+    & Variable%JACOBIAN_CALCULATION_TYPE, " ", TRIM(Comment)
+  Comment = ""
+  IF (Variable%convergenceTestType == 1) THEN
+    Comment = "SOLVER_NEWTON_CONVERGENCE_PETSC_DEFAULT " // & 
+      & "!Petsc default convergence test"
+  ENDIF
+  IF (Variable%convergenceTestType == 2) THEN
+    Comment = "SOLVER_NEWTON_CONVERGENCE_ENERGY_NORM " // & 
+      & "!Energy norm convergence test"
+  ENDIF
+  IF (Variable%convergenceTestType == 3) THEN
+    Comment = "SOLVER_NEWTON_CONVERGENCE_DIFFERENTIATED_RATIO " // & 
+      & "!Sum of differentiated ratios of unconstrained to constrained residuals convergence test"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "convergenceTestType:             ", &
-    & Variable%convergenceTestType
+    & Variable%convergenceTestType, " ", TRIM(Comment)
   PRINT*, TRIM(PrintIndent),"REAL(DP) :: " // &
     & "ABSOLUTE_TOLERANCE:          ", &
     & Variable%ABSOLUTE_TOLERANCE
@@ -39674,6 +40732,7 @@ RECURSIVE SUBROUTINE Print_VAR_TO_EQUATIONS_COLUMN_MAP_TYPE(Variable, Depth, Max
   TYPE(VAR_TO_EQUATIONS_COLUMN_MAP_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -39743,6 +40802,7 @@ RECURSIVE SUBROUTINE Print_DISTRIBUTED_VECTOR_TRANSFER_TYPE(Variable, CheckVaria
   TYPE(DISTRIBUTED_VECTOR_CMISS_TYPE), POINTER :: Ptr0
 
   TYPE(DISTRIBUTED_VECTOR_TRANSFER_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -40066,6 +41126,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_TO_SOLVER_MAPS_TYPE(Variable, Depth, MaxDep
   TYPE(EQUATIONS_TO_SOLVER_MAPS_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -40240,6 +41301,7 @@ RECURSIVE SUBROUTINE Print_EXTERNAL_DAE_SOLVER_TYPE(Variable, CheckVariable0, Ch
   TYPE(DAE_SOLVER_TYPE), POINTER :: Ptr0
 
   TYPE(EXTERNAL_DAE_SOLVER_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -40458,6 +41520,7 @@ RECURSIVE SUBROUTINE Print_CELLML_FIELD_MAPS_TYPE(Variable, CheckVariable0, Chec
   TYPE(DOMAIN_TYPE), POINTER :: Ptr3
 
   TYPE(CELLML_FIELD_MAPS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -40887,6 +41950,7 @@ RECURSIVE SUBROUTINE Print_DOMAIN_ELEMENT_TYPE(Variable, Depth, MaxDepth, MaxArr
   TYPE(DOMAIN_ELEMENT_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -41059,6 +42123,7 @@ RECURSIVE SUBROUTINE Print_QUADRATURE_TYPE(Variable, CheckVariable0, CheckVariab
   TYPE(QUADRATURE_SCHEME_PTR_TYPE), POINTER :: Ptr1
 
   TYPE(QUADRATURE_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -41254,6 +42319,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_TO_SOLVER_MATRIX_MAPS_EM_TYPE(Variable, Dep
   TYPE(EQUATIONS_TO_SOLVER_MATRIX_MAPS_EM_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -41331,6 +42397,7 @@ RECURSIVE SUBROUTINE Print_FIELD_PHYSICAL_POINT_TYPE(Variable, Depth, MaxDepth, 
 
   TYPE(FIELD_PHYSICAL_POINT_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -41381,9 +42448,23 @@ RECURSIVE SUBROUTINE Print_FIELD_PHYSICAL_POINT_TYPE(Variable, Depth, MaxDepth, 
     PRINT*, TRIM(PrintIndent),"TYPE(FIELD_INTERPOLATED_POINT_TYPE), POINTER :: " // &
       & "GEOMETRIC_INTERPOLATED_POINT (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%PHYSICAL_DERIVATIVE_TYPE == 2) THEN
+    Comment = "MAXIMUM_PHYSICAL_DERIV_NUMBER " // & 
+      & "!The maximum physical derivative number"
+  ENDIF
+  IF (Variable%PHYSICAL_DERIVATIVE_TYPE == 1) THEN
+    Comment = "NO_PHYSICAL_DERIV " // & 
+      & "!No physical derivative i.e., u"
+  ENDIF
+  IF (Variable%PHYSICAL_DERIVATIVE_TYPE == 2) THEN
+    Comment = "GRADIENT_PHYSICAL_DERIV " // & 
+      & "!Gradient physical derivative i.e., grad u"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "PHYSICAL_DERIVATIVE_TYPE:        ", &
-    & Variable%PHYSICAL_DERIVATIVE_TYPE
+    & Variable%PHYSICAL_DERIVATIVE_TYPE, " ", TRIM(Comment)
   
   ! Variable%VALUES(:)
   ! case allocatable
@@ -41457,6 +42538,7 @@ RECURSIVE SUBROUTINE Print_FIELD_VARIABLE_PTR_TYPE(Variable, CheckVariable0, Che
   TYPE(FIELD_VARIABLE_TYPE), POINTER :: Ptr0
 
   TYPE(FIELD_VARIABLE_PTR_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -41597,6 +42679,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_TO_SOLVER_MATRIX_MAPS_INTERFACE_TYPE(Variab
 
 
   TYPE(EQUATIONS_TO_SOLVER_MATRIX_MAPS_INTERFACE_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -41787,6 +42870,7 @@ RECURSIVE SUBROUTINE Print_RUNGE_KUTTA_DAE_SOLVER_TYPE(Variable, CheckVariable0,
 
   TYPE(RUNGE_KUTTA_DAE_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -41924,9 +43008,59 @@ RECURSIVE SUBROUTINE Print_RUNGE_KUTTA_DAE_SOLVER_TYPE(Variable, CheckVariable0,
     PRINT*, TRIM(PrintIndent),"TYPE(DAE_SOLVER_TYPE), POINTER :: " // &
       & "DAE_SOLVER (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%SOLVER_LIBRARY == 1) THEN
+    Comment = "SOLVER_CMISS_LIBRARY " // & 
+      & "!CMISS (internal) solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 2) THEN
+    Comment = "SOLVER_PETSC_LIBRARY " // & 
+      & "!PETSc solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 3) THEN
+    Comment = "SOLVER_MUMPS_LIBRARY " // & 
+      & "!MUMPS solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 4) THEN
+    Comment = "SOLVER_SUPERLU_LIBRARY " // & 
+      & "!SuperLU solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 5) THEN
+    Comment = "SOLVER_SPOOLES_LIBRARY " // & 
+      & "!Spooles solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 6) THEN
+    Comment = "SOLVER_UMFPACK_LIBRARY " // & 
+      & "!UMFPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 7) THEN
+    Comment = "SOLVER_LUSOL_LIBRARY " // & 
+      & "!LUSOL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 8) THEN
+    Comment = "SOLVER_ESSL_LIBRARY " // & 
+      & "!ESSL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 9) THEN
+    Comment = "SOLVER_LAPACK_LIBRARY " // & 
+      & "!LAPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 10) THEN
+    Comment = "SOLVER_TAO_LIBRARY " // & 
+      & "!TAO solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 11) THEN
+    Comment = "SOLVER_HYPRE_LIBRARY " // & 
+      & "!Hypre solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 12) THEN
+    Comment = "SOLVER_PASTIX_LIBRARY " // & 
+      & "!PaStiX solver library"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_LIBRARY:                  ", &
-    & Variable%SOLVER_LIBRARY
+    & Variable%SOLVER_LIBRARY, " ", TRIM(Comment)
 
   
 END SUBROUTINE Print_RUNGE_KUTTA_DAE_SOLVER_TYPE
@@ -41951,6 +43085,7 @@ RECURSIVE SUBROUTINE Print_DOMAIN_FACE_PTR_TYPE(Variable, Depth, MaxDepth, MaxAr
 
 
   TYPE(DOMAIN_FACE_PTR_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -42035,6 +43170,7 @@ RECURSIVE SUBROUTINE Print_DOMAIN_ELEMENTS_TYPE(Variable, CheckVariable0, CheckV
   TYPE(DOMAIN_TYPE), POINTER :: Ptr0
 
   TYPE(DOMAIN_ELEMENTS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -42211,6 +43347,7 @@ RECURSIVE SUBROUTINE Print_BoundaryConditionsCoupledDofsPtrType(Variable, Depth,
   TYPE(BoundaryConditionsCoupledDofsPtrType), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -42300,6 +43437,7 @@ RECURSIVE SUBROUTINE Print_GENERATED_MESH_ELLIPSOID_TYPE(Variable, CheckVariable
   TYPE(GENERATED_MESH_TYPE), POINTER :: Ptr0
 
   TYPE(GENERATED_MESH_ELLIPSOID_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -42616,6 +43754,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_GEOMETRY_TYPE(Variable, CheckVariable0, Che
   TYPE(INTERFACE_GEOMETRY_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -42873,6 +44012,7 @@ RECURSIVE SUBROUTINE Print_VAR_TO_EQUATIONS_JACOBIAN_MAP_TYPE(Variable, Depth, M
   TYPE(VAR_TO_EQUATIONS_JACOBIAN_MAP_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -43113,6 +44253,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_CONDITION_TYPE(Variable, CheckVariable0, Ch
   TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: Ptr6
 
   TYPE(INTERFACE_CONDITION_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -43692,6 +44833,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_MATRIX_TYPE(Variable, CheckVariable0, Depth
   TYPE(INTERFACE_MATRIX_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -43960,6 +45102,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_SET_TO_SOLVER_MAP_TYPE(Variable, CheckVaria
   TYPE(EQUATIONS_TYPE), POINTER :: Ptr1
 
   TYPE(EQUATIONS_SET_TO_SOLVER_MAP_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -44384,6 +45527,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_MATRICES_DYNAMIC_TYPE(Variable, CheckVariab
   TYPE(EQUATIONS_MATRICES_DYNAMIC_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -44586,6 +45730,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_PTR_TYPE(Variable, CheckVariable0, CheckVar
   TYPE(INTERFACE_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -44780,6 +45925,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_MATRICES_TYPE(Variable, CheckVariable0, Che
   TYPE(EQUATIONS_MATRICES_SOURCE_TYPE), POINTER :: Ptr7
 
   TYPE(EQUATIONS_MATRICES_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -45228,6 +46374,7 @@ RECURSIVE SUBROUTINE Print_SOLVER_COL_TO_INTERFACE_EQUATIONS_MAP_TYPE(Variable, 
   TYPE(SOLVER_COL_TO_INTERFACE_EQUATIONS_MAP_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -45356,6 +46503,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_MAPPING_CREATE_VALUES_CACHE_TYPE(Variable, 
 
 
   TYPE(EQUATIONS_MAPPING_CREATE_VALUES_CACHE_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -45572,6 +46720,7 @@ RECURSIVE SUBROUTINE Print_MeshDataPointsType(Variable, CheckVariable0, CheckVar
   TYPE(MeshDataPointsType), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -45760,6 +46909,7 @@ RECURSIVE SUBROUTINE Print_DATA_POINT_TYPE(Variable, Depth, MaxDepth, MaxArrayLe
   TYPE(DATA_POINT_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -45859,6 +47009,7 @@ RECURSIVE SUBROUTINE Print_JACOBIAN_COL_TO_SOLVER_COLS_MAP_TYPE(Variable, Depth,
 
 
   TYPE(JACOBIAN_COL_TO_SOLVER_COLS_MAP_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -45992,6 +47143,7 @@ RECURSIVE SUBROUTINE Print_GENERATED_MESH_REGULAR_TYPE(Variable, CheckVariable0,
   TYPE(GENERATED_MESH_TYPE), POINTER :: Ptr0
 
   TYPE(GENERATED_MESH_REGULAR_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -46324,6 +47476,7 @@ RECURSIVE SUBROUTINE Print_CELLML_MODEL_TYPE(Variable, CheckVariable0, CheckVari
   TYPE(CELLML_MODEL_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -46602,6 +47755,7 @@ RECURSIVE SUBROUTINE Print_CELLML_EQUATIONS_TYPE(Variable, CheckVariable0, Check
   TYPE(CELLML_EQUATIONS_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -46874,6 +48028,7 @@ RECURSIVE SUBROUTINE Print_FIELD_NODE_PARAM_TO_DOF_MAP_NODE_TYPE(Variable, Depth
   TYPE(FIELD_NODE_PARAM_TO_DOF_MAP_NODE_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -46945,6 +48100,7 @@ RECURSIVE SUBROUTINE Print_DecompositionElementDataPointType(Variable, Depth, Ma
   TYPE(DecompositionElementDataPointType), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -47007,6 +48163,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_MATRIX_TO_VAR_MAP_TYPE(Variable, Depth, Max
 
 
   TYPE(EQUATIONS_MATRIX_TO_VAR_MAP_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -47204,6 +48361,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_MAPPING_CREATE_VALUES_CACHE_TYPE(Variable, 
   TYPE(INTERFACE_MAPPING_CREATE_VALUES_CACHE_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -47397,6 +48555,7 @@ RECURSIVE SUBROUTINE Print_NEWTON_TRUSTREGION_SOLVER_TYPE(Variable, CheckVariabl
 
   TYPE(NEWTON_TRUSTREGION_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -47497,9 +48656,59 @@ RECURSIVE SUBROUTINE Print_NEWTON_TRUSTREGION_SOLVER_TYPE(Variable, CheckVariabl
     PRINT*, TRIM(PrintIndent),"TYPE(NEWTON_SOLVER_TYPE), POINTER :: " // &
       & "NEWTON_SOLVER (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%SOLVER_LIBRARY == 1) THEN
+    Comment = "SOLVER_CMISS_LIBRARY " // & 
+      & "!CMISS (internal) solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 2) THEN
+    Comment = "SOLVER_PETSC_LIBRARY " // & 
+      & "!PETSc solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 3) THEN
+    Comment = "SOLVER_MUMPS_LIBRARY " // & 
+      & "!MUMPS solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 4) THEN
+    Comment = "SOLVER_SUPERLU_LIBRARY " // & 
+      & "!SuperLU solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 5) THEN
+    Comment = "SOLVER_SPOOLES_LIBRARY " // & 
+      & "!Spooles solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 6) THEN
+    Comment = "SOLVER_UMFPACK_LIBRARY " // & 
+      & "!UMFPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 7) THEN
+    Comment = "SOLVER_LUSOL_LIBRARY " // & 
+      & "!LUSOL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 8) THEN
+    Comment = "SOLVER_ESSL_LIBRARY " // & 
+      & "!ESSL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 9) THEN
+    Comment = "SOLVER_LAPACK_LIBRARY " // & 
+      & "!LAPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 10) THEN
+    Comment = "SOLVER_TAO_LIBRARY " // & 
+      & "!TAO solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 11) THEN
+    Comment = "SOLVER_HYPRE_LIBRARY " // & 
+      & "!Hypre solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 12) THEN
+    Comment = "SOLVER_PASTIX_LIBRARY " // & 
+      & "!PaStiX solver library"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_LIBRARY:                  ", &
-    & Variable%SOLVER_LIBRARY
+    & Variable%SOLVER_LIBRARY, " ", TRIM(Comment)
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_MATRICES_LIBRARY:         ", &
     & Variable%SOLVER_MATRICES_LIBRARY
@@ -47561,6 +48770,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_SET_SETUP_TYPE(Variable, Depth, MaxDepth, M
 
 
   TYPE(EQUATIONS_SET_SETUP_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -47730,6 +48940,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_RHS_TYPE(Variable, CheckVariable0, CheckVar
   TYPE(INTERFACE_MATRICES_TYPE), POINTER :: Ptr0
 
   TYPE(INTERFACE_RHS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -47916,6 +49127,7 @@ RECURSIVE SUBROUTINE Print_MESH_TYPE(Variable, CheckVariable0, CheckVariable1, C
   TYPE(DECOMPOSITIONS_TYPE), POINTER :: Ptr7
 
   TYPE(MESH_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -48772,6 +49984,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_SET_TYPE(Variable, CheckVariable0, CheckVar
   TYPE(EQUATIONS_SET_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -49494,6 +50707,7 @@ RECURSIVE SUBROUTINE Print_PROBLEM_SETUP_TYPE(Variable, Depth, MaxDepth, MaxArra
   TYPE(PROBLEM_SETUP_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -49533,6 +50747,7 @@ RECURSIVE SUBROUTINE Print_BOUNDARY_CONDITIONS_SPARSITY_INDICES_PTR_TYPE(Variabl
 
 
   TYPE(BOUNDARY_CONDITIONS_SPARSITY_INDICES_PTR_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -49615,6 +50830,7 @@ RECURSIVE SUBROUTINE Print_IMPROVED_EULER_DAE_SOLVER_TYPE(Variable, CheckVariabl
 
   TYPE(IMPROVED_EULER_DAE_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -49715,9 +50931,59 @@ RECURSIVE SUBROUTINE Print_IMPROVED_EULER_DAE_SOLVER_TYPE(Variable, CheckVariabl
     PRINT*, TRIM(PrintIndent),"TYPE(EULER_DAE_SOLVER_TYPE), POINTER :: " // &
       & "EULER_DAE_SOLVER (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%SOLVER_LIBRARY == 1) THEN
+    Comment = "SOLVER_CMISS_LIBRARY " // & 
+      & "!CMISS (internal) solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 2) THEN
+    Comment = "SOLVER_PETSC_LIBRARY " // & 
+      & "!PETSc solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 3) THEN
+    Comment = "SOLVER_MUMPS_LIBRARY " // & 
+      & "!MUMPS solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 4) THEN
+    Comment = "SOLVER_SUPERLU_LIBRARY " // & 
+      & "!SuperLU solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 5) THEN
+    Comment = "SOLVER_SPOOLES_LIBRARY " // & 
+      & "!Spooles solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 6) THEN
+    Comment = "SOLVER_UMFPACK_LIBRARY " // & 
+      & "!UMFPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 7) THEN
+    Comment = "SOLVER_LUSOL_LIBRARY " // & 
+      & "!LUSOL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 8) THEN
+    Comment = "SOLVER_ESSL_LIBRARY " // & 
+      & "!ESSL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 9) THEN
+    Comment = "SOLVER_LAPACK_LIBRARY " // & 
+      & "!LAPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 10) THEN
+    Comment = "SOLVER_TAO_LIBRARY " // & 
+      & "!TAO solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 11) THEN
+    Comment = "SOLVER_HYPRE_LIBRARY " // & 
+      & "!Hypre solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 12) THEN
+    Comment = "SOLVER_PASTIX_LIBRARY " // & 
+      & "!PaStiX solver library"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_LIBRARY:                  ", &
-    & Variable%SOLVER_LIBRARY
+    & Variable%SOLVER_LIBRARY, " ", TRIM(Comment)
 
   
 END SUBROUTINE Print_IMPROVED_EULER_DAE_SOLVER_TYPE
@@ -49761,6 +51027,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_MATRICES_SOURCE_TYPE(Variable, CheckVariabl
   TYPE(EQUATIONS_MATRICES_TYPE), POINTER :: Ptr0
 
   TYPE(EQUATIONS_MATRICES_SOURCE_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -49904,6 +51171,7 @@ RECURSIVE SUBROUTINE Print_BASIS_PTR_TYPE(Variable, CheckVariable0, CheckVariabl
   TYPE(BASIS_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -50006,6 +51274,7 @@ RECURSIVE SUBROUTINE Print_MESH_EMBEDDING_TYPE(Variable, Depth, MaxDepth, MaxArr
 
 
   TYPE(MESH_EMBEDDING_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -50364,6 +51633,7 @@ RECURSIVE SUBROUTINE Print_CELLML_MODELS_FIELD_TYPE(Variable, CheckVariable0, Ch
   TYPE(CELLML_MODELS_FIELD_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -50618,6 +51888,7 @@ RECURSIVE SUBROUTINE Print_MeshDofsType(Variable, CheckVariable0, CheckVariable1
   TYPE(MeshDofsType), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -50737,6 +52008,7 @@ RECURSIVE SUBROUTINE Print_CELLML_MODEL_MAPS_PTR_TYPE(Variable, Depth, MaxDepth,
   TYPE(CELLML_MODEL_MAPS_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -50792,6 +52064,7 @@ RECURSIVE SUBROUTINE Print_SOLVER_MAPPING_CREATE_VALUES_CACHE_TYPE(Variable, Dep
 
 
   TYPE(SOLVER_MAPPING_CREATE_VALUES_CACHE_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -51060,6 +52333,7 @@ RECURSIVE SUBROUTINE Print_BoundaryConditionsDofConstraintType(Variable, Depth, 
   TYPE(BoundaryConditionsDofConstraintType), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -51183,6 +52457,7 @@ RECURSIVE SUBROUTINE Print_SOLVER_COL_TO_EQUATIONS_MAPS_TYPE(Variable, CheckVari
   TYPE(SOLVER_MATRIX_TYPE), POINTER :: Ptr1
 
   TYPE(SOLVER_COL_TO_EQUATIONS_MAPS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -51493,6 +52768,7 @@ RECURSIVE SUBROUTINE Print_INTEGER_CINT_ALLOC_TYPE(Variable, Depth, MaxDepth, Ma
   TYPE(INTEGER_CINT_ALLOC_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -51550,6 +52826,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_TO_SOLVER_MATRIX_MAPS_IM_TYPE(Variable, Dep
 
 
   TYPE(INTERFACE_TO_SOLVER_MATRIX_MAPS_IM_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -51663,6 +52940,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_JACOBIAN_PTR_TYPE(Variable, Depth, MaxDepth
   TYPE(EQUATIONS_JACOBIAN_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -51718,6 +52996,7 @@ RECURSIVE SUBROUTINE Print_FIELD_INTERPOLATED_POINT_METRICS_TYPE(Variable, Depth
 
 
   TYPE(FIELD_INTERPOLATED_POINT_METRICS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -51955,6 +53234,7 @@ RECURSIVE SUBROUTINE Print_GENERATED_MESH_PTR_TYPE(Variable, CheckVariable0, Che
   TYPE(GENERATED_MESH_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -52088,6 +53368,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_ROW_TO_SOLVER_ROWS_MAP_TYPE(Variable, Depth
   TYPE(INTERFACE_ROW_TO_SOLVER_ROWS_MAP_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -52159,6 +53440,7 @@ RECURSIVE SUBROUTINE Print_DOMAIN_NODES_TYPE(Variable, CheckVariable0, CheckVari
   TYPE(DOMAIN_TYPE), POINTER :: Ptr0
 
   TYPE(DOMAIN_NODES_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -52368,6 +53650,7 @@ RECURSIVE SUBROUTINE Print_VAR_TO_EQUATIONS_MATRICES_MAP_TYPE(Variable, Depth, M
 
 
   TYPE(VAR_TO_EQUATIONS_MATRICES_MAP_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -52598,6 +53881,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_MAPPING_LINEAR_TYPE(Variable, CheckVariable
   TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: Ptr0
 
   TYPE(EQUATIONS_MAPPING_LINEAR_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -52867,6 +54151,7 @@ RECURSIVE SUBROUTINE Print_CONTROL_LOOP_FIXED_TYPE(Variable, CheckVariable0, Che
   TYPE(CONTROL_LOOP_FIXED_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -53030,6 +54315,7 @@ RECURSIVE SUBROUTINE Print_DECOMPOSITION_LINES_TYPE(Variable, CheckVariable0, Ch
   TYPE(DECOMPOSITION_TYPE), POINTER :: Ptr0
 
   TYPE(DECOMPOSITION_LINES_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -53248,6 +54534,7 @@ RECURSIVE SUBROUTINE Print_SOLVER_PTR_TYPE(Variable, CheckVariable0, CheckVariab
   TYPE(SOLVER_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -53408,6 +54695,7 @@ RECURSIVE SUBROUTINE Print_BASIS_TYPE(Variable, CheckVariable0, CheckVariable1, 
   TYPE(BASIS_TYPE), POINTER :: Ptr1
 
   TYPE(BASIS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -54541,6 +55829,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_SETS_TYPE(Variable, CheckVariable0, CheckVa
   TYPE(EQUATIONS_SETS_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -54820,6 +56109,7 @@ RECURSIVE SUBROUTINE Print_MESH_PTR_TYPE(Variable, CheckVariable0, CheckVariable
   TYPE(MESH_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -54964,6 +56254,7 @@ RECURSIVE SUBROUTINE Print_DISTRIBUTED_MATRIX_TYPE(Variable, CheckVariable0, Che
   TYPE(DISTRIBUTED_MATRIX_PETSC_TYPE), POINTER :: Ptr1
 
   TYPE(DISTRIBUTED_MATRIX_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -55113,6 +56404,7 @@ RECURSIVE SUBROUTINE Print_DOMAIN_GLOBAL_MAPPING_TYPE(Variable, Depth, MaxDepth,
   TYPE(DOMAIN_GLOBAL_MAPPING_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -55240,6 +56532,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_ROW_TO_SOLVER_ROWS_MAP_TYPE(Variable, Depth
   TYPE(EQUATIONS_ROW_TO_SOLVER_ROWS_MAP_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -55337,6 +56630,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_TO_SOLVER_MAPS_PTR_TYPE(Variable, Depth, Ma
   TYPE(EQUATIONS_TO_SOLVER_MAPS_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -55393,6 +56687,7 @@ RECURSIVE SUBROUTINE Print_FIELD_INTERPOLATED_POINT_TYPE(Variable, Depth, MaxDep
 
 
   TYPE(FIELD_INTERPOLATED_POINT_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -55493,6 +56788,7 @@ RECURSIVE SUBROUTINE Print_CELLML_MODEL_MAP_PTR_TYPE(Variable, Depth, MaxDepth, 
   TYPE(CELLML_MODEL_MAP_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -55548,6 +56844,7 @@ RECURSIVE SUBROUTINE Print_BoundaryConditionsDofConstraintsType(Variable, Depth,
 
 
   TYPE(BoundaryConditionsDofConstraintsType), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -55660,6 +56957,7 @@ RECURSIVE SUBROUTINE Print_FIELD_PARAMETER_SET_TYPE(Variable, Depth, MaxDepth, M
   TYPE(FIELD_PARAMETER_SET_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -55736,6 +57034,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_MATRIX_TYPE(Variable, Depth, MaxDepth, MaxA
 
 
   TYPE(EQUATIONS_MATRIX_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -55921,6 +57220,7 @@ RECURSIVE SUBROUTINE Print_PROBLEM_PTR_TYPE(Variable, CheckVariable0, CheckVaria
   TYPE(PROBLEM_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -56014,6 +57314,7 @@ RECURSIVE SUBROUTINE Print_ELEMENT_VECTOR_TYPE(Variable, Depth, MaxDepth, MaxArr
 
 
   TYPE(ELEMENT_VECTOR_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -56135,6 +57436,7 @@ RECURSIVE SUBROUTINE Print_MeshComponentTopologyPtrType(Variable, CheckVariable0
   TYPE(MeshComponentTopologyType), POINTER :: Ptr0
 
   TYPE(MeshComponentTopologyPtrType), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -56305,6 +57607,7 @@ RECURSIVE SUBROUTINE Print_REGION_TYPE(Variable, CheckVariable0, CheckVariable1,
   TYPE(INTERFACES_TYPE), POINTER :: Ptr9
 
   TYPE(REGION_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -57297,6 +58600,7 @@ RECURSIVE SUBROUTINE Print_LINEAR_DIRECT_SOLVER_TYPE(Variable, CheckVariable0, C
 
   TYPE(LINEAR_DIRECT_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -57430,9 +58734,59 @@ RECURSIVE SUBROUTINE Print_LINEAR_DIRECT_SOLVER_TYPE(Variable, CheckVariable0, C
     PRINT*, TRIM(PrintIndent),"TYPE(LINEAR_SOLVER_TYPE), POINTER :: " // &
       & "LINEAR_SOLVER (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%SOLVER_LIBRARY == 1) THEN
+    Comment = "SOLVER_CMISS_LIBRARY " // & 
+      & "!CMISS (internal) solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 2) THEN
+    Comment = "SOLVER_PETSC_LIBRARY " // & 
+      & "!PETSc solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 3) THEN
+    Comment = "SOLVER_MUMPS_LIBRARY " // & 
+      & "!MUMPS solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 4) THEN
+    Comment = "SOLVER_SUPERLU_LIBRARY " // & 
+      & "!SuperLU solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 5) THEN
+    Comment = "SOLVER_SPOOLES_LIBRARY " // & 
+      & "!Spooles solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 6) THEN
+    Comment = "SOLVER_UMFPACK_LIBRARY " // & 
+      & "!UMFPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 7) THEN
+    Comment = "SOLVER_LUSOL_LIBRARY " // & 
+      & "!LUSOL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 8) THEN
+    Comment = "SOLVER_ESSL_LIBRARY " // & 
+      & "!ESSL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 9) THEN
+    Comment = "SOLVER_LAPACK_LIBRARY " // & 
+      & "!LAPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 10) THEN
+    Comment = "SOLVER_TAO_LIBRARY " // & 
+      & "!TAO solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 11) THEN
+    Comment = "SOLVER_HYPRE_LIBRARY " // & 
+      & "!Hypre solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 12) THEN
+    Comment = "SOLVER_PASTIX_LIBRARY " // & 
+      & "!PaStiX solver library"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_LIBRARY:                  ", &
-    & Variable%SOLVER_LIBRARY
+    & Variable%SOLVER_LIBRARY, " ", TRIM(Comment)
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_MATRICES_LIBRARY:         ", &
     & Variable%SOLVER_MATRICES_LIBRARY
@@ -57471,6 +58825,7 @@ RECURSIVE SUBROUTINE Print_JACOBIAN_TO_SOLVER_MAP_TYPE(Variable, CheckVariable0,
 
 
   TYPE(JACOBIAN_TO_SOLVER_MAP_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -57624,6 +58979,7 @@ RECURSIVE SUBROUTINE Print_CONTROL_LOOP_PTR_TYPE(Variable, CheckVariable0, Check
   TYPE(CONTROL_LOOP_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -57743,6 +59099,7 @@ RECURSIVE SUBROUTINE Print_COORDINATE_SYSTEM_PTR_TYPE(Variable, Depth, MaxDepth,
   TYPE(COORDINATE_SYSTEM_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -57798,6 +59155,7 @@ RECURSIVE SUBROUTINE Print_DATA_PROJECTION_RESULT_TYPE(Variable, Depth, MaxDepth
 
 
   TYPE(DATA_PROJECTION_RESULT_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -57912,6 +59270,7 @@ RECURSIVE SUBROUTINE Print_FIELD_DOF_TO_PARAM_MAP_TYPE(Variable, Depth, MaxDepth
 
 
   TYPE(FIELD_DOF_TO_PARAM_MAP_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -58251,6 +59610,7 @@ RECURSIVE SUBROUTINE Print_FIELD_VARIABLE_COMPONENT_TYPE(Variable, CheckVariable
   TYPE(FIELD_VARIABLE_COMPONENT_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -58537,6 +59897,7 @@ RECURSIVE SUBROUTINE Print_SOLVER_MAPPING_TYPE(Variable, CheckVariable0, CheckVa
   TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: Ptr0
 
   TYPE(SOLVER_MAPPING_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -59194,6 +60555,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_MATRICES_NONLINEAR_TYPE(Variable, CheckVari
   TYPE(EQUATIONS_MATRICES_NONLINEAR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -59442,6 +60804,7 @@ RECURSIVE SUBROUTINE Print_CELLML_EVALUATOR_SOLVER_TYPE(Variable, CheckVariable0
 
   TYPE(CELLML_EVALUATOR_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -59600,9 +60963,59 @@ RECURSIVE SUBROUTINE Print_CELLML_EVALUATOR_SOLVER_TYPE(Variable, CheckVariable0
     PRINT*, TRIM(PrintIndent),"TYPE(SOLVER_TYPE), POINTER :: " // &
       & "SOLVER (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%SOLVER_LIBRARY == 1) THEN
+    Comment = "SOLVER_CMISS_LIBRARY " // & 
+      & "!CMISS (internal) solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 2) THEN
+    Comment = "SOLVER_PETSC_LIBRARY " // & 
+      & "!PETSc solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 3) THEN
+    Comment = "SOLVER_MUMPS_LIBRARY " // & 
+      & "!MUMPS solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 4) THEN
+    Comment = "SOLVER_SUPERLU_LIBRARY " // & 
+      & "!SuperLU solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 5) THEN
+    Comment = "SOLVER_SPOOLES_LIBRARY " // & 
+      & "!Spooles solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 6) THEN
+    Comment = "SOLVER_UMFPACK_LIBRARY " // & 
+      & "!UMFPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 7) THEN
+    Comment = "SOLVER_LUSOL_LIBRARY " // & 
+      & "!LUSOL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 8) THEN
+    Comment = "SOLVER_ESSL_LIBRARY " // & 
+      & "!ESSL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 9) THEN
+    Comment = "SOLVER_LAPACK_LIBRARY " // & 
+      & "!LAPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 10) THEN
+    Comment = "SOLVER_TAO_LIBRARY " // & 
+      & "!TAO solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 11) THEN
+    Comment = "SOLVER_HYPRE_LIBRARY " // & 
+      & "!Hypre solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 12) THEN
+    Comment = "SOLVER_PASTIX_LIBRARY " // & 
+      & "!PaStiX solver library"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_LIBRARY:                  ", &
-    & Variable%SOLVER_LIBRARY
+    & Variable%SOLVER_LIBRARY, " ", TRIM(Comment)
   
   ! Variable%CELLML
   ! case pointer
@@ -59738,6 +61151,7 @@ RECURSIVE SUBROUTINE Print_CELLML_INTERMEDIATE_FIELD_TYPE(Variable, CheckVariabl
   TYPE(FIELD_TYPE), POINTER :: Ptr1
 
   TYPE(CELLML_INTERMEDIATE_FIELD_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -60006,6 +61420,7 @@ RECURSIVE SUBROUTINE Print_LINEAR_ITERATIVE_SOLVER_TYPE(Variable, CheckVariable0
 
   TYPE(LINEAR_ITERATIVE_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -60139,24 +61554,162 @@ RECURSIVE SUBROUTINE Print_LINEAR_ITERATIVE_SOLVER_TYPE(Variable, CheckVariable0
     PRINT*, TRIM(PrintIndent),"TYPE(LINEAR_SOLVER_TYPE), POINTER :: " // &
       & "LINEAR_SOLVER (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%SOLVER_LIBRARY == 1) THEN
+    Comment = "SOLVER_CMISS_LIBRARY " // & 
+      & "!CMISS (internal) solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 2) THEN
+    Comment = "SOLVER_PETSC_LIBRARY " // & 
+      & "!PETSc solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 3) THEN
+    Comment = "SOLVER_MUMPS_LIBRARY " // & 
+      & "!MUMPS solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 4) THEN
+    Comment = "SOLVER_SUPERLU_LIBRARY " // & 
+      & "!SuperLU solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 5) THEN
+    Comment = "SOLVER_SPOOLES_LIBRARY " // & 
+      & "!Spooles solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 6) THEN
+    Comment = "SOLVER_UMFPACK_LIBRARY " // & 
+      & "!UMFPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 7) THEN
+    Comment = "SOLVER_LUSOL_LIBRARY " // & 
+      & "!LUSOL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 8) THEN
+    Comment = "SOLVER_ESSL_LIBRARY " // & 
+      & "!ESSL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 9) THEN
+    Comment = "SOLVER_LAPACK_LIBRARY " // & 
+      & "!LAPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 10) THEN
+    Comment = "SOLVER_TAO_LIBRARY " // & 
+      & "!TAO solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 11) THEN
+    Comment = "SOLVER_HYPRE_LIBRARY " // & 
+      & "!Hypre solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 12) THEN
+    Comment = "SOLVER_PASTIX_LIBRARY " // & 
+      & "!PaStiX solver library"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_LIBRARY:                  ", &
-    & Variable%SOLVER_LIBRARY
+    & Variable%SOLVER_LIBRARY, " ", TRIM(Comment)
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_MATRICES_LIBRARY:         ", &
     & Variable%SOLVER_MATRICES_LIBRARY
+  Comment = ""
+  IF (Variable%ITERATIVE_SOLVER_TYPE == 1) THEN
+    Comment = "SOLVER_ITERATIVE_RICHARDSON " // & 
+      & "!Richardson iterative solver type"
+  ENDIF
+  IF (Variable%ITERATIVE_SOLVER_TYPE == 2) THEN
+    Comment = "SOLVER_ITERATIVE_CHEBYSHEV " // & 
+      & "!Chebyshev iterative solver type"
+  ENDIF
+  IF (Variable%ITERATIVE_SOLVER_TYPE == 3) THEN
+    Comment = "SOLVER_ITERATIVE_CONJUGATE_GRADIENT " // & 
+      & "!Conjugate gradient iterative solver type"
+  ENDIF
+  IF (Variable%ITERATIVE_SOLVER_TYPE == 4) THEN
+    Comment = "SOLVER_ITERATIVE_BICONJUGATE_GRADIENT " // & 
+      & "!Bi-conjugate gradient iterative solver type"
+  ENDIF
+  IF (Variable%ITERATIVE_SOLVER_TYPE == 5) THEN
+    Comment = "SOLVER_ITERATIVE_GMRES " // & 
+      & "!Generalised minimum residual iterative solver type"
+  ENDIF
+  IF (Variable%ITERATIVE_SOLVER_TYPE == 6) THEN
+    Comment = "SOLVER_ITERATIVE_BiCGSTAB " // & 
+      & "!Stabalised bi-conjugate gradient iterative solver type"
+  ENDIF
+  IF (Variable%ITERATIVE_SOLVER_TYPE == 7) THEN
+    Comment = "SOLVER_ITERATIVE_CONJGRAD_SQUARED " // & 
+      & "!Conjugate gradient squared iterative solver type"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "ITERATIVE_SOLVER_TYPE:           ", &
-    & Variable%ITERATIVE_SOLVER_TYPE
+    & Variable%ITERATIVE_SOLVER_TYPE, " ", TRIM(Comment)
+  Comment = ""
+  IF (Variable%ITERATIVE_PRECONDITIONER_TYPE == 0) THEN
+    Comment = "SOLVER_ITERATIVE_NO_PRECONDITIONER " // & 
+      & "!No preconditioner type"
+  ENDIF
+  IF (Variable%ITERATIVE_PRECONDITIONER_TYPE == 1) THEN
+    Comment = "SOLVER_ITERATIVE_JACOBI_PRECONDITIONER " // & 
+      & "!Jacobi preconditioner type"
+  ENDIF
+  IF (Variable%ITERATIVE_PRECONDITIONER_TYPE == 2) THEN
+    Comment = "SOLVER_ITERATIVE_BLOCK_JACOBI_PRECONDITIONER " // & 
+      & "!Iterative block Jacobi preconditioner type"
+  ENDIF
+  IF (Variable%ITERATIVE_PRECONDITIONER_TYPE == 3) THEN
+    Comment = "SOLVER_ITERATIVE_SOR_PRECONDITIONER " // & 
+      & "!Successive over relaxation preconditioner type"
+  ENDIF
+  IF (Variable%ITERATIVE_PRECONDITIONER_TYPE == 4) THEN
+    Comment = "SOLVER_ITERATIVE_INCOMPLETE_CHOLESKY_PRECONDITIONER " // & 
+      & "!Incomplete Cholesky preconditioner type"
+  ENDIF
+  IF (Variable%ITERATIVE_PRECONDITIONER_TYPE == 5) THEN
+    Comment = "SOLVER_ITERATIVE_INCOMPLETE_LU_PRECONDITIONER " // & 
+      & "!Incomplete LU preconditioner type"
+  ENDIF
+  IF (Variable%ITERATIVE_PRECONDITIONER_TYPE == 6) THEN
+    Comment = "SOLVER_ITERATIVE_ADDITIVE_SCHWARZ_PRECONDITIONER " // & 
+      & "!Additive Schwrz preconditioner type"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "ITERATIVE_PRECONDITIONER_TYPE:   ", &
-    & Variable%ITERATIVE_PRECONDITIONER_TYPE
+    & Variable%ITERATIVE_PRECONDITIONER_TYPE, " ", TRIM(Comment)
+  Comment = ""
+  IF (Variable%SOLUTION_INITIALISE_TYPE == 0) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_ZERO " // & 
+      & "!Initialise the solution by zeroing it before a solve"
+  ENDIF
+  IF (Variable%SOLUTION_INITIALISE_TYPE == 1) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_CURRENT_FIELD " // & 
+      & "!Initialise the solution by copying in the current dependent field values"
+  ENDIF
+  IF (Variable%SOLUTION_INITIALISE_TYPE == 2) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_NO_CHANGE " // & 
+      & "!Do not change the solution before a solve"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLUTION_INITIALISE_TYPE:        ", &
-    & Variable%SOLUTION_INITIALISE_TYPE
+    & Variable%SOLUTION_INITIALISE_TYPE, " ", TRIM(Comment)
+  Comment = ""
+  IF (Variable%MAXIMUM_NUMBER_OF_ITERATIONS == 0) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_ZERO " // & 
+      & "!Initialise the solution by zeroing it before a solve"
+  ENDIF
+  IF (Variable%MAXIMUM_NUMBER_OF_ITERATIONS == 1) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_CURRENT_FIELD " // & 
+      & "!Initialise the solution by copying in the current dependent field values"
+  ENDIF
+  IF (Variable%MAXIMUM_NUMBER_OF_ITERATIONS == 2) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_NO_CHANGE " // & 
+      & "!Do not change the solution before a solve"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "MAXIMUM_NUMBER_OF_ITERATIONS:    ", &
-    & Variable%MAXIMUM_NUMBER_OF_ITERATIONS
+    & Variable%MAXIMUM_NUMBER_OF_ITERATIONS, " ", TRIM(Comment)
   PRINT*, TRIM(PrintIndent),"REAL(DP) :: " // &
     & "RELATIVE_TOLERANCE:          ", &
     & Variable%RELATIVE_TOLERANCE
@@ -60166,9 +61719,23 @@ RECURSIVE SUBROUTINE Print_LINEAR_ITERATIVE_SOLVER_TYPE(Variable, CheckVariable0
   PRINT*, TRIM(PrintIndent),"REAL(DP) :: " // &
     & "DIVERGENCE_TOLERANCE:        ", &
     & Variable%DIVERGENCE_TOLERANCE
+  Comment = ""
+  IF (Variable%GMRES_RESTART == 0) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_ZERO " // & 
+      & "!Initialise the solution by zeroing it before a solve"
+  ENDIF
+  IF (Variable%GMRES_RESTART == 1) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_CURRENT_FIELD " // & 
+      & "!Initialise the solution by copying in the current dependent field values"
+  ENDIF
+  IF (Variable%GMRES_RESTART == 2) THEN
+    Comment = "SOLVER_SOLUTION_INITIALISE_NO_CHANGE " // & 
+      & "!Do not change the solution before a solve"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "GMRES_RESTART:                   ", &
-    & Variable%GMRES_RESTART
+    & Variable%GMRES_RESTART, " ", TRIM(Comment)
 
   
 END SUBROUTINE Print_LINEAR_ITERATIVE_SOLVER_TYPE
@@ -60207,6 +61774,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM_TYPE(Variable, Dep
 
 
   TYPE(EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -60501,6 +62069,7 @@ RECURSIVE SUBROUTINE Print_FIELD_NODE_PARAM_TO_DOF_MAP_TYPE(Variable, Depth, Max
   TYPE(FIELD_NODE_PARAM_TO_DOF_MAP_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -60621,6 +62190,7 @@ RECURSIVE SUBROUTINE Print_NONLINEAR_SOLVER_TYPE(Variable, CheckVariable0, Check
 
   TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -60754,9 +62324,27 @@ RECURSIVE SUBROUTINE Print_NONLINEAR_SOLVER_TYPE(Variable, CheckVariable0, Check
     PRINT*, TRIM(PrintIndent),"TYPE(SOLVER_TYPE), POINTER :: " // &
       & "SOLVER (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%NONLINEAR_SOLVE_TYPE == 1) THEN
+    Comment = "SOLVER_NONLINEAR_NEWTON " // & 
+      & "!Newton nonlinear solver type"
+  ENDIF
+  IF (Variable%NONLINEAR_SOLVE_TYPE == 2) THEN
+    Comment = "SOLVER_NONLINEAR_BFGS_INVERSE " // & 
+      & "!BFGS inverse nonlinear solver type"
+  ENDIF
+  IF (Variable%NONLINEAR_SOLVE_TYPE == 3) THEN
+    Comment = "SOLVER_NONLINEAR_SQP " // & 
+      & "!Sequential Quadratic Program nonlinear solver type"
+  ENDIF
+  IF (Variable%NONLINEAR_SOLVE_TYPE == 4) THEN
+    Comment = "SOLVER_NONLINEAR_QUASI_NEWTON " // & 
+      & "!Sequential Quasi-Newton nonlinear solver type"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "NONLINEAR_SOLVE_TYPE:            ", &
-    & Variable%NONLINEAR_SOLVE_TYPE
+    & Variable%NONLINEAR_SOLVE_TYPE, " ", TRIM(Comment)
   
   ! Variable%NEWTON_SOLVER
   ! case pointer
@@ -60945,6 +62533,7 @@ RECURSIVE SUBROUTINE Print_COORDINATE_SYSTEM_TYPE(Variable, Depth, MaxDepth, Max
   TYPE(COORDINATE_SYSTEM_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -61063,6 +62652,7 @@ RECURSIVE SUBROUTINE Print_EIGENPROBLEM_SOLVER_TYPE(Variable, CheckVariable0, Ch
 
   TYPE(EIGENPROBLEM_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -61199,9 +62789,59 @@ RECURSIVE SUBROUTINE Print_EIGENPROBLEM_SOLVER_TYPE(Variable, CheckVariable0, Ch
     PRINT*, TRIM(PrintIndent),"TYPE(SOLVER_TYPE), POINTER :: " // &
       & "SOLVER (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%SOLVER_LIBRARY == 1) THEN
+    Comment = "SOLVER_CMISS_LIBRARY " // & 
+      & "!CMISS (internal) solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 2) THEN
+    Comment = "SOLVER_PETSC_LIBRARY " // & 
+      & "!PETSc solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 3) THEN
+    Comment = "SOLVER_MUMPS_LIBRARY " // & 
+      & "!MUMPS solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 4) THEN
+    Comment = "SOLVER_SUPERLU_LIBRARY " // & 
+      & "!SuperLU solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 5) THEN
+    Comment = "SOLVER_SPOOLES_LIBRARY " // & 
+      & "!Spooles solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 6) THEN
+    Comment = "SOLVER_UMFPACK_LIBRARY " // & 
+      & "!UMFPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 7) THEN
+    Comment = "SOLVER_LUSOL_LIBRARY " // & 
+      & "!LUSOL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 8) THEN
+    Comment = "SOLVER_ESSL_LIBRARY " // & 
+      & "!ESSL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 9) THEN
+    Comment = "SOLVER_LAPACK_LIBRARY " // & 
+      & "!LAPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 10) THEN
+    Comment = "SOLVER_TAO_LIBRARY " // & 
+      & "!TAO solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 11) THEN
+    Comment = "SOLVER_HYPRE_LIBRARY " // & 
+      & "!Hypre solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 12) THEN
+    Comment = "SOLVER_PASTIX_LIBRARY " // & 
+      & "!PaStiX solver library"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_LIBRARY:                  ", &
-    & Variable%SOLVER_LIBRARY
+    & Variable%SOLVER_LIBRARY, " ", TRIM(Comment)
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_MATRICES_LIBRARY:         ", &
     & Variable%SOLVER_MATRICES_LIBRARY
@@ -61231,6 +62871,7 @@ RECURSIVE SUBROUTINE Print_DECOMPOSITION_FACE_TYPE(Variable, Depth, MaxDepth, Ma
 
 
   TYPE(DECOMPOSITION_FACE_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -61390,6 +63031,7 @@ RECURSIVE SUBROUTINE Print_LINEAR_SOLVER_TYPE(Variable, CheckVariable0, CheckVar
 
   TYPE(LINEAR_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -61527,9 +63169,19 @@ RECURSIVE SUBROUTINE Print_LINEAR_SOLVER_TYPE(Variable, CheckVariable0, CheckVar
     PRINT*, TRIM(PrintIndent),"TYPE(SOLVER_TYPE), POINTER :: " // &
       & "SOLVER (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%LINEAR_SOLVE_TYPE == 1) THEN
+    Comment = "SOLVER_LINEAR_DIRECT_SOLVE_TYPE " // & 
+      & "!Direct linear solver type"
+  ENDIF
+  IF (Variable%LINEAR_SOLVE_TYPE == 2) THEN
+    Comment = "SOLVER_LINEAR_ITERATIVE_SOLVE_TYPE " // & 
+      & "!Iterative linear solver type"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "LINEAR_SOLVE_TYPE:               ", &
-    & Variable%LINEAR_SOLVE_TYPE
+    & Variable%LINEAR_SOLVE_TYPE, " ", TRIM(Comment)
   PRINT*, TRIM(PrintIndent),"LOGICAL :: " // &
     & "LINKED_NEWTON_PETSC_SOLVER:                      ", &
     & Variable%LINKED_NEWTON_PETSC_SOLVER
@@ -61721,6 +63373,7 @@ RECURSIVE SUBROUTINE Print_DECOMPOSITIONS_TYPE(Variable, CheckVariable0, CheckVa
   TYPE(DECOMPOSITION_PTR_TYPE), POINTER :: Ptr1
 
   TYPE(DECOMPOSITIONS_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -61988,6 +63641,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_INTERPOLATION_TYPE(Variable, CheckVariable0
   TYPE(FIELD_TYPE), POINTER :: Ptr1
 
   TYPE(EQUATIONS_INTERPOLATION_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -63116,6 +64770,7 @@ RECURSIVE SUBROUTINE Print_InterfacePointConnectivityType(Variable, Depth, MaxDe
   TYPE(InterfacePointConnectivityType), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -63218,6 +64873,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_JACOBIAN_TYPE(Variable, Depth, MaxDepth, Ma
 
 
   TYPE(EQUATIONS_JACOBIAN_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -63362,6 +65018,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_MAPPING_DYNAMIC_TYPE(Variable, CheckVariabl
   TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: Ptr0
 
   TYPE(EQUATIONS_MAPPING_DYNAMIC_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -63653,6 +65310,7 @@ RECURSIVE SUBROUTINE Print_SOLVER_COL_TO_DYNAMIC_EQUATIONS_MAP_TYPE(Variable, De
   TYPE(SOLVER_COL_TO_DYNAMIC_EQUATIONS_MAP_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -63825,6 +65483,7 @@ RECURSIVE SUBROUTINE Print_EQUATIONS_SET_DEPENDENT_TYPE(Variable, CheckVariable0
   TYPE(FIELD_TYPE), POINTER :: Ptr1
 
   TYPE(EQUATIONS_SET_DEPENDENT_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -64072,6 +65731,7 @@ RECURSIVE SUBROUTINE Print_EMBEDDING_XI_TYPE(Variable, Depth, MaxDepth, MaxArray
   TYPE(EMBEDDING_XI_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -64175,6 +65835,7 @@ RECURSIVE SUBROUTINE Print_FIELD_ELEMENT_PARAM_TO_DOF_MAP_TYPE(Variable, Depth, 
   TYPE(FIELD_ELEMENT_PARAM_TO_DOF_MAP_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -64251,6 +65912,7 @@ RECURSIVE SUBROUTINE Print_SOLVER_DOF_TO_VARIABLE_MAP_TYPE(Variable, Depth, MaxD
 
 
   TYPE(SOLVER_DOF_TO_VARIABLE_MAP_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -64550,6 +66212,7 @@ RECURSIVE SUBROUTINE Print_SOLVER_MATRICES_TYPE(Variable, CheckVariable0, CheckV
   TYPE(SOLVER_MAPPING_TYPE), POINTER :: Ptr1
 
   TYPE(SOLVER_MATRICES_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -64916,6 +66579,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_TO_SOLVER_MAPS_PTR_TYPE(Variable, Depth, Ma
   TYPE(INTERFACE_TO_SOLVER_MAPS_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -64989,6 +66653,7 @@ RECURSIVE SUBROUTINE Print_SOLVER_MAPPING_VARIABLE_TYPE(Variable, Depth, MaxDept
 
 
   TYPE(SOLVER_MAPPING_VARIABLE_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -65198,6 +66863,7 @@ RECURSIVE SUBROUTINE Print_DECOMPOSITION_ELEMENTS_TYPE(Variable, CheckVariable0,
   TYPE(DECOMPOSITION_ELEMENTS_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -65381,6 +67047,7 @@ RECURSIVE SUBROUTINE Print_INTERFACE_MATRIX_PTR_TYPE(Variable, CheckVariable0, D
   TYPE(INTERFACE_MATRIX_PTR_TYPE), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -65438,6 +67105,7 @@ RECURSIVE SUBROUTINE Print_InterfaceCoupledElementsType(Variable, Depth, MaxDept
 
 
   TYPE(InterfaceCoupledElementsType), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -65508,6 +67176,7 @@ RECURSIVE SUBROUTINE Print_NodalMatrixType(Variable, Depth, MaxDepth, MaxArrayLe
 
 
   TYPE(NodalMatrixType), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -65711,6 +67380,7 @@ RECURSIVE SUBROUTINE Print_DAE_SOLVER_TYPE(Variable, CheckVariable0, CheckVariab
 
   TYPE(DAE_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -65848,9 +67518,27 @@ RECURSIVE SUBROUTINE Print_DAE_SOLVER_TYPE(Variable, CheckVariable0, CheckVariab
     PRINT*, TRIM(PrintIndent),"TYPE(SOLVER_TYPE), POINTER :: " // &
       & "SOLVER (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%DAE_TYPE == 0) THEN
+    Comment = "SOLVER_DAE_DIFFERENTIAL_ONLY " // & 
+      & "!Differential equations only"
+  ENDIF
+  IF (Variable%DAE_TYPE == 1) THEN
+    Comment = "SOLVER_DAE_INDEX_1 " // & 
+      & "!Index 1 differential-algebraic equation"
+  ENDIF
+  IF (Variable%DAE_TYPE == 2) THEN
+    Comment = "SOLVER_DAE_INDEX_2 " // & 
+      & "!Index 2 differential-algebraic equation"
+  ENDIF
+  IF (Variable%DAE_TYPE == 3) THEN
+    Comment = "SOLVER_DAE_INDEX_3 " // & 
+      & "!Index 3 differential-algebraic equation"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "DAE_TYPE:                        ", &
-    & Variable%DAE_TYPE
+    & Variable%DAE_TYPE, " ", TRIM(Comment)
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "DAE_SOLVE_TYPE:                  ", &
     & Variable%DAE_SOLVE_TYPE
@@ -66392,6 +68080,7 @@ RECURSIVE SUBROUTINE Print_BoundaryConditionsDofConstraintPtrType(Variable, Dept
   TYPE(BoundaryConditionsDofConstraintPtrType), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -66512,6 +68201,7 @@ RECURSIVE SUBROUTINE Print_SOLVER_TYPE(Variable, CheckVariable0, CheckVariable1,
 
   TYPE(SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -66962,12 +68652,76 @@ RECURSIVE SUBROUTINE Print_SOLVER_TYPE(Variable, CheckVariable0, CheckVariable1,
   PRINT*, TRIM(PrintIndent),"LOGICAL :: " // &
     & "SOLVER_FINISHED:                                 ", &
     & Variable%SOLVER_FINISHED
+  Comment = ""
+  IF (Variable%OUTPUT_TYPE == 0) THEN
+    Comment = "SOLVER_NO_OUTPUT " // & 
+      & "!No output from the solver routines"
+  ENDIF
+  IF (Variable%OUTPUT_TYPE == 1) THEN
+    Comment = "SOLVER_PROGRESS_OUTPUT " // & 
+      & "!Progress output from solver routines"
+  ENDIF
+  IF (Variable%OUTPUT_TYPE == 2) THEN
+    Comment = "SOLVER_TIMING_OUTPUT " // & 
+      & "!Timing output from the solver routines plus below"
+  ENDIF
+  IF (Variable%OUTPUT_TYPE == 3) THEN
+    Comment = "SOLVER_SOLVER_OUTPUT " // & 
+      & "!Solver specific output from the solver routines plus below"
+  ENDIF
+  IF (Variable%OUTPUT_TYPE == 4) THEN
+    Comment = "SOLVER_MATRIX_OUTPUT " // & 
+      & "!Solver matrices output from the solver routines plus below"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "OUTPUT_TYPE:                     ", &
-    & Variable%OUTPUT_TYPE
+    & Variable%OUTPUT_TYPE, " ", TRIM(Comment)
+  Comment = ""
+  IF (Variable%SOLVE_TYPE == 9) THEN
+    Comment = "SOLVER_NUMBER_OF_SOLVER_TYPES " // & 
+      & "!Number of different solver types possible"
+  ENDIF
+  IF (Variable%SOLVE_TYPE == 1) THEN
+    Comment = "SOLVER_LINEAR_TYPE " // & 
+      & "!A linear solver"
+  ENDIF
+  IF (Variable%SOLVE_TYPE == 2) THEN
+    Comment = "SOLVER_NONLINEAR_TYPE " // & 
+      & "!A nonlinear solver"
+  ENDIF
+  IF (Variable%SOLVE_TYPE == 3) THEN
+    Comment = "SOLVER_DYNAMIC_TYPE " // & 
+      & "!A dynamic solver"
+  ENDIF
+  IF (Variable%SOLVE_TYPE == 4) THEN
+    Comment = "SOLVER_DAE_TYPE " // & 
+      & "!A differential-algebraic equation solver"
+  ENDIF
+  IF (Variable%SOLVE_TYPE == 5) THEN
+    Comment = "SOLVER_EIGENPROBLEM_TYPE " // & 
+      & "!A eigenproblem solver"
+  ENDIF
+  IF (Variable%SOLVE_TYPE == 6) THEN
+    Comment = "SOLVER_OPTIMISER_TYPE " // & 
+      & "!An optimiser solver"
+  ENDIF
+  IF (Variable%SOLVE_TYPE == 7) THEN
+    Comment = "SOLVER_CELLML_EVALUATOR_TYPE " // & 
+      & "!A CellML evaluation solver"
+  ENDIF
+  IF (Variable%SOLVE_TYPE == 8) THEN
+    Comment = "SOLVER_STATE_ITERATION_TYPE " // & 
+      & "!An state iteration solver"
+  ENDIF
+  IF (Variable%SOLVE_TYPE == 9) THEN
+    Comment = "SOLVER_GEOMETRIC_TRANSFORMATION_TYPE " // & 
+      & "!An geometric transformation solver"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVE_TYPE:                      ", &
-    & Variable%SOLVE_TYPE
+    & Variable%SOLVE_TYPE, " ", TRIM(Comment)
   
   ! Variable%LINEAR_SOLVER
   ! case pointer
@@ -68052,6 +69806,7 @@ RECURSIVE SUBROUTINE Print_MeshElementsType(Variable, CheckVariable0, CheckVaria
   TYPE(MeshElementsType), POINTER :: Variable2
 
 
+
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
     RETURN
@@ -68258,6 +70013,7 @@ RECURSIVE SUBROUTINE Print_MESHES_TYPE(Variable, CheckVariable0, CheckVariable1,
   TYPE(MESH_PTR_TYPE), POINTER :: Ptr2
 
   TYPE(MESHES_TYPE), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
@@ -68629,6 +70385,7 @@ RECURSIVE SUBROUTINE Print_EULER_DAE_SOLVER_TYPE(Variable, CheckVariable0, Check
 
   TYPE(EULER_DAE_SOLVER_TYPE), POINTER :: Variable2
 
+  CHARACTER(len=1000) :: Comment
 
   ! return if maximum allowed depth is reached
   IF (DEPTH > MaxDepth) THEN
@@ -68941,9 +70698,59 @@ RECURSIVE SUBROUTINE Print_EULER_DAE_SOLVER_TYPE(Variable, CheckVariable0, Check
     PRINT*, TRIM(PrintIndent),"TYPE(IMPROVED_EULER_DAE_SOLVER_TYPE), POINTER :: " // &
       & "IMPROVED_EULER_SOLVER (NULL)"
   ENDIF ! IF (IsAssociated)
+  Comment = ""
+  IF (Variable%SOLVER_LIBRARY == 1) THEN
+    Comment = "SOLVER_CMISS_LIBRARY " // & 
+      & "!CMISS (internal) solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 2) THEN
+    Comment = "SOLVER_PETSC_LIBRARY " // & 
+      & "!PETSc solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 3) THEN
+    Comment = "SOLVER_MUMPS_LIBRARY " // & 
+      & "!MUMPS solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 4) THEN
+    Comment = "SOLVER_SUPERLU_LIBRARY " // & 
+      & "!SuperLU solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 5) THEN
+    Comment = "SOLVER_SPOOLES_LIBRARY " // & 
+      & "!Spooles solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 6) THEN
+    Comment = "SOLVER_UMFPACK_LIBRARY " // & 
+      & "!UMFPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 7) THEN
+    Comment = "SOLVER_LUSOL_LIBRARY " // & 
+      & "!LUSOL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 8) THEN
+    Comment = "SOLVER_ESSL_LIBRARY " // & 
+      & "!ESSL solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 9) THEN
+    Comment = "SOLVER_LAPACK_LIBRARY " // & 
+      & "!LAPACK solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 10) THEN
+    Comment = "SOLVER_TAO_LIBRARY " // & 
+      & "!TAO solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 11) THEN
+    Comment = "SOLVER_HYPRE_LIBRARY " // & 
+      & "!Hypre solver library"
+  ENDIF
+  IF (Variable%SOLVER_LIBRARY == 12) THEN
+    Comment = "SOLVER_PASTIX_LIBRARY " // & 
+      & "!PaStiX solver library"
+  ENDIF
+  
   PRINT*, TRIM(PrintIndent),"INTEGER(INTG) :: " // &
     & "SOLVER_LIBRARY:                  ", &
-    & Variable%SOLVER_LIBRARY
+    & Variable%SOLVER_LIBRARY, " ", TRIM(Comment)
 
   
 END SUBROUTINE Print_EULER_DAE_SOLVER_TYPE
@@ -68975,6 +70782,7 @@ RECURSIVE SUBROUTINE Print_BoundaryConditionsNeumannType(Variable, Depth, MaxDep
 
 
   TYPE(BoundaryConditionsNeumannType), POINTER :: Variable2
+
 
 
   ! return if maximum allowed depth is reached
