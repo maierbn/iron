@@ -4306,6 +4306,9 @@ CONTAINS
           & ERR,ERROR,*999)
           
         PRINT*, "get value of active stress component: ", VALUE
+        IF (ISNAN(VALUE)) THEN
+          VALUE = 0.0_DP
+        ENDIF
           
         !divide by lambda and multiply by P_max
         VALUE=VALUE/SQRT(AZL(1,1))*C(5)
