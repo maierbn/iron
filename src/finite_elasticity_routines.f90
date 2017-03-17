@@ -4307,7 +4307,10 @@ CONTAINS
           
         PRINT*, "get value of active stress component: ", VALUE
         IF (ISNAN(VALUE)) THEN
+          PRINT*, "Value is NaN!"
           VALUE = 0.0_DP
+        ELSE
+          PRINT*, "Value is not NaN."
         ENDIF
           
         !divide by lambda and multiply by P_max
