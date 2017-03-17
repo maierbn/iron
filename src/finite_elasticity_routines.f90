@@ -1666,10 +1666,15 @@ CONTAINS
           & EQUATIONS_SET_TRANSVERSE_ISOTROPIC_ACTIVE_SUBTYPE,EQUATIONS_SET_TRANS_ISOTROPIC_ACTIVE_TRANSITION_SUBTYPE, &
           & EQUATIONS_SET_ANISOTROPIC_POLYNOMIAL_SUBTYPE,EQUATIONS_SET_ANISOTROPIC_POLYNOMIAL_ACTIVE_SUBTYPE, &
           & EQUATIONS_SET_INCOMPRESSIBLE_MOONEY_RIVLIN_SUBTYPE, EQUATIONS_SET_HOLZAPFEL_OGDEN_ACTIVECONTRACTION_SUBTYPE) ! 4 dependent components
-          PRINT*, "Loop over gauss points and add residuals: elastictiy_routines.f90: 1669"
+          
+          PRINT*, "ELEMENT_NUMBER=",ELEMENT_NUMBER, ", Loop over gauss points and add residuals: elastictiy_routines.f90: 1670"
+          
           !Loop over gauss points and add residuals
           DO gauss_idx=1,DEPENDENT_NUMBER_OF_GAUSS_POINTS
             GAUSS_WEIGHT=DEPENDENT_QUADRATURE_SCHEME%GAUSS_WEIGHTS(gauss_idx)
+            
+            PRINT*, "next Gauss Point: gauss_idx=",gauss_idx
+            
               !Interpolate dependent, geometric, fibre and materials fields
             CALL FIELD_INTERPOLATE_GAUSS(FIRST_PART_DERIV,BASIS_DEFAULT_QUADRATURE_SCHEME,gauss_idx, &
               & DEPENDENT_INTERPOLATED_POINT,ERR,ERROR,*999)
@@ -1748,15 +1753,16 @@ CONTAINS
                       & GAUSS_WEIGHT*Jxxi*Jznu*THICKNESS*cauchyTensor(component_idx,component_idx2)* &
                       & DFDZ(parameter_idx,component_idx2,component_idx)
                       
-                    
-                    PRINT*, "element ",element_dof_idx,", cauchyTensor indices: (",component_idx,",",component_idx2,"), " // &
-                     & "cauchyTensor value: ", cauchyTensor(component_idx,component_idx2),",  GAUSS_WEIGHT=", GAUSS_WEIGHT, &
-                     & ", Jxxi=", Jxxi, ", Jznu=", Jznu, ", THICKNESS=", THICKNESS, &
-                     & ", DFDZ=", DFDZ(parameter_idx,component_idx2,component_idx), &
-                     & ", increment: ", GAUSS_WEIGHT*Jxxi*Jznu*THICKNESS*cauchyTensor(component_idx,component_idx2)* &
-                     & DFDZ(parameter_idx,component_idx2,component_idx), &
-                     & ", -> new sum: ", NONLINEAR_MATRICES%ELEMENT_RESIDUAL%VECTOR(element_dof_idx)
-                    PRINT*, ""
+                    IF (.FALSE.) THEN
+                      PRINT*, "element ",element_dof_idx,", cauchyTensor indices: (",component_idx,",",component_idx2,"), " // &
+                       & "cauchyTensor value: ", cauchyTensor(component_idx,component_idx2),",  GAUSS_WEIGHT=", GAUSS_WEIGHT, &
+                       & ", Jxxi=", Jxxi, ", Jznu=", Jznu, ", THICKNESS=", THICKNESS, &
+                       & ", DFDZ=", DFDZ(parameter_idx,component_idx2,component_idx), &
+                       & ", increment: ", GAUSS_WEIGHT*Jxxi*Jznu*THICKNESS*cauchyTensor(component_idx,component_idx2)* &
+                       & DFDZ(parameter_idx,component_idx2,component_idx), &
+                       & ", -> new sum: ", NONLINEAR_MATRICES%ELEMENT_RESIDUAL%VECTOR(element_dof_idx)
+                      PRINT*, ""
+                    ENDIF
                      
                   ENDDO ! component_idx2 (inner component index)
                 ENDDO ! parameter_idx (residual vector loop)
@@ -1788,8 +1794,8 @@ CONTAINS
                       & GAUSS_WEIGHT*Jxxi*COMPONENT_QUADRATURE_SCHEME%GAUSS_BASIS_FNS(parameter_idx,1,gauss_idx)* &
                       & (Jznu-1.0_DP)
                       
-                    PRINT *, "element_dof_idx=", element_dof_idx, " new value: ", &
-                     & NONLINEAR_MATRICES%ELEMENT_RESIDUAL%VECTOR(element_dof_idx)
+                    !PRINT *, "element_dof_idx=", element_dof_idx, " new value: ", &
+                    ! & NONLINEAR_MATRICES%ELEMENT_RESIDUAL%VECTOR(element_dof_idx)
                   ENDIF
                 ENDDO
               ELSEIF(DEPENDENT_COMPONENT_INTERPOLATION_TYPE==FIELD_ELEMENT_BASED_INTERPOLATION) THEN !element based
@@ -3397,7 +3403,7 @@ CONTAINS
     REAL(DP) :: EMATRIX_1(3,3),EMATRIX_2(3,3),EMATRIX_3(3,3),TEMP1(3,3),TEMP2(3,3),TEMP3(3,3),N1(3,3),N2(3,3),N3(3,3) 
     REAL(DP), DIMENSION(5) :: PAR
     INTEGER(INTG) :: LWORK,node1,node2
-    INTEGER(INTG), PARAMETER :: LWMAX=1000    ! maximum size of temporary buffer usable by Lapack
+    INTEGER(INTG), PARAMETER :: LWMAX=1000
     REAL(DP) :: WORK(LWMAX),RIGHT_NODE(3),LEFT_NODE(3),delta_t,dist1,dist2,velo
     TYPE(FIELD_TYPE), POINTER :: DEPENDENT_FIELD,INDEPENDENT_FIELD
     REAL(DP) :: ISOMETRIC_FORCE_AT_FULL_ACT,LENGTH_HALF_SARCO
@@ -3423,20 +3429,18 @@ CONTAINS
     !PIOLA_TENSOR is the second Piola-Kirchoff tensor (PK2 or S)
     !P is the actual hydrostatic pressure, not double it
 
-    CALL MATRIX_TRANSPOSE(DZDNU,DZDNUT,ERR,ERROR,*999)      ! DZDNU = F, DZDNUT = F'
-    CALL MATRIX_PRODUCT(DZDNUT,DZDNU,AZL,ERR,ERROR,*999)    ! AZL = C
+    CALL MATRIX_TRANSPOSE(DZDNU,DZDNUT,ERR,ERROR,*999)
+    CALL MATRIX_PRODUCT(DZDNUT,DZDNU,AZL,ERR,ERROR,*999)
 
     PRESSURE_COMPONENT=DEPENDENT_INTERPOLATED_POINT%INTERPOLATION_PARAMETERS%FIELD_VARIABLE%NUMBER_OF_COMPONENTS
     P=DEPENDENT_INTERPOLATED_POINT%VALUES(PRESSURE_COMPONENT,1)
 
-    CALL INVERT(AZL,AZU,I3,ERR,ERROR,*999)    !AZL = C,  I3 = det(C) = det(F'*F)
-    Jznu=I3**0.5_DP   ! Jznu = sqrt(det(C))
-    E = 0.5_DP*AZL    ! E = 1/2 C
+    CALL INVERT(AZL,AZU,I3,ERR,ERROR,*999)
+    Jznu=I3**0.5_DP
+    E = 0.5_DP*AZL 
     DO i=1,3
       E(i,i)=E(i,i)-0.5_DP
     ENDDO
-    ! E = 1/2 (C-I) "Green-Lagrange strain tensor"
-
     IF(DIAGNOSTICS1) THEN
       CALL WRITE_STRING_MATRIX(DIAGNOSTIC_OUTPUT_TYPE,1,1,3,1,1,3, &
         & 3,3,E,WRITE_STRING_MATRIX_NAME_AND_INDICES,'("    E','(",I1,",:)',' :",3(X,E13.6))', &
@@ -3446,6 +3450,9 @@ CONTAINS
     DO i=1,3
       IDENTITY(i,i)=1.0_DP
     ENDDO
+
+
+    PRINT*, "  C=", AZL,", det(C)=",AZU,", E=",E,", S=", PIOLA_TENSOR,", Jznu=",Jznu
 
     SELECT CASE(EQUATIONS_SET_SUBTYPE)
     CASE(EQUATIONS_SET_NEARLY_INCOMPRESSIBLE_MOONEY_RIVLIN_SUBTYPE)
@@ -3616,10 +3623,10 @@ CONTAINS
 
 !      CALL Eigenvalue(C_e,EVALUES,ERR,ERROR,*999)
       CALL DSYEV('V','U',3,C_e,3,EVALUES,WORK,-1,ERR)
-      IF(ERR.NE.0) WRITE(*,*) "Error in Eigenvalue computation (1)"
+      IF(ERR.NE.0) CALL FlagError("Error in Eigenvalue computation",ERR,ERROR,*999)
       LWORK=MIN(LWMAX,INT(WORK(1)))
       CALL DSYEV('V','U',3,C_e,3,EVALUES,WORK,LWORK,ERR)
-      IF(ERR.NE.0) WRITE(*,*) "Error in Eigenvalue computation (2)"
+      IF(ERR.NE.0) CALL FlagError("Error in Eigenvalue computation",ERR,ERROR,*999)
       EVECTOR_1=C_e(:,1)
       EVECTOR_2=C_e(:,2)
       EVECTOR_3=C_e(:,3)
@@ -3676,10 +3683,10 @@ CONTAINS
 !         FREE_ENERGY=1.0_DP/2.0_DP*(I_1e-3.0_DP)
 !         CALL Eigenvalue(C_e,EVALUES,ERR,ERROR,*999)
           CALL DSYEV('V','U',3,C_e,3,EVALUES,WORK,-1,ERR)
-          IF(ERR.NE.0) WRITE(*,*) "Error in Eigenvalue computation (3)"
+          IF(ERR.NE.0) CALL FlagError("Error in Eigenvalue computation",ERR,ERROR,*999)
           LWORK=MIN(LWMAX,INT(WORK(1)))
           CALL DSYEV('V','U',3,C_e,3,EVALUES,WORK,LWORK,ERR)
-          IF(ERR.NE.0) WRITE(*,*) "Error in Eigenvalue computation (4)"
+          IF(ERR.NE.0) CALL FlagError("Error in Eigenvalue computation",ERR,ERROR,*999)
           EVECTOR_1=C_e(:,1)
           EVECTOR_2=C_e(:,2)
           EVECTOR_3=C_e(:,3)
@@ -3751,10 +3758,10 @@ CONTAINS
 !         FREE_ENERGY=1.0_DP/2.0_DP*(I_1e-3.0_DP)
 !         CALL Eigenvalue(C_e,EVALUES,ERR,ERROR,*999)
           CALL DSYEV('V','U',3,C_e,3,EVALUES,WORK,-1,ERR)
-          IF(ERR.NE.0) WRITE(*,*) "Error in Eigenvalue computation (5)"
+          IF(ERR.NE.0) CALL FlagError("Error in Eigenvalue computation",ERR,ERROR,*999)
           LWORK=MIN(LWMAX,INT(WORK(1)))
           CALL DSYEV('V','U',3,C_e,3,EVALUES,WORK,LWORK,ERR)
-          IF(ERR.NE.0) WRITE(*,*) "Error in Eigenvalue computation (6)"
+          IF(ERR.NE.0) CALL FlagError("Error in Eigenvalue computation",ERR,ERROR,*999)
           EVECTOR_1=C_e(:,1)
           EVECTOR_2=C_e(:,2)
           EVECTOR_3=C_e(:,3)
@@ -3772,7 +3779,7 @@ CONTAINS
           CALL MATRIX_PRODUCT(F_a_inv,EMATRIX_2,N2,ERR,ERROR,*999)
           CALL MATRIX_PRODUCT(N2,F_a_inv,N2,ERR,ERROR,*999) ! F_a_inv=F_a_inv_T
           CALL MATRIX_PRODUCT(F_a_inv,EMATRIX_3,N3,ERR,ERROR,*999)
-          CALL MATRIX_PRODUCT(N3,F_a_inv,N3,ERR,ERROR,*999) ! F_a_inv=F_a_inv_T
+          CALL MATRIX_PRODUCT(N3,F_a_inv,N3,ERR,ERROR,*999) ! F_a_inv=F_a_inv_T 
 
           FREE_ENERGY=0.0_DP
           DO i=1,3
@@ -3786,7 +3793,7 @@ CONTAINS
           VALUE=XB_ENERGY_PER_VOLUME-(FREE_ENERGY-FREE_ENERGY_0)
         ENDIF
       ENDDO
-
+    
       ! Neo-Hook
 !      F_a = 0.0_DP
 !      F_a(1,1) = lambda_a
@@ -3803,10 +3810,10 @@ CONTAINS
 !      CALL Eigenvector(C_e,EVALUES(3),EVECTOR_3,ERR,ERROR,*999)
 !      CALL MATRIX_PRODUCT(F_e_T,F_e,C_e,ERR,ERROR,*999)
 !      CALL DSYEV('V','U',3,C_e,3,EVALUES,WORK,-1,ERR)
-!      IF(ERR.NE.0) WRITE(*,*) "Error in Eigenvalue computation"
+!      IF(ERR.NE.0) CALL FlagError("Error in Eigenvalue computation",ERR,ERROR,*999)
 !      LWORK=MIN(LWMAX,INT(WORK(1)))
 !      CALL DSYEV('V','U',3,C_e,3,EVALUES,WORK,LWORK,ERR)
-!      IF(ERR.NE.0) WRITE(*,*) "Error in Eigenvalue computation"
+!      IF(ERR.NE.0) CALL FlagError("Error in Eigenvalue computation",ERR,ERROR,*999)
 !      EVECTOR_1=C_e(:,1)
 !      EVECTOR_2=C_e(:,2)
 !      EVECTOR_3=C_e(:,3)
@@ -3903,13 +3910,19 @@ CONTAINS
       delta_t=0.001_DP;
       velo=(dist2-dist1)/delta_t ! velo>0 == lengthening
       !conversion of velocity at the continuum macroscale to the micromechanical cell model half-sarcomere velocity
-      velo=velo*5.0e-8_DP 
+      velo=velo*5.0e-8_DP  
 !      velo=velo*5.0e-2_DP
 !      velo=velo*5.0e-7_DP 
 
       CALL FIELD_PARAMETER_SET_UPDATE_GAUSS_POINT(DEPENDENT_FIELD,FIELD_U1_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,GAUSS_POINT_NUMBER, &
         & ELEMENT_NUMBER,2,velo,ERR,ERROR,*999)
 
+      !NULLIFY(FIELD_VARIABLE)
+      !CALL FIELD_VARIABLE_GET(DEPENDENT_FIELD,FIELD_U1_VARIABLE_TYPE,FIELD_VARIABLE,ERR,ERROR,*999)
+      !dof_idx=FIELD_VARIABLE%COMPONENTS(2)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(GAUSS_POINT_NUMBER, &
+      !  & ELEMENT_NUMBER)
+      !CALL DISTRIBUTED_VECTOR_VALUES_SET(FIELD_VARIABLE%PARAMETER_SETS%SET_TYPE(FIELD_VALUES_SET_TYPE)%PTR%PARAMETERS,dof_idx, &
+      !  & velo,ERR,ERROR,*999)
       
       !--------------------------------------------------------------------------------------------
       NULLIFY(INDEPENDENT_FIELD)
@@ -3973,10 +3986,10 @@ CONTAINS
       !Odgen law - 3 terms. Material Parameters C = [mu(1) mu(2) mu(3) alpha(1) alpha(2) alpha(3) mu_0]
 !      CALL Eigenvalue(C_e,EVALUES,ERR,ERROR,*999)
       CALL DSYEV('V','U',3,C_e,3,EVALUES,WORK,-1,ERR)
-      IF(ERR.NE.0) WRITE(*,*) "Error in Eigenvalue computation (7)"
+      IF(ERR.NE.0) CALL FlagError("Error in Eigenvalue computation",ERR,ERROR,*999)
       LWORK=MIN(LWMAX,INT(WORK(1)))
       CALL DSYEV('V','U',3,C_e,3,EVALUES,WORK,LWORK,ERR)
-      IF(ERR.NE.0) WRITE(*,*) "Error in Eigenvalue computation (8)"
+      IF(ERR.NE.0) CALL FlagError("Error in Eigenvalue computation",ERR,ERROR,*999)
       EVECTOR_1=C_e(:,1)
       EVECTOR_2=C_e(:,2)
       EVECTOR_3=C_e(:,3)
@@ -4041,10 +4054,10 @@ CONTAINS
           CALL MATRIX_PRODUCT(F_e_T,F_e,C_e,ERR,ERROR,*999)
 
           CALL DSYEV('V','U',3,C_e,3,EVALUES,WORK,-1,ERR)
-          IF(ERR.NE.0) WRITE(*,*) "Error in Eigenvalue computation (9)"
+          IF(ERR.NE.0) CALL FlagError("Error in Eigenvalue computation",ERR,ERROR,*999)
           LWORK=MIN(LWMAX,INT(WORK(1)))
           CALL DSYEV('V','U',3,C_e,3,EVALUES,WORK,LWORK,ERR)
-          IF(ERR.NE.0) WRITE(*,*) "Error in Eigenvalue computation (10)"
+          IF(ERR.NE.0) CALL FlagError("Error in Eigenvalue computation",ERR,ERROR,*999)
           EVECTOR_1=C_e(:,1)
           EVECTOR_2=C_e(:,2)
           EVECTOR_3=C_e(:,3)
@@ -4114,10 +4127,10 @@ CONTAINS
           CALL MATRIX_PRODUCT(F_e_T,F_e,C_e,ERR,ERROR,*999)
 
           CALL DSYEV('V','U',3,C_e,3,EVALUES,WORK,-1,ERR)
-          IF(ERR.NE.0) WRITE(*,*) "Error in Eigenvalue computation (11)"
+          IF(ERR.NE.0) CALL FlagError("Error in Eigenvalue computation",ERR,ERROR,*999)
           LWORK=MIN(LWMAX,INT(WORK(1)))
           CALL DSYEV('V','U',3,C_e,3,EVALUES,WORK,LWORK,ERR)
-          IF(ERR.NE.0) WRITE(*,*) "Error in Eigenvalue computation (12)"
+          IF(ERR.NE.0) CALL FlagError("Error in Eigenvalue computation",ERR,ERROR,*999)
           EVECTOR_1=C_e(:,1)
           EVECTOR_2=C_e(:,2)
           EVECTOR_3=C_e(:,3)
@@ -4163,7 +4176,7 @@ CONTAINS
       lambda_f=SQRT(AZL(1,1))
       CALL FIELD_PARAMETER_SET_UPDATE_GAUSS_POINT(DEPENDENT_FIELD,FIELD_U1_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,GAUSS_POINT_NUMBER, &
         & ELEMENT_NUMBER,1,lambda_f,ERR,ERROR,*999)
-
+    ! end case 
 
     CASE(EQUATIONS_SET_1D3D_MONODOMAIN_ACTIVE_STRAIN_SUBTYPE)
 
@@ -4254,6 +4267,7 @@ CONTAINS
       PIOLA_TENSOR(2,1)=PIOLA_TENSOR(1,2)
       PIOLA_TENSOR(2,2)=2.0_DP*(C(1)+C(2)*(AZL(3,3)+AZL(1,1)))+P*AZU(2,2)
 
+      PRINT*, "  PIOLA_TENSOR = ", PIOLA_TENSOR
 
       SELECT CASE(EQUATIONS_SET_SUBTYPE)
       CASE(EQUATIONS_SET_MOONEY_RIVLIN_ACTIVECONTRACTION_SUBTYPE)
@@ -4285,13 +4299,31 @@ CONTAINS
         !passive anisotropic stiffness -- only in the tension range
         IF(AZL(1,1) > 1.0_DP) THEN
           PIOLA_TENSOR(1,1)=PIOLA_TENSOR(1,1)+C(3)/AZL(1,1)*(AZL(1,1)**(C(4)/2.0_DP)-1.0_DP)
+          PRINT*, "PIOLA_TENSOR(1,1): ",PIOLA_TENSOR(1,1)
         ENDIF
         !active stress component
         CALL Field_ParameterSetGetLocalGaussPoint(EQUATIONS_SET%INDEPENDENT%INDEPENDENT_FIELD, & 
           &  FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,GAUSS_POINT_NUMBER,ELEMENT_NUMBER,1,VALUE, &
           & ERR,ERROR,*999)
+          
+        PRINT*, "get value of active stress component: ", VALUE
+        IF (ISNAN(VALUE)) THEN
+          PRINT*, "Value is NaN!"
+          VALUE = 0.0_DP
+        ELSE
+          PRINT*, "Value is not NaN."
+        ENDIF
+        
+        IF (VALUE == VALUE) THEN
+          PRINT*, "VALUE == VALUE"
+        ELSE
+          PRINT*, "VALUE != VALUE"
+        ENDIF
+          
         !divide by lambda and multiply by P_max
         VALUE=VALUE/SQRT(AZL(1,1))*C(5)
+        
+        PRINT*, "AZL(1,1): ", AZL(1,1), ", C(5): ", C(5), ", normalized: ", VALUE
         
         !HINDAWI paper - force-length relation at the continuum level
 !        if((SQRT(AZL(1,1))>0.72_DP).AND.(SQRT(AZL(1,1))<1.68_DP)) then
@@ -4503,6 +4535,9 @@ CONTAINS
 
       END SELECT
 
+      PRINT*, "  PIOLA_TENSOR = ", PIOLA_TENSOR
+
+    ! end case EQUATIONS_SET_MOONEY_RIVLIN_SUBTYPE
 
     CASE(EQUATIONS_SET_TRANS_ISOTROPIC_ACTIVE_TRANSITION_SUBTYPE)
       !Equations set for transversely isotropic (fibre-reinforced), active contractible bodies consitisting of two materials
@@ -4997,6 +5032,9 @@ CONTAINS
     CALL MATRIX_PRODUCT(TEMP,DZDNUT,CAUCHY_TENSOR,ERR,ERROR,*999)
     
     CAUCHY_TENSOR=CAUCHY_TENSOR/Jznu
+    
+    PRINT*, "  devide CAUCHY_TENSOR by Jznu=",Jznu,", CAUCHY_TENSOR=",CAUCHY_TENSOR
+    
     IF(DIAGNOSTICS1) THEN
       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  ELEMENT_NUMBER = ",ELEMENT_NUMBER,ERR,ERROR,*999)
       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  gauss_idx = ",GAUSS_POINT_NUMBER,ERR,ERROR,*999)
@@ -9805,10 +9843,10 @@ CONTAINS
                 !Odgen law - 3 terms. Material Parameters C = [mu(1) mu(2) mu(3) alpha(1) alpha(2) alpha(3) mu_0]
                 !CALL Eigenvalue(C_e,EVALUES,ERR,ERROR,*999)
                 CALL DSYEV('V','U',3,C_e,3,EVALUES,WORK,-1,ERR)
-                IF(ERR.NE.0) WRITE(*,*) "Error in Eigenvalue computation"
+                IF(ERR.NE.0) CALL FlagError("Error in Eigenvalue computation",ERR,ERROR,*999)
                 LWORK=MIN(LWMAX,INT(WORK(1)))
                 CALL DSYEV('V','U',3,C_e,3,EVALUES,WORK,LWORK,ERR)
-                IF(ERR.NE.0) WRITE(*,*) "Error in Eigenvalue computation"
+                IF(ERR.NE.0) CALL FlagError("Error in Eigenvalue computation",ERR,ERROR,*999)
                 EVECTOR_1=C_e(:,1)
                 EVECTOR_2=C_e(:,2)
                 EVECTOR_3=C_e(:,3)
@@ -9864,10 +9902,10 @@ CONTAINS
                     CALL MATRIX_PRODUCT(F_e_T,F_e,C_e,ERR,ERROR,*999)
 
                     CALL DSYEV('V','U',3,C_e,3,EVALUES,WORK,-1,ERR)
-                    IF(ERR.NE.0) WRITE(*,*) "Error in Eigenvalue computation"
+                    IF(ERR.NE.0) CALL FlagError("Error in Eigenvalue computation",ERR,ERROR,*999)
                     LWORK=MIN(LWMAX,INT(WORK(1)))
                     CALL DSYEV('V','U',3,C_e,3,EVALUES,WORK,LWORK,ERR)
-                    IF(ERR.NE.0) WRITE(*,*) "Error in Eigenvalue computation"
+                    IF(ERR.NE.0) CALL FlagError("Error in Eigenvalue computation",ERR,ERROR,*999)
                     EVECTOR_1=C_e(:,1)
                     EVECTOR_2=C_e(:,2)
                     EVECTOR_3=C_e(:,3)
@@ -9938,10 +9976,10 @@ CONTAINS
                     CALL MATRIX_PRODUCT(F_e_T,F_e,C_e,ERR,ERROR,*999)
 
                     CALL DSYEV('V','U',3,C_e,3,EVALUES,WORK,-1,ERR)
-                    IF(ERR.NE.0) WRITE(*,*) "Error in Eigenvalue computation"
+                    IF(ERR.NE.0) CALL FlagError("Error in Eigenvalue computation",ERR,ERROR,*999)
                     LWORK=MIN(LWMAX,INT(WORK(1)))
                     CALL DSYEV('V','U',3,C_e,3,EVALUES,WORK,LWORK,ERR)
-                    IF(ERR.NE.0) WRITE(*,*) "Error in Eigenvalue computation"
+                    IF(ERR.NE.0) CALL FlagError("Error in Eigenvalue computation",ERR,ERROR,*999)
                     EVECTOR_1=C_e(:,1)
                     EVECTOR_2=C_e(:,2)
                     EVECTOR_3=C_e(:,3)
