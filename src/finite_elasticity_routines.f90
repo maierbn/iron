@@ -4310,6 +4310,12 @@ CONTAINS
         PRINT*, "get value of active stress component: ", VALUE
         Write(Str, "(F3.5)") VALUE
         Print*, "STR=[", TRIM(STR), "]"
+        
+        IF (Str == "NaN") THEN
+          VALUE = 0.0_DP
+          PRINT*, "Replace value by 0.0!"
+        ENDIF
+        
         IF (ISNAN(VALUE)) THEN
           PRINT*, "Value is NaN!"
           VALUE = 0.0_DP
