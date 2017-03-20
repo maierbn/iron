@@ -1667,13 +1667,13 @@ CONTAINS
           & EQUATIONS_SET_ANISOTROPIC_POLYNOMIAL_SUBTYPE,EQUATIONS_SET_ANISOTROPIC_POLYNOMIAL_ACTIVE_SUBTYPE, &
           & EQUATIONS_SET_INCOMPRESSIBLE_MOONEY_RIVLIN_SUBTYPE, EQUATIONS_SET_HOLZAPFEL_OGDEN_ACTIVECONTRACTION_SUBTYPE) ! 4 dependent components
           
-          PRINT*, "ELEMENT_NUMBER=",ELEMENT_NUMBER, ", Loop over gauss points and add residuals: elastictiy_routines.f90: 1670"
+          !PRINT*, "ELEMENT_NUMBER=",ELEMENT_NUMBER, ", Loop over gauss points and add residuals: elastictiy_routines.f90: 1670"
           
           !Loop over gauss points and add residuals
           DO gauss_idx=1,DEPENDENT_NUMBER_OF_GAUSS_POINTS
             GAUSS_WEIGHT=DEPENDENT_QUADRATURE_SCHEME%GAUSS_WEIGHTS(gauss_idx)
             
-            PRINT*, "next Gauss Point: gauss_idx=",gauss_idx
+            !PRINT*, "next Gauss Point: gauss_idx=",gauss_idx
             
               !Interpolate dependent, geometric, fibre and materials fields
             CALL FIELD_INTERPOLATE_GAUSS(FIRST_PART_DERIV,BASIS_DEFAULT_QUADRATURE_SCHEME,gauss_idx, &
@@ -3452,7 +3452,7 @@ CONTAINS
     ENDDO
 
 
-    PRINT*, "  C=", AZL,", det(C)=",AZU,", E=",E,", S=", PIOLA_TENSOR,", Jznu=",Jznu
+    !PRINT*, "  C=", AZL,", det(C)=",AZU,", E=",E,", S=", PIOLA_TENSOR,", Jznu=",Jznu
 
     SELECT CASE(EQUATIONS_SET_SUBTYPE)
     CASE(EQUATIONS_SET_NEARLY_INCOMPRESSIBLE_MOONEY_RIVLIN_SUBTYPE)
@@ -4267,7 +4267,7 @@ CONTAINS
       PIOLA_TENSOR(2,1)=PIOLA_TENSOR(1,2)
       PIOLA_TENSOR(2,2)=2.0_DP*(C(1)+C(2)*(AZL(3,3)+AZL(1,1)))+P*AZU(2,2)
 
-      PRINT*, "  PIOLA_TENSOR = ", PIOLA_TENSOR
+      !PRINT*, "  PIOLA_TENSOR = ", PIOLA_TENSOR
 
       SELECT CASE(EQUATIONS_SET_SUBTYPE)
       CASE(EQUATIONS_SET_MOONEY_RIVLIN_ACTIVECONTRACTION_SUBTYPE)
@@ -4299,7 +4299,7 @@ CONTAINS
         !passive anisotropic stiffness -- only in the tension range
         IF(AZL(1,1) > 1.0_DP) THEN
           PIOLA_TENSOR(1,1)=PIOLA_TENSOR(1,1)+C(3)/AZL(1,1)*(AZL(1,1)**(C(4)/2.0_DP)-1.0_DP)
-          PRINT*, "PIOLA_TENSOR(1,1): ",PIOLA_TENSOR(1,1)
+          !PRINT*, "PIOLA_TENSOR(1,1): ",PIOLA_TENSOR(1,1)
         ENDIF
         !active stress component
         CALL Field_ParameterSetGetLocalGaussPoint(EQUATIONS_SET%INDEPENDENT%INDEPENDENT_FIELD, & 
@@ -4323,7 +4323,7 @@ CONTAINS
         !divide by lambda and multiply by P_max
         VALUE=VALUE/SQRT(AZL(1,1))*C(5)
         
-        PRINT*, "AZL(1,1): ", AZL(1,1), ", C(5): ", C(5), ", normalized: ", VALUE
+        !PRINT*, "AZL(1,1): ", AZL(1,1), ", C(5): ", C(5), ", normalized: ", VALUE
         
         !HINDAWI paper - force-length relation at the continuum level
 !        if((SQRT(AZL(1,1))>0.72_DP).AND.(SQRT(AZL(1,1))<1.68_DP)) then
@@ -4535,7 +4535,7 @@ CONTAINS
 
       END SELECT
 
-      PRINT*, "  PIOLA_TENSOR = ", PIOLA_TENSOR
+      !PRINT*, "  PIOLA_TENSOR = ", PIOLA_TENSOR
 
     ! end case EQUATIONS_SET_MOONEY_RIVLIN_SUBTYPE
 
@@ -5033,7 +5033,7 @@ CONTAINS
     
     CAUCHY_TENSOR=CAUCHY_TENSOR/Jznu
     
-    PRINT*, "  devide CAUCHY_TENSOR by Jznu=",Jznu,", CAUCHY_TENSOR=",CAUCHY_TENSOR
+    !PRINT*, "  devide CAUCHY_TENSOR by Jznu=",Jznu,", CAUCHY_TENSOR=",CAUCHY_TENSOR
     
     IF(DIAGNOSTICS1) THEN
       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  ELEMENT_NUMBER = ",ELEMENT_NUMBER,ERR,ERROR,*999)
