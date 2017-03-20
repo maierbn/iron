@@ -3045,8 +3045,8 @@ CONTAINS
         SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
         IF(ASSOCIATED(SOLVER_MAPPING)) THEN
           !Apply boundary conditition
-          PRINT*, "In Problem_SolverEquationsStaticNonlinearSolve: problem_routines.f90: 3049"
-          PRINT*, "Apply boundary conditition"
+          !PRINT*, "In Problem_SolverEquationsStaticNonlinearSolve: problem_routines.f90: 3049"
+          !PRINT*, "Apply boundary conditition"
 
 #ifdef TAUPROF
           CALL TAU_STATIC_PHASE_START('1.3.3.1.1 apply BC, assemble')
@@ -3067,7 +3067,7 @@ CONTAINS
 #ifdef TAUPROF
           CALL TAU_STATIC_PHASE_STOP('1.3.3.1.1 apply BC, assemble')
 #endif
-          PRINT*, "Interface conditions: ", SOLVER_MAPPING%NUMBER_OF_INTERFACE_CONDITIONS
+          !PRINT*, "Interface conditions: ", SOLVER_MAPPING%NUMBER_OF_INTERFACE_CONDITIONS
 
           !Make sure the interface matrices are up to date
 
