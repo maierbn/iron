@@ -1589,11 +1589,11 @@ CONTAINS
               ne = ELEMENTS_MAPPING%DOMAIN_LIST(element_idx)
               NUMBER_OF_TIMES = NUMBER_OF_TIMES+1
               CALL EQUATIONS_MATRICES_ELEMENT_CALCULATE(EQUATIONS_MATRICES,ne,ERR,ERROR,*999)
-              PRINT*, "EquationsSet_FiniteElementResidualEvaluate(equation_set_routines.f90:1591)"
+              !PRINT*, "EquationsSet_FiniteElementResidualEvaluate(equation_set_routines.f90:1591)"
               CALL EquationsSet_FiniteElementResidualEvaluate(EQUATIONS_SET,ne,ERR,ERROR,*999)
               
-              PRINT*, "Equations_SET"
-              CALL Print_EQUATIONS_SET(EQUATIONS_SET, 2, 10)
+              !PRINT*, "Equations_SET"
+              !CALL Print_EQUATIONS_SET(EQUATIONS_SET, 2, 10)
               
               CALL EQUATIONS_MATRICES_ELEMENT_ADD(EQUATIONS_MATRICES,ERR,ERROR,*999)
             ENDDO !element_idx
@@ -3236,7 +3236,6 @@ CONTAINS
         CALL FlagError("Equations set specification must have at least one entry.",err,error,*999)
       END IF
       SELECT CASE(EQUATIONS_SET%SPECIFICATION(1))
-      CASE(EQUATIONS_SET_ELASTICITY_CLASS)
         CALL ELASTICITY_FINITE_ELEMENT_RESIDUAL_EVALUATE(EQUATIONS_SET,ELEMENT_NUMBER,ERR,ERROR,*999)
       CASE(EQUATIONS_SET_FLUID_MECHANICS_CLASS)
         CALL FluidMechanics_FiniteElementResidualEvaluate(EQUATIONS_SET,ELEMENT_NUMBER,ERR,ERROR,*999)

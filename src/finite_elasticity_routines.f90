@@ -4307,27 +4307,31 @@ CONTAINS
           &  FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,GAUSS_POINT_NUMBER,ELEMENT_NUMBER,1,VALUE, &
           & ERR,ERROR,*999)
           
-        PRINT*, "get value of active stress component: ", VALUE
+        !PRINT*, "get value of active stress component: ", VALUE
+        
+        
+        ! Check if value is NaN. The standard way with ISNAN(VALUE) or VALUE != VALUE does not work with gfortran on cray
         Write(Str, "(F3.5)") VALUE
-        Print*, "STR=[", TRIM(STR), "]"
+        !Print*, "STR=[", TRIM(STR), "]"
         
         IF (Str == "NaN") THEN
           VALUE = 0.0_DP
-          PRINT*, "Replace value by 0.0!"
+          !PRINT*, "Replace value by 0.0!"
         ENDIF
         
-        IF (ISNAN(VALUE)) THEN
-          PRINT*, "Value is NaN!"
-          VALUE = 0.0_DP
-        ELSE
-          PRINT*, "Value is not NaN."
-        ENDIF
         
-        IF (VALUE == VALUE) THEN
-          PRINT*, "VALUE == VALUE"
-        ELSE
-          PRINT*, "VALUE != VALUE"
-        ENDIF
+        !IF (ISNAN(VALUE)) THEN
+        !  PRINT*, "Value is NaN!"
+        !  VALUE = 0.0_DP
+        !ELSE
+        !  PRINT*, "Value is not NaN."
+        !ENDIF
+        
+        !IF (VALUE == VALUE) THEN
+        !  PRINT*, "VALUE == VALUE"
+        !ELSE
+        !  PRINT*, "VALUE != VALUE"
+        !ENDIF
           
         !divide by lambda and multiply by P_max
         VALUE=VALUE/SQRT(AZL(1,1))*C(5)
