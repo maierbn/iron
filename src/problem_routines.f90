@@ -3192,6 +3192,7 @@ CONTAINS
 #ifdef USE_CUSTOM_PROFILING
       CALL CustomProfilingStop("problem_solver_pre_solve")
 #endif
+     CALL PROBLEM_SOLVER_PRE_SOLVE(SOLVER,ERR,ERROR,*999)
 #ifdef TAUPROF
       CALL TAU_STATIC_PHASE_STOP('problem_solver_pre_solve')
 #endif
