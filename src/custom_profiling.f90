@@ -108,31 +108,31 @@ CONTAINS
     INTEGER :: CurrentIndex
     INTEGER(INTG) :: SizePerElement  !< number of bytes of one element
 
-    !MemoryConsumption = REAL(TotalSize, LINTG)
-    !
-    !IF (NumberOfElements > 0) THEN
-    !  SizePerElement = TotalSize / NumberOfElements
-    !ELSE
-    !  SizePerElement = 1
-    !ENDIF
-    !
-    !! find index of identifier
-    !CurrentIndex = GetMemoryIndex(Identifier)
-    !
-    !! If record with this identifier does not yet exist, create new
-    !IF (CurrentIndex == 0) THEN
-    !  SizeMemory = SizeMemory + 1
-    !  CurrentIndex = SizeMemory
-    !  MemoryIdentifiers(CurrentIndex) = Identifier
-    !  MemoryConsumptions(CurrentIndex) = 0
-    !  SizesPerElement(CurrentIndex) = 0
-    !  NumberOfObjects(CurrentIndex) = 0
-    !ENDIF
-    !
-    !! Add value to record of memory consumption
-    !MemoryConsumptions(CurrentIndex) = MemoryConsumptions(CurrentIndex) + MemoryConsumption
-    !SizesPerElement(CurrentIndex) = SizePerElement
-    !NumberOfObjects(CurrentIndex) = NumberOfObjects(CurrentIndex) + 1
+    MemoryConsumption = REAL(TotalSize, LINTG)
+    
+    IF (NumberOfElements > 0) THEN
+      SizePerElement = TotalSize / NumberOfElements
+    ELSE
+      SizePerElement = 1
+    ENDIF
+    
+    ! find index of identifier
+    CurrentIndex = GetMemoryIndex(Identifier)
+    
+    ! If record with this identifier does not yet exist, create new
+    IF (CurrentIndex == 0) THEN
+      SizeMemory = SizeMemory + 1
+      CurrentIndex = SizeMemory
+      MemoryIdentifiers(CurrentIndex) = Identifier
+      MemoryConsumptions(CurrentIndex) = 0
+      SizesPerElement(CurrentIndex) = 0
+      NumberOfObjects(CurrentIndex) = 0
+    ENDIF
+    
+    ! Add value to record of memory consumption
+    MemoryConsumptions(CurrentIndex) = MemoryConsumptions(CurrentIndex) + MemoryConsumption
+    SizesPerElement(CurrentIndex) = SizePerElement
+    NumberOfObjects(CurrentIndex) = NumberOfObjects(CurrentIndex) + 1
 
   END SUBROUTINE
   !
