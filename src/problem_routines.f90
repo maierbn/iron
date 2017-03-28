@@ -2577,6 +2577,7 @@ CONTAINS
               DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
                 EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
                 !Assemble the equations for linear problems
+                ! assemble FEM stiffness matrix and right hand side
                 CALL EQUATIONS_SET_ASSEMBLE(EQUATIONS_SET,ERR,ERROR,*999)
               ENDDO !equations_set_idx
 

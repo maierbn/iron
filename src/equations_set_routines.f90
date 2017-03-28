@@ -1161,6 +1161,11 @@ CONTAINS
     TYPE(EQUATIONS_TYPE), POINTER :: EQUATIONS
     TYPE(EQUATIONS_MATRICES_TYPE), POINTER :: EQUATIONS_MATRICES
     TYPE(FIELD_TYPE), POINTER :: DEPENDENT_FIELD
+    LOGICAL :: DEBUGGING = .TRUE.
+    
+    INTEGER(INTG) :: component_idx
+    TYPE(FIELD_INTERPOLATION_PARAMETERS_TYPE), POINTER :: INTERPOLATION_PARAMETERS, INTERPOLATION_PARAMETERS_PTR
+    
     
     ENTERS("EQUATIONS_SET_ASSEMBLE_DYNAMIC_LINEAR_FEM",ERR,ERROR,*999)
 
@@ -1197,14 +1202,59 @@ CONTAINS
               ELEMENT_SYSTEM_ELAPSED=0.0_SP
             ENDIF
             NUMBER_OF_TIMES=0
+            
+            IF (DEBUGGING) THEN
+              PRINT*, "assemble dynamic linear FEM, loop over elements: ", ELEMENTS_MAPPING%INTERNAL_START, &
+                & "to",ELEMENTS_MAPPING%INTERNAL_FINISH
+                
+              !CALL Print_DOMAIN_MAPPING(ELEMENTS_MAPPING, 5, 40)
+              
+              PRINT*, "internal elements ", ELEMENTS_MAPPING%INTERNAL_START,"to",ELEMENTS_MAPPING%INTERNAL_FINISH
+              PRINT*, "geometric interpolation parameters at elements:"
+              
+              PRINT*, "index        element_no      interpolation_parameters"
+              DO element_idx=ELEMENTS_MAPPING%INTERNAL_START, ELEMENTS_MAPPING%INTERNAL_FINISH
+              
+                ne = ELEMENTS_MAPPING%DOMAIN_LIST(element_idx)
+                
+                ! get interpolation parameters of element
+                ! version which is used with real preallocated variable names:
+                CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,ne,&
+                  & EQUATIONS%INTERPOLATION%GEOMETRIC_INTERP_PARAMETERS(FIELD_U_VARIABLE_TYPE)%PTR,ERR,ERROR,*999)
+          
+                INTERPOLATION_PARAMETERS=> &
+                  & EQUATIONS%INTERPOLATION%GEOMETRIC_INTERP_POINT(FIELD_U_VARIABLE_TYPE)%PTR%INTERPOLATION_PARAMETERS                
+                
+                ! direct version
+                CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,ne,INTERPOLATION_PARAMETERS,ERR,ERROR,*999)
+                
+                DO component_idx = 1,INTERPOLATION_PARAMETERS%FIELD_VARIABLE%NUMBER_OF_COMPONENTS
+                  PRINT*, element_idx, ne, INTERPOLATION_PARAMETERS%PARAMETERS(:,component_idx)
+                ENDDO
+              ENDDO
+              
+            ENDIF
+            
             !Loop over the internal elements
-            DO element_idx=ELEMENTS_MAPPING%INTERNAL_START,ELEMENTS_MAPPING%INTERNAL_FINISH
+            DO element_idx=ELEMENTS_MAPPING%INTERNAL_START, ELEMENTS_MAPPING%INTERNAL_FINISH
+              !here only the internal elements are considered
+              
               ne=ELEMENTS_MAPPING%DOMAIN_LIST(element_idx)
+              IF (DEBUGGING) PRINT*, "element index ", element_idx,", ne=",ne
+              
+              !CALL Print_EQUATIONS_MATRICES(EQUATIONS_MATRICES, 4, 5)
+              !PRINT*, "======================"
+              !CALL Print_EQUATIONS_SET(EQUATIONS_SET, 4, 5)
+              !STOP
+              
               NUMBER_OF_TIMES=NUMBER_OF_TIMES+1
               CALL EQUATIONS_MATRICES_ELEMENT_CALCULATE(EQUATIONS_MATRICES,ne,ERR,ERROR,*999)
+              
               CALL EQUATIONS_SET_FINITE_ELEMENT_CALCULATE(EQUATIONS_SET,ne,ERR,ERROR,*999)
+              
               CALL EQUATIONS_MATRICES_ELEMENT_ADD(EQUATIONS_MATRICES,ERR,ERROR,*999)
             ENDDO !element_idx
+            STOP
             !Output timing information if required
             IF(EQUATIONS%OUTPUT_TYPE>=EQUATIONS_TIMING_OUTPUT) THEN
               CALL CPU_TIMER(USER_CPU,USER_TIME3,ERR,ERROR,*999)
