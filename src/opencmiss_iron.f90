@@ -408,7 +408,7 @@ MODULE OpenCMISS_Iron
 
   PUBLIC cmfe_SolverEquationsType,cmfe_SolverEquations_Finalise,cmfe_SolverEquations_Initialise
 
-  PUBLIC cmfe_OutputInterpolationParameters, cmfe_getFieldSize, &
+  PUBLIC cmfe_OutputInterpolationParameters, cmfe_getFieldSize, cmfe_PrintElementsMapping, cmfe_PrintNodesMapping, &
     & cmfe_CustomProfilingStart,cmfe_CustomProfilingStop,cmfe_CustomProfilingMemory,cmfe_CustomProfilingGetInfo, &
     & cmfe_CustomProfilingGetDuration,cmfe_CustomProfilingGetMemory,cmfe_CustomProfilingGetSizePerElement, &
     & cmfe_CustomProfilingGetNumberObjects, cmfe_CustomProfilingGetEnabled
@@ -61812,6 +61812,10 @@ CONTAINS
 
   END SUBROUTINE cmfe_FieldMLIO_GetSession
 
+  !
+  !================================================================================================================================
+  !
+
   SUBROUTINE cmfe_OutputInterpolationParameters(Problem, DependentFieldM, SolverParabolic, Err)
     TYPE(cmfe_ProblemType), INTENT(IN) :: Problem
     TYPE(cmfe_FieldType), INTENT(IN) :: DependentFieldM
@@ -61828,11 +61832,14 @@ CONTAINS
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS
     TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET
+    INTEGER(INTG) :: ComputationalNodeNumber
     
     ENTERS("cmfe_OutputInterpolationParameters", err, error, *999 )
 
     !NULLIFY(INTERPOLATION_PARAMETERS)
     !ALLOCATE(INTERPOLATION_PARAMETERS)
+    
+    CALL cmfe_ComputationalNodeNumberGet(ComputationalNodeNumber, Err)
     
     SOLVER=>SolverParabolic%Solver
     
@@ -61847,7 +61854,7 @@ CONTAINS
       ENDIF
     ENDIF
           
-    PRINT*, "Output interpolation parameters (opencmiss_iron.f90:61815)"
+    PRINT*, "Output interpolation parameters (opencmiss_iron.f90:61815), process ", ComputationalNodeNumber
           
     DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
       EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
@@ -61866,7 +61873,7 @@ CONTAINS
           & DEPENDENT_FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR% &
           & MAPPINGS%ELEMENTS
           
-        PRINT*, "index        element_no      interpolation_parameters"
+        PRINT*, "      index  local elno   interpolation_parameters"
         
         DO element_idx=ELEMENTS_MAPPING%INTERNAL_START, ELEMENTS_MAPPING%INTERNAL_FINISH
         
@@ -61898,6 +61905,10 @@ CONTAINS
     
   END SUBROUTINE cmfe_OutputInterpolationParameters
   
+  !
+  !================================================================================================================================
+  !
+
   FUNCTION cmfe_getFieldSize(Field, Err)
     TYPE(cmfe_FieldType), INTENT(IN) :: Field
     INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
@@ -61914,6 +61925,62 @@ CONTAINS
     cmfe_getFieldSize = NumberOfBytes
   
   END FUNCTION cmfe_getFieldSize
+  
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_PrintElementsMapping(Decomposition, Err)
+    TYPE(cmfe_DecompositionType), INTENT(IN) :: Decomposition
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, ComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(ComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    ! print ELement mappings
+    DO I = 0,NumberOfComputationalNodes-1
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+      IF (ComputationalNodeNumber == I) THEN
+        PRINT*, "Process ",I," of ",NumberOfComputationalNodes,": Element mapping for DecompositionM"
+        ! print variables
+        CALL Print_Domain_Mapping(Decomposition%DECOMPOSITION%DOMAIN( &
+          & Decomposition%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%ELEMENTS, 2, 1000)
+        CALL FLUSH()   ! flush stdout
+      ENDIF
+    ENDDO
+    CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    
+    END SUBROUTINE cmfe_PrintElementsMapping
+  
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_PrintNodesMapping(Decomposition, Err)
+    TYPE(cmfe_DecompositionType), INTENT(IN) :: Decomposition
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, ComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(ComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    ! print ELement mappings
+    DO I = 0,NumberOfComputationalNodes-1
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+      IF (ComputationalNodeNumber == I) THEN
+        PRINT*, "Process ",I," of ",NumberOfComputationalNodes,": Node mapping for DecompositionM"
+        ! print variables
+        CALL Print_Domain_Mapping(Decomposition%DECOMPOSITION%DOMAIN( &
+          & Decomposition%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%NODES, 2, 1000)
+        CALL FLUSH()   ! flush stdout
+      ENDIF
+    ENDDO
+    CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    
+    END SUBROUTINE cmfe_PrintNodesMapping
   
   !
   !================================================================================================================================
