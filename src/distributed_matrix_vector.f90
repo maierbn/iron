@@ -8174,10 +8174,10 @@ CONTAINS
                         & DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%MPI_RECEIVE_REQUEST,MPI_IERROR)
                       CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
                       
-                      PRINT*, "(INTG) IRecv count=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_BUFFER_SIZE,&
-                        & ", src=",DISTRIBUTED_VECTOR%DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%DOMAIN_NUMBER,&
-                        & ", tag=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,&
-                        & ", MPI_IERROR: ",MPI_IERROR
+                      !PRINT*, "(INTG) IRecv count=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_BUFFER_SIZE,&
+                      !  & ", src=",DISTRIBUTED_VECTOR%DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%DOMAIN_NUMBER,&
+                      !  & ", tag=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,&
+                      !  & ", MPI_IERROR: ",MPI_IERROR
                         
                       !CALL MPI_COMM_GET_ATTR(COMPUTATIONAL_ENVIRONMENT%MPI_COMM, MPI_TAG_UB, TAG_UB, FLAG)
                       
@@ -8206,10 +8206,10 @@ CONTAINS
                         & DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%MPI_RECEIVE_REQUEST,MPI_IERROR)
                       CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
                       
-                      PRINT*, "(SP) IRecv count=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_BUFFER_SIZE,&
-                        & ", src=",DISTRIBUTED_VECTOR%DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%DOMAIN_NUMBER,&
-                        & ", tag=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,&
-                        & ", MPI_IERROR: ",MPI_IERROR
+                      !PRINT*, "(SP) IRecv count=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_BUFFER_SIZE,&
+                      !  & ", src=",DISTRIBUTED_VECTOR%DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%DOMAIN_NUMBER,&
+                      !  & ", tag=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,&
+                      !  & ", MPI_IERROR: ",MPI_IERROR
                         
                       
                       IF(DIAGNOSTICS5) THEN
@@ -8234,13 +8234,13 @@ CONTAINS
                         & DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%MPI_RECEIVE_REQUEST,MPI_IERROR)
                       CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
                       
-                      PRINT*, "(DP) IRecv count=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_BUFFER_SIZE,&
-                        & ", src=",DISTRIBUTED_VECTOR%DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%DOMAIN_NUMBER,&
-                        & ", tag=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,&
-                        & ", MPI_IERROR: ",MPI_IERROR
+                      !PRINT*, "(DP) IRecv count=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_BUFFER_SIZE,&
+                      !  & ", src=",DISTRIBUTED_VECTOR%DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%DOMAIN_NUMBER,&
+                      !  & ", tag=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,&
+                      !  & ", MPI_IERROR: ",MPI_IERROR
                         
-                      CALL MPI_COMM_GET_ATTR(COMPUTATIONAL_ENVIRONMENT%MPI_COMM, MPI_TAG_UB, TAG_UB, FLAG, IERROR)
-                      PRINT*, "TAG_UB:",TAG_UB,", FLAG:",FLAG,", IERROR:",IERROR,", MPI_ANY_TAG:",MPI_ANY_TAG
+                      !CALL MPI_COMM_GET_ATTR(COMPUTATIONAL_ENVIRONMENT%MPI_COMM, MPI_TAG_UB, TAG_UB, FLAG, IERROR)
+                      !PRINT*, "TAG_UB:",TAG_UB,", FLAG:",FLAG,", IERROR:",IERROR,", MPI_ANY_TAG:",MPI_ANY_TAG
                       
                       IF(DIAGNOSTICS5) THEN
                         CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"MPI IRECV call posted:",ERR,ERROR,*999)
@@ -8264,10 +8264,10 @@ CONTAINS
                         & DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%MPI_RECEIVE_REQUEST,MPI_IERROR)
                       CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
                       
-                      PRINT*, "(L) IRecv count=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_BUFFER_SIZE,&
-                        & ", src=",DISTRIBUTED_VECTOR%DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%DOMAIN_NUMBER,&
-                        & ", tag=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,&
-                        & ", MPI_IERROR: ",MPI_IERROR
+                      !PRINT*, "(L) IRecv count=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_BUFFER_SIZE,&
+                      !  & ", src=",DISTRIBUTED_VECTOR%DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%DOMAIN_NUMBER,&
+                      !  & ", tag=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,&
+                      !  & ", MPI_IERROR: ",MPI_IERROR
                         
                       
                       IF(DIAGNOSTICS5) THEN

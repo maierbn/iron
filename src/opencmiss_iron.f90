@@ -408,7 +408,7 @@ MODULE OpenCMISS_Iron
 
   PUBLIC cmfe_SolverEquationsType,cmfe_SolverEquations_Finalise,cmfe_SolverEquations_Initialise
 
-  PUBLIC cmfe_OutputInterpolationParameters, cmfe_getFieldSize, &
+  PUBLIC cmfe_OutputInterpolationParameters, cmfe_getFieldSize, cmfe_PrintElementsMapping, cmfe_PrintNodesMapping, &
     & cmfe_CustomProfilingStart,cmfe_CustomProfilingStop,cmfe_CustomProfilingMemory,cmfe_CustomProfilingGetInfo, &
     & cmfe_CustomProfilingGetDuration,cmfe_CustomProfilingGetMemory,cmfe_CustomProfilingGetSizePerElement, &
     & cmfe_CustomProfilingGetNumberObjects, cmfe_CustomProfilingGetEnabled
@@ -61812,6 +61812,10 @@ CONTAINS
 
   END SUBROUTINE cmfe_FieldMLIO_GetSession
 
+  !
+  !================================================================================================================================
+  !
+
   SUBROUTINE cmfe_OutputInterpolationParameters(Problem, DependentFieldM, SolverParabolic, Err)
     TYPE(cmfe_ProblemType), INTENT(IN) :: Problem
     TYPE(cmfe_FieldType), INTENT(IN) :: DependentFieldM
@@ -61898,6 +61902,10 @@ CONTAINS
     
   END SUBROUTINE cmfe_OutputInterpolationParameters
   
+  !
+  !================================================================================================================================
+  !
+
   FUNCTION cmfe_getFieldSize(Field, Err)
     TYPE(cmfe_FieldType), INTENT(IN) :: Field
     INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
@@ -61914,6 +61922,62 @@ CONTAINS
     cmfe_getFieldSize = NumberOfBytes
   
   END FUNCTION cmfe_getFieldSize
+  
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_PrintElementsMapping(Decomposition, Err)
+    TYPE(cmfe_DecompositionType), INTENT(IN) :: Decomposition
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, ComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(ComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    ! print ELement mappings
+    DO I = 0,NumberOfComputationalNodes-1
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+      IF (ComputationalNodeNumber == I) THEN
+        PRINT*, "Process ",I," of ",NumberOfComputationalNodes,": Element mapping for DecompositionM"
+        ! print variables
+        CALL Print_Domain_Mapping(Decomposition%DECOMPOSITION%DOMAIN( &
+          & Decomposition%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%ELEMENTS, 2, 1000)
+        CALL FLUSH()   ! flush stdout
+      ENDIF
+    ENDDO
+    CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    
+    END SUBROUTINE cmfe_PrintElementsMapping
+  
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_PrintNodesMapping(Decomposition, Err)
+    TYPE(cmfe_DecompositionType), INTENT(IN) :: Decomposition
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, ComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(ComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    ! print ELement mappings
+    DO I = 0,NumberOfComputationalNodes-1
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+      IF (ComputationalNodeNumber == I) THEN
+        PRINT*, "Process ",I," of ",NumberOfComputationalNodes,": Node mapping for DecompositionM"
+        ! print variables
+        CALL Print_Domain_Mapping(Decomposition%DECOMPOSITION%DOMAIN( &
+          & Decomposition%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%NODES, 2, 1000)
+        CALL FLUSH()   ! flush stdout
+      ENDIF
+    ENDDO
+    CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    
+    END SUBROUTINE cmfe_PrintNodesMapping
   
   !
   !================================================================================================================================

@@ -7090,7 +7090,10 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Interpolates a field at a xi location to give an interpolated point. XI is the element location to be interpolated at. PARTIAL_DERIVATIVE_TYPE controls which partial derivatives are evaluated. If it is NO_PART_DERIV then only the field values are interpolated. If it is FIRST_PART_DERIV then the field values and first partial derivatives are interpolated. If it is SECOND_PART_DERIV the the field values and first and second partial derivatives are evaluated. Old CMISS name PXI
+  !>Interpolates a field at a xi location to give an interpolated point. XI is the element location to be interpolated at. 
+  !>PARTIAL_DERIVATIVE_TYPE controls which partial derivatives are evaluated. If it is NO_PART_DERIV then only the field values are
+  !>interpolated. If it is FIRST_PART_DERIV then the field values and first partial derivatives are interpolated. 
+  !>If it is SECOND_PART_DERIV the field values and first and second partial derivatives are evaluated. Old CMISS name PXI
   SUBROUTINE FIELD_INTERPOLATE_XI(PARTIAL_DERIVATIVE_TYPE,XI,INTERPOLATED_POINT,ERR,ERROR,*,componentType)
 
     !Argument variables
