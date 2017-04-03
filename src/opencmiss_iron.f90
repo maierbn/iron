@@ -61873,9 +61873,32 @@ CONTAINS
           & DEPENDENT_FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR% &
           & MAPPINGS%ELEMENTS
           
+        PRINT*, "------- internal elements ------------------------"
         PRINT*, "      index  local elno   interpolation_parameters"
         
         DO element_idx=ELEMENTS_MAPPING%INTERNAL_START, ELEMENTS_MAPPING%INTERNAL_FINISH
+        
+          ne = ELEMENTS_MAPPING%DOMAIN_LIST(element_idx)
+          
+          ! get interpolation parameters of element
+          ! version which is used with real preallocated variable names:
+          !CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,ne,&
+          !  & EQUATIONS%INTERPOLATION%GEOMETRIC_INTERP_PARAMETERS(FIELD_U_VARIABLE_TYPE)%PTR,ERR,ERROR,*999)
+
+          INTERPOLATION_PARAMETERS=> &
+            & EQUATIONS%INTERPOLATION%GEOMETRIC_INTERP_POINT(FIELD_U_VARIABLE_TYPE)%PTR%INTERPOLATION_PARAMETERS                
+          
+          ! direct version
+          CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,ne,INTERPOLATION_PARAMETERS,ERR,ERROR,*999)
+          
+          DO component_idx = 1,INTERPOLATION_PARAMETERS%FIELD_VARIABLE%NUMBER_OF_COMPONENTS
+            PRINT*, element_idx, ne, INTERPOLATION_PARAMETERS%PARAMETERS(:,component_idx)
+          ENDDO
+        ENDDO
+        
+        PRINT*, "------- boundary elements ------------------------"
+        PRINT*, "      index  local elno   interpolation_parameters"
+        DO element_idx=ELEMENTS_MAPPING%BOUNDARY_START, ELEMENTS_MAPPING%BOUNDARY_FINISH
         
           ne = ELEMENTS_MAPPING%DOMAIN_LIST(element_idx)
           
