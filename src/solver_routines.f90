@@ -12878,6 +12878,8 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
     TYPE(INTERFACE_MATRIX_TYPE), POINTER :: INTERFACE_MATRIX
     TYPE(INTERFACE_RHS_TYPE), POINTER :: INTERFACE_RHS_VECTOR
     TYPE(INTERFACE_TO_SOLVER_MAPS_TYPE), POINTER :: INTERFACE_TO_SOLVER_MAP
+    CHARACTER(LEN=3) :: STR
+    LOGICAL :: DEBUGGING_NAN = .TRUE. ! output debugging information on where NaN values in RHS vector come from
 
     REAL(DP), POINTER :: CHECK_DATA(:),PREVIOUS_RESIDUAL_PARAMETERS(:),CHECK_DATA2(:)
     !STABILITY_TEST under investigation
@@ -13435,8 +13437,15 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                                             IF(ASSOCIATED(DYNAMIC_TEMP_VECTOR)) THEN
                                               CALL DISTRIBUTED_VECTOR_VALUES_GET(DYNAMIC_TEMP_VECTOR,equations_row_number, &
                                                 & DYNAMIC_VALUE,ERR,ERROR,*999)
+                                              IF (DEBUGGING_NAN) THEN
+                                                PRINT*, "  compute dynamic value: initialize by DYNAMIC_TEMP_VECTOR", &
+                                                  & " to ", DYNAMIC_VALUE
+                                              ENDIF
                                             ELSE
                                               DYNAMIC_VALUE=0.0_DP
+                                              IF (DEBUGGING_NAN) THEN
+                                                PRINT*, "  compute dynamic value: initialize to 0"
+                                              ENDIF
                                             ENDIF
                                           !
                                             !Get the linear matrices contribution to the RHS values if there are any
@@ -13450,6 +13459,10 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                                                 LINEAR_VALUE_SUM=LINEAR_VALUE_SUM+LINEAR_VALUE
                                               ENDDO !equations_matrix_idx
                                               DYNAMIC_VALUE=DYNAMIC_VALUE+LINEAR_VALUE_SUM
+                                              
+                                              IF (DEBUGGING_NAN) THEN
+                                                PRINT*, "  linear matric: add ",SOURCE_VALUE
+                                              ENDIF
                                             ENDIF
                                             !Get the source vector contribute to the RHS values if there are any
                                             IF(ASSOCIATED(SOURCE_MAPPING)) THEN
@@ -13457,6 +13470,10 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                                               CALL DISTRIBUTED_VECTOR_VALUES_GET(DISTRIBUTED_SOURCE_VECTOR,equations_row_number, &
                                                 & SOURCE_VALUE,ERR,ERROR,*999)
                                               DYNAMIC_VALUE=DYNAMIC_VALUE+SOURCE_VALUE
+                                              
+                                              IF (DEBUGGING_NAN) THEN
+                                                PRINT*, "  source vector: add ",SOURCE_VALUE
+                                              ENDIF
                                             ENDIF
                                             !Get the nonlinear vector contribute to the RHS values if nonlinear solve
                                             IF(.NOT.STABILITY_TEST) THEN
@@ -13473,9 +13490,26 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                                                      & (residual_variable_dof)
                                                    DYNAMIC_VALUE=DYNAMIC_VALUE+PREVIOUS_RESIDUAL_VALUE*(1.0_DP-DYNAMIC_SOLVER% &
                                                      & THETA(1))
+                                                   
+                                                   IF (DEBUGGING_NAN) THEN
+                                                     PRINT*, "  nonlinear vector: add ",PREVIOUS_RESIDUAL_VALUE, & 
+                                                       & "*(1-",DYNAMIC_SOLVER%THETA(1),")"
+                                                   ENDIF
                                                   ENDIF
                                               END IF
                                             END IF
+                                            
+                                            ! Check if DYNAMIC_VALUE is NaN and set to 0 if it is
+                                            ! The standard way with ISNAN(DYNAMIC_VALUE) or DYNAMIC_VALUE != DYNAMIC_VALUE
+                                            ! does not work with gfortran on cray
+                                            Write(Str, "(F3.5)") DYNAMIC_VALUE
+                                            !Print*, "STR=[", TRIM(STR), "]"
+                                            
+                                            IF (Str == "NaN") THEN
+                                              DYNAMIC_VALUE = 0.0_DP
+                                              PRINT*, "Replace value by 0.0!"
+                                            ENDIF
+                                            
                                             !Loop over the solver rows associated with this equations set row
                                             DO solver_row_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
                                               & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)%NUMBER_OF_SOLVER_ROWS
@@ -13485,9 +13519,12 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                                               row_coupling_coefficient=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP( &
                                                 & equations_set_idx)%EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)% &
                                                 & COUPLING_COEFFICIENTS(solver_row_idx)
-                                               PRINT *, "RHS assembly (source vector contributon) in solver_routines.f90:13488: ", &
-                                                & "row ", solver_row_number, &
-                                                & ", value: ",DYNAMIC_VALUE, "*", row_coupling_coefficient
+                                               IF (DEBUGGING_NAN) THEN
+                                                 PRINT *, "RHS assembly (source vector contributon) in " // &
+                                                  & "solver_routines.f90:13488: ", &
+                                                  & "row ", solver_row_number, &
+                                                  & ", value: ",DYNAMIC_VALUE, "*", row_coupling_coefficient
+                                                ENDIF
                                                VALUE=DYNAMIC_VALUE*row_coupling_coefficient
                                                CALL DISTRIBUTED_VECTOR_VALUES_ADD(SOLVER_RHS_VECTOR,solver_row_number,VALUE, &
                                                 & ERR,ERROR,*999)
@@ -13559,9 +13596,12 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                                                 row_coupling_coefficient=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP( &
                                                   & equations_set_idx)%EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)% &
                                                   & COUPLING_COEFFICIENTS(solver_row_idx)
-                                               PRINT *, "RHS assembly (Neumann B.C. contributon) in solver_routines.f90:13562: ", &
-                                                & "row ", solver_row_number, &
-                                                & ", value: ",DYNAMIC_VALUE, "*", row_coupling_coefficient
+                                                IF (DEBUGGING_NAN) THEN
+                                                 PRINT *, "RHS assembly (Neumann B.C. contributon) in " // &
+                                                   & "solver_routines.f90:13562: ", &
+                                                   & "row ", solver_row_number, &
+                                                   & ", value: ",DYNAMIC_VALUE, "*", row_coupling_coefficient
+                                                 ENDIF
                                                VALUE=DYNAMIC_VALUE*row_coupling_coefficient
                                                 VALUE=RHS_VALUE*row_coupling_coefficient
                                                 CALL DISTRIBUTED_VECTOR_VALUES_ADD(SOLVER_RHS_VECTOR,solver_row_number,VALUE, &
