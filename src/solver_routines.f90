@@ -13507,7 +13507,9 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                                             
                                             IF (Str == "NaN") THEN
                                               DYNAMIC_VALUE = 0.0_DP
-                                              PRINT*, "Replace value by 0.0!"
+                                              IF (DEBUGGING_NAN) THEN
+                                                PRINT*, "Replace value by 0.0!"
+                                              ENDIF
                                             ENDIF
                                             
                                             !Loop over the solver rows associated with this equations set row
