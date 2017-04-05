@@ -13485,6 +13485,9 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                                               row_coupling_coefficient=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP( &
                                                 & equations_set_idx)%EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)% &
                                                 & COUPLING_COEFFICIENTS(solver_row_idx)
+                                               PRINT *, "RHS assembly (source vector contributon) in solver_routines.f90:13488: ", &
+                                                & "row ", solver_row_number, &
+                                                & ", value: ",DYNAMIC_VALUE, "*", row_coupling_coefficient
                                                VALUE=DYNAMIC_VALUE*row_coupling_coefficient
                                                CALL DISTRIBUTED_VECTOR_VALUES_ADD(SOLVER_RHS_VECTOR,solver_row_number,VALUE, &
                                                 & ERR,ERROR,*999)
@@ -13556,6 +13559,10 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                                                 row_coupling_coefficient=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP( &
                                                   & equations_set_idx)%EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)% &
                                                   & COUPLING_COEFFICIENTS(solver_row_idx)
+                                               PRINT *, "RHS assembly (Neumann B.C. contributon) in solver_routines.f90:13562: ", &
+                                                & "row ", solver_row_number, &
+                                                & ", value: ",DYNAMIC_VALUE, "*", row_coupling_coefficient
+                                               VALUE=DYNAMIC_VALUE*row_coupling_coefficient
                                                 VALUE=RHS_VALUE*row_coupling_coefficient
                                                 CALL DISTRIBUTED_VECTOR_VALUES_ADD(SOLVER_RHS_VECTOR,solver_row_number,VALUE, &
                                                   & ERR,ERROR,*999)
