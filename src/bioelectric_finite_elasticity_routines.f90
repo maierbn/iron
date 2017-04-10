@@ -2269,6 +2269,7 @@ CONTAINS
                             & ", node index:",BioelectricNodeIdx, &
                             & ", local number:",BioelectricNodeLocalNumber, &
                             & ", global number:",BioelectricNodeGlobalNumber
+                            
                           !PRINT*, "global total number:",M_NODES_MAPPING%NUMBER_OF_GLOBAL, ", per fibre: ", &
                           !  & NumberBioelectricNodesPerFibre
                         ENDIF
