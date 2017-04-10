@@ -2071,7 +2071,7 @@ CONTAINS
               IF (DEBUGGING) THEN
                 PRINT*, "topology statistics: NUMBER_OF_ELEMENTS: ",FE_ELEMENTS_TOPOLOGY%NUMBER_OF_ELEMENTS, &
                   & ", TOTAL_NUMBER_OF_ELEMENTS:",FE_ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS, &
-                  & ", NUMBER_OF_GLOBAL_ELEMENTS", FE_ELEMENTS_TOPOLOGY%NUMBER_OF_GLOBAL_ELEMENTS
+                  & ", NUMBER_OF_GLOBAL_ELEMENTS", FE_ELEMENTS_TOPOLOGY%NUMBER_OF_GLOBAL_ELEMENTS               
                 PRINT*, "loop over ",FE_ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS," 3D finite elasticity elements"
                 !CALL Print_DECOMPOSITION_ELEMENTS(FE_ELEMENTS_TOPOLOGY, 2, 10)
               ENDIF
@@ -2081,7 +2081,7 @@ CONTAINS
 
               !the first finite elasticity element that is in the domain of the own computational node always has to contain the beginning of the considered part of a fibre
               ElementMayContainFirstPartOfSubdividedFibre = .TRUE.
-
+              
               FEElementIndex = 1
               DomainIdx = ComputationalNodeNumber
               
@@ -2151,9 +2151,6 @@ CONTAINS
                 dof_idx=FIELD_VAR_IND_FE%COMPONENTS(3)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
                 CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
                   & dof_idx,nodes_in_Xi_3,ERR,ERROR,*999)
-                dof_idx=FIELD_VAR_IND_FE%COMPONENTS(4)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
-                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                  & dof_idx,number_fibres_in_series,ERR,ERROR,*999)
                   
                 ! There are two values for nodes_in_Xi_1: nodes_in_Xi_1_small and (nodes_in_Xi_1+1)
                 ! Needed for spacing in xi coordinate system is always the smaller value. 
@@ -2214,7 +2211,7 @@ CONTAINS
                       PRINT *, "    Node in FE element n3=",n3,", n2=",n2, ", XI=",XI
                       PRINT *, "    fibre_idx=",fibre_idx
                       ENDIF
-                    
+                           
                     !loop over the FE elements that contain nodes of the current fibres
                     DO
                       !get the finite elasticity dependent field interpolation parameters of this element
@@ -2532,7 +2529,7 @@ CONTAINS
                             & .AND. FibreStartsInCurrentElement == 1) THEN
                             !current sarcomere half length
                             CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U1_VARIABLE_TYPE, &
-                              & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber-1,1,HalfSarcomereLength,ERR,ERROR,*999)  
+                              & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber-1,1,HalfSarcomereLength,ERR,ERROR,*999)                            
                             !old node distance
                             CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
                               & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber-1,1,DIST,ERR,ERROR,*999)
