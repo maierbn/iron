@@ -1761,7 +1761,7 @@ CONTAINS
     TYPE(DOMAIN_ELEMENTS_TYPE), POINTER :: M_DOMAIN_TOPOLOGY_ELEMENTS
     INTEGER(INTG) :: BioelectricLeftElementLocalNumber, BioelectricRightElementLocalNumber
     
-    LOGICAL :: DEBUGGING = .TRUE.   ! enable debugging output with this parameter
+    LOGICAL :: DEBUGGING = .FALSE.   ! enable debugging output with this parameter
     INTEGER(Intg) :: MPI_IERROR, PreviousBioelectricNodeLocalNumber
     INTEGER(Intg) :: ComputationalNodeNumber, NumberOfComputationalNodes
 
@@ -1774,7 +1774,7 @@ CONTAINS
       DEBUGGING = .TRUE.
       PRINT*, "ComputationalNodeNumber=",ComputationalNodeNumber,"of",NumberOfComputationalNodes
     ENDIF
-    DEBUGGING = .FALSE.
+    !DEBUGGING = .FALSE.
     
     NULLIFY(CONTROL_LOOP_ROOT)
     NULLIFY(CONTROL_LOOP_PARENT)
@@ -2073,7 +2073,7 @@ CONTAINS
                   & ", TOTAL_NUMBER_OF_ELEMENTS:",FE_ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS, &
                   & ", NUMBER_OF_GLOBAL_ELEMENTS", FE_ELEMENTS_TOPOLOGY%NUMBER_OF_GLOBAL_ELEMENTS               
                 PRINT*, "loop over ",FE_ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS," 3D finite elasticity elements"
-                !CALL Print_DECOMPOSITION_ELEMENTS(FE_ELEMENTS_TOPOLOGY, 2, 10)
+                CALL Print_DECOMPOSITION_ELEMENTS(FE_ELEMENTS_TOPOLOGY, 2, 10)
               ENDIF
               
               ! loop FEElementIndex loop over elements where fibres start
@@ -2205,11 +2205,12 @@ CONTAINS
                 !loop over fibres in the 3D element
                 DO n3 = 1,nodes_in_Xi_3
                   DO n2 = 1,nodes_in_Xi_2
-                    fibre_idx = fibre_idx + 1
+                    !fibre_idx = fibre_idx + 1
                     
                     IF(DEBUGGING) THEN
+                      PRINT *, "    Next fibre"
                       PRINT *, "    Node in FE element n3=",n3,", n2=",n2, ", XI=",XI
-                      PRINT *, "    fibre_idx=",fibre_idx
+                      !PRINT *, "    fibre_idx=",fibre_idx
                       ENDIF
                            
                     !loop over the FE elements that contain nodes of the current fibres
@@ -2486,8 +2487,11 @@ CONTAINS
                             ! fibre starts on a different processor to the left of the current node
                             ! For now compute the approximate position of the previous node.
                             ! This cannot be exact, because it depends on how the previous nodes of the fibre have deformed.
-                            ! Later, Position1DPreviousNode should be set to 0 and everything should get shifted after
-                            ! this whole procedure.
+                            !
+                            ! The correct approach would be to take the value of the left node into account which requires 
+                            ! communication between all processes holding this fibre
+                            ! For that Position1DPreviousNode should be set to 0 and everything should get shifted in the communication step 
+                            ! after this whole procedure.
                             Position1DPreviousNode = REAL(MOD(BioelectricNodeGlobalNumber-1,NumberBioelectricNodesPerFibre)-1) &
                               & / (NumberBioelectricNodesPerFibre-1) &
                               & * FibrePhysicalLength
