@@ -1679,6 +1679,55 @@ CONTAINS
     
   END SUBROUTINE BioelectricFiniteElasticity_ConvergenceCheck
 
+  
+  !
+  !================================================================================================================================
+  !
+  
+  !> Advance to the next monodomain node and set the corresponding FE element
+  SUBROUTINE IterateNextMonodomainNode(SOLVER_MAPPING, &
+   & IsFinished, FEElementIndex, ne, BioelectricNodeGlobalNumber, BioelectricNodeLocalNumber, &
+   & BioelectricNodeInFibreNumber, PreviousBioelectricNodeLocalNumber, FibreIdx, XI, IsFirstBioelectricNodeOfFibre)
+    TYPE(SOLVER_MAPPING_TYPE), POINTER, INTENT(IN) :: SOLVER_MAPPING
+    
+    TYPE(FIELD_TYPE), POINTER :: DEPENDENT_FIELD_MONODOMAIN
+    TYPE(FIELD_TYPE), POINTER :: INDEPENDENT_FIELD_MONODOMAIN
+    TYPE(FIELD_TYPE), POINTER :: GEOMETRIC_FIELD_MONODOMAIN
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VAR_DEP_M
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VAR_GEO_M
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VAR_IND_M_U1
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VAR_IND_M_U2
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VAR_IND_M_V
+    
+    LOGICAL, INTENT(OUT) :: IsFinished    !< if the iteration over all monodomain nodes is finished
+    INTEGER(INTG), INTENT(OUT) :: FEElementIndex  !< current FE element user number
+    INTEGER(INTG), INTENT(OUT) :: ne     !< local element number of FE element
+    INTEGER(INTG), INTENT(OUT) :: BioelectricNodeGlobalNumber   !< global number of the bioelectric node, per fibre, i.e. there can be multiple nodes with the same global number
+    INTEGER(INTG), INTENT(OUT) :: BioelectricNodeLocalNumber    !< local number of the bioelectric node
+    INTEGER(INTG), INTENT(OUT) :: BioelectricNodeInFibreNumber    !< contiguous number of the node starting with 1 for the first node of the fibre
+    INTEGER(INTG), INTENT(OUT) :: PreviousBioelectricNodeLocalNumber    !< local number of the bioelectrics node to the left of the current, if it exists
+    INTEGER(INTG), INTENT(OUT) :: FibreIdx  !< index of the current fibre
+    REAL(DP), INTENT(OUT) :: XI(3)        !< position of the current node in the current FE element, in [0,1]^3
+    LOGICAL, INTENT(OUT) :: IsFirstBioelectricNodeOfFibre    !< if the current node is the first node of the fibre
+    
+    ! local variables
+    INTEGER(INTG), SAVE :: BioelectricNodeIdx
+    INTEGER(INTG), SAVE :: PreviousFibreIdx
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER, SAVE :: M_NODES_MAPPING
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER, SAVE :: M_ELEMENTS_MAPPING
+    TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER, SAVE :: M_DOMAIN_TOPOLOGY
+    TYPE(DOMAIN_NODES_TYPE), POINTER, SAVE :: M_DOMAIN_TOPOLOGY_NODES
+    TYPE(DOMAIN_ELEMENTS_TYPE), POINTER, SAVE :: M_DOMAIN_TOPOLOGY_ELEMENTS
+    
+    IsFinished = .FALSE.
+  
+  
+  END SUBROUTINE
+  
+  !
+  !================================================================================================================================
+  !
+  !> Make all processes wait until one sets the variable gdb_resume to 1 via a debugger (e.g. gdb)
   SUBROUTINE gdbParallelDebuggingBarrier()
     INTEGER(Intg) :: Gdb_Resume
     INTEGER(Intg) :: MPI_IERROR, MPI_COMM_WORLD
@@ -1737,7 +1786,7 @@ CONTAINS
     INTEGER(INTG) :: tmp,temp
     INTEGER(INTG) :: FEElementWhereFibresEnterLocalDomainIndex, next_FEElementIndex, i, j, k, ElementGlobalNumber
     INTEGER(INTG) :: DEPENDENT_FIELD_INTERPOLATION,GEOMETRIC_FIELD_INTERPOLATION
-    INTEGER(INTG) :: node_idx,GAUSS_POINT,gauss_idx,fibre_idx,DomainIdx
+    INTEGER(INTG) :: node_idx,GAUSS_POINT,gauss_idx,FibreIdx,DomainIdx
     INTEGER(INTG) :: nodes_in_Xi_1,nodes_in_Xi_2,nodes_in_Xi_3,nodes_in_Xi_1_small,NumberInSeriesFibres
     INTEGER(INTG) :: n3,n2,n1,dof_idx,my_FEElementIndex
     INTEGER(INTG) :: NumberBioelectricNodesPerFibre
@@ -1749,12 +1798,13 @@ CONTAINS
     REAL(DP) :: XI(3),XI_DEBUG(3),PREVIOUS_NODE(3),InitialNodeMDistance,HalfSarcomereInitialLength,TIME_STEP,DIST
     LOGICAL :: MappingHasBoundaryNode
     REAL(DP), POINTER :: GAUSS_POSITIONS(:,:)
-    LOGICAL :: ElementMayContainFirstPartOfSubdividedFibre
+    LOGICAL :: ElementMayContainFirstPartOfSubdividedFibre, IsFinished, IsFirstBioelectricNodeOfFibre
     INTEGER(INTG) :: BioelectricNodeLocalNumber, BioelectricNodeGlobalNumber, BioelectricNodeIdx
     TYPE(DOMAIN_TYPE), POINTER :: MONODOMAIN_DOMAIN
     TYPE(DOMAIN_MAPPINGS_TYPE), POINTER :: MONODOMAIN_MAPPINGS
     INTEGER(INTG) :: NumberNodesInCurrentFEElement
-    REAL(DP) :: RegionWidth, FibrePhysicalLength, BioelectricNodeInFibreNumber
+    REAL(DP) :: RegionWidth, FibrePhysicalLength
+    INTEGER(INTG) :: BioelectricNodeInFibreNumber
     TYPE(DECOMPOSITION_ELEMENT_TYPE) :: ELEMENT_DECOMPOSITION
     TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: M_DOMAIN_TOPOLOGY
     TYPE(DOMAIN_NODES_TYPE), POINTER :: M_DOMAIN_TOPOLOGY_NODES
@@ -1770,11 +1820,11 @@ CONTAINS
     CALL MPI_COMM_RANK(MPI_COMM_WORLD,ComputationalNodeNumber,MPI_IERROR)
     CALL MPI_COMM_SIZE(MPI_COMM_WORLD,NumberOfComputationalNodes,MPI_IERROR)
 
-    IF (NumberOfComputationalNodes == 2 .AND. ComputationalNodeNumber == 1) THEN
+    IF (NumberOfComputationalNodes == 2 .AND. ComputationalNodeNumber == 0) THEN
       DEBUGGING = .TRUE.
       PRINT*, "ComputationalNodeNumber=",ComputationalNodeNumber,"of",NumberOfComputationalNodes
     ENDIF
-    !DEBUGGING = .FALSE.
+    DEBUGGING = .TRUE.
     
     NULLIFY(CONTROL_LOOP_ROOT)
     NULLIFY(CONTROL_LOOP_PARENT)
@@ -1832,6 +1882,8 @@ CONTAINS
               CALL CONTROL_LOOP_SOLVERS_GET(CONTROL_LOOP_MONODOMAIN,SOLVERS,ERR,ERROR,*999)
               CALL SOLVERS_SOLVER_GET(SOLVERS,2,SOLVER,ERR,ERROR,*999)
               SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
+              ! solverEquations%SOLVER_MAPPING
+              
               IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
                 SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
                 IF(ASSOCIATED(SOLVER_MAPPING)) THEN
@@ -1908,6 +1960,11 @@ CONTAINS
               SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
               IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
                 SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
+                
+                IF (DEBUGGING) THEN
+                  PRINT *, "SolverMapping has ", SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS, "equation sets"
+                ENDIF
+                
                 IF(ASSOCIATED(SOLVER_MAPPING)) THEN
                   EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(1)%PTR
                   IF(ASSOCIATED(EQUATIONS_SET)) THEN
@@ -2076,6 +2133,20 @@ CONTAINS
                 CALL Print_DECOMPOSITION_ELEMENTS(FE_ELEMENTS_TOPOLOGY, 2, 10)
               ENDIF
               
+              
+              DO
+                
+                ! go to next monodomain Node
+                CALL IterateNextMonodomainNode(IsFinished, FEElementIndex, ne, BioelectricNodeGlobalNumber, &
+                 & BioelectricNodeLocalNumber, BioelectricNodeInFibreNumber, PreviousBioelectricNodeLocalNumber, FibreIdx, XI, &
+                 & IsFirstBioelectricNodeOfFibre)
+    
+                IF (IsFinished) EXIT
+                
+                
+                
+              ENDDO
+              
               ! loop FEElementIndex loop over elements where fibres start
               ! inner loop n3,n2 loops over fibre lines
 
@@ -2205,12 +2276,12 @@ CONTAINS
                 !loop over fibres in the 3D element
                 DO n3 = 1,nodes_in_Xi_3
                   DO n2 = 1,nodes_in_Xi_2
-                    !fibre_idx = fibre_idx + 1
+                    !FibreIdx = FibreIdx + 1
                     
                     IF(DEBUGGING) THEN
                       PRINT *, "    Next fibre"
                       PRINT *, "    Node in FE element n3=",n3,", n2=",n2, ", XI=",XI
-                      !PRINT *, "    fibre_idx=",fibre_idx
+                      !PRINT *, "    FibreIdx=",FibreIdx
                       ENDIF
                            
                     !loop over the FE elements that contain nodes of the current fibres
@@ -2275,7 +2346,7 @@ CONTAINS
                         !store the fibre number this bioelectrics node belongs to.
                         !this is already done in FortranExample
                         !CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
-                        !  & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,3,fibre_idx,ERR,ERROR,*999) 
+                        !  & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,3,FibreIdx,ERR,ERROR,*999) 
 
                         !INDEPENDENT_FIELD_MONODOMAIN, 
                         !   CMFE_FIELD_V_VARIABLE_TYPE 1) motor unit number   2) fibre type   3) fibre number   4) nearest Gauss point   5) in element number (LOCAL NODE NUMBERING!!!) 6) in-node number
@@ -2807,7 +2878,7 @@ CONTAINS
 
 
               node_idx=0
-              fibre_idx = 0
+              FibreIdx = 0
               CALL FIELD_VARIABLE_GET(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE,FIELD_VAR_DEP_M,ERR,ERROR,*999)
               CALL FIELD_VARIABLE_GET(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE,FIELD_VAR_GEO_M,ERR,ERROR,*999)
               CALL FIELD_VARIABLE_GET(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VAR_IND_FE,ERR,ERROR,*999)
@@ -2870,7 +2941,7 @@ CONTAINS
                         
                         !store the fibre number this bioelectrics node belongs to.
                         CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
-                          & FIELD_VALUES_SET_TYPE,1,1,node_idx,3,fibre_idx,ERR,ERROR,*999) 
+                          & FIELD_VALUES_SET_TYPE,1,1,node_idx,3,FibreIdx,ERR,ERROR,*999) 
 
                         !find the interpolated position of the bioelectric grid node from the FE dependent field
                         CALL FIELD_INTERPOLATE_XI(NO_PART_DERIV,XI,INTERPOLATED_POINT,ERR,ERROR,*999)

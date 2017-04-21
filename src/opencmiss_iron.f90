@@ -409,6 +409,7 @@ MODULE OpenCMISS_Iron
   PUBLIC cmfe_SolverEquationsType,cmfe_SolverEquations_Finalise,cmfe_SolverEquations_Initialise
 
   PUBLIC cmfe_OutputInterpolationParameters, cmfe_getFieldSize, cmfe_PrintElementsMapping, cmfe_PrintNodesMapping, &
+    & cmfe_PrintSolverEquationsM, &
     & cmfe_CustomProfilingStart,cmfe_CustomProfilingStop,cmfe_CustomProfilingMemory,cmfe_CustomProfilingGetInfo, &
     & cmfe_CustomProfilingGetDuration,cmfe_CustomProfilingGetMemory,cmfe_CustomProfilingGetSizePerElement, &
     & cmfe_CustomProfilingGetNumberObjects, cmfe_CustomProfilingGetEnabled
@@ -62005,6 +62006,17 @@ CONTAINS
     
     END SUBROUTINE cmfe_PrintNodesMapping
   
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_PrintSolverEquationsM(SolverEquationsM, Err)
+    TYPE(cmfe_SolverEquationsType), INTENT(IN) :: SolverEquationsM
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    
+    CALL Print_Solver_Mapping(SolverEquationsM%solverEquations%SOLVER_MAPPING, 5, 10)
+  
+  END SUBROUTINE 
   !
   !================================================================================================================================
   !
