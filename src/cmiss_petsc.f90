@@ -6042,11 +6042,11 @@ CONTAINS
     ENTERS("Petsc_TSSetExactFinalTime",err,error,*999)
 
     IF(exactFinalTime) THEN ! CARE! This sets PetSc's 'eftopt' as the interpolate version! not as the match version! the interface to C language probably does not provide the 'match'
-      CALL TSSetExactFinalTime(ts%ts,PETSC_TRUE,err)
+      CALL TSSetExactFinalTime(ts%ts,PETSC_TRUE,err) ! have to do it anyway, since I found a line in src/ts/impls/implicit/sundials/sundials.c: ...below...
     ELSE
       CALL TSSetExactFinalTime(ts%ts,PETSC_FALSE,err)
     ENDIF
-    
+!..above: if (ts->exact_final_time == TS_EXACTFINALTIME_MATCHSTEP) !S!E!T!E!R!R!Q!(PETSC_COMM_SELF,PETSC_ERR_SUP,"No support for exact final time option 'MATCHSTEP' when using Sundials");
     IF(err/=0) THEN
       IF(petscHandleError) THEN
         CHKERRQ(err)
