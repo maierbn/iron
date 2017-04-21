@@ -190,7 +190,7 @@ MODULE CmissPetsc
   MatOption, PARAMETER :: PETSC_MAT_USE_INODES = MAT_USE_INODES !<Matrix will using an inode version of code
   MatOption, PARAMETER :: PETSC_MAT_HERMITIAN = MAT_HERMITIAN !<Hermitian matrix, the transpose is the complex conjugation
   MatOption, PARAMETER :: PETSC_MAT_SYMMETRY_ETERNAL = MAT_SYMMETRY_ETERNAL !<Matrix will always be symmetric
-  MatOption, PARAMETER :: PETSC_MAT_DUMMY = MAT_DUMMY
+ ! MatOption, PARAMETER :: PETSC_MAT_DUMMY = MAT_DUMMY
   MatOption, PARAMETER :: PETSC_MAT_IGNORE_LOWER_TRIANGULAR = MAT_IGNORE_LOWER_TRIANGULAR !<Ignore any additions or insertions in the lower triangular part of the matrix
   MatOption, PARAMETER :: PETSC_MAT_ERROR_LOWER_TRIANGULAR = MAT_ERROR_LOWER_TRIANGULAR
   MatOption, PARAMETER :: PETSC_MAT_GETROW_UPPERTRIANGULAR = MAT_GETROW_UPPERTRIANGULAR
@@ -1114,11 +1114,12 @@ MODULE CmissPetsc
       PetscInt ierr
     END SUBROUTINE SNESLineSearchSetComputeNorms
 
-    SUBROUTINE SnesLineSearchSetMonitor(linesearch,flag,ierr)
-      SNESLineSearch linesearch
-      PetscBool flag
-      PetscInt ierr
-    END SUBROUTINE SnesLineSearchSetMonitor
+! commented out, because not available on cray (hazelhen)
+!    SUBROUTINE SnesLineSearchSetMonitor(linesearch,flag,ierr)
+!      SNESLineSearch linesearch
+!      PetscBool flag
+!      PetscInt ierr
+!    END SUBROUTINE SnesLineSearchSetMonitor
 
     SUBROUTINE SnesLineSearchSetNorms(snes,xnorm,fnorm,ynorm,ierr)
       SNES snes
@@ -1594,7 +1595,8 @@ MODULE CmissPetsc
     & PETSC_MAT_NEW_DIAGONALS,PETSC_MAT_IGNORE_OFF_PROC_ENTRIES,PETSC_MAT_NEW_NONZERO_LOCATION_ERR, &
     & PETSC_MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_MAT_USE_HASH_TABLE,PETSC_MAT_KEEP_NONZERO_PATTERN, &
     & PETSC_MAT_IGNORE_ZERO_ENTRIES,PETSC_MAT_USE_INODES,PETSC_MAT_HERMITIAN,PETSC_MAT_SYMMETRY_ETERNAL, &
-    & PETSC_MAT_DUMMY,PETSC_MAT_IGNORE_LOWER_TRIANGULAR,PETSC_MAT_ERROR_LOWER_TRIANGULAR,PETSC_MAT_GETROW_UPPERTRIANGULAR, &
+!    & PETSC_MAT_DUMMY,PETSC_MAT_IGNORE_LOWER_TRIANGULAR,PETSC_MAT_ERROR_LOWER_TRIANGULAR,PETSC_MAT_GETROW_UPPERTRIANGULAR, &
+    & PETSC_MAT_IGNORE_LOWER_TRIANGULAR,PETSC_MAT_ERROR_LOWER_TRIANGULAR,PETSC_MAT_GETROW_UPPERTRIANGULAR, &
     & PETSC_MAT_UNUSED_NONZERO_LOCATION_ERR,PETSC_MAT_SPD,PETSC_MAT_NO_OFF_PROC_ENTRIES,PETSC_MAT_NO_OFF_PROC_ZERO_ROWS
 
   PUBLIC PETSC_MAT_SOLVER_SUPERLU,PETSC_MAT_SOLVER_SUPERLU_DIST,PETSC_MAT_SOLVER_UMFPACK,PETSC_MAT_SOLVER_CHOLMOD, &
@@ -5662,17 +5664,18 @@ CONTAINS
 
     ENTERS("Petsc_SnesLineSearchSetMonitor",err,error,*999)
 
-    IF(monitorLinesearch) THEN
-      CALL SnesLineSearchSetMonitor(lineSearch%snesLineSearch,PETSC_TRUE,err)
-    ELSE
-      CALL SnesLineSearchSetMonitor(lineSearch%snesLineSearch,PETSC_FALSE,err)
-    ENDIF
-    IF(err/=0) THEN
-      IF(petscHandleError) THEN
-        CHKERRQ(err)
-      ENDIF
-      CALL FlagError("PETSc error in SNESLineSearchSetMonitor.",err,error,*999)
-    ENDIF
+! commented out because it is not available on hazelhen (cray system of hlrs stuttgart)
+!    IF(monitorLinesearch) THEN
+!      CALL SnesLineSearchSetMonitor(lineSearch%snesLineSearch,PETSC_TRUE,err)
+!    ELSE
+!      CALL SnesLineSearchSetMonitor(lineSearch%snesLineSearch,PETSC_FALSE,err)
+!    ENDIF
+!    IF(err/=0) THEN
+!      IF(petscHandleError) THEN
+!        CHKERRQ(err)
+!      ENDIF
+!      CALL FlagError("PETSc error in SNESLineSearchSetMonitor.",err,error,*999)
+!    ENDIF
 
     EXITS("Petsc_SnesLineSearchSetMonitor")
     RETURN

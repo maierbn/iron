@@ -49,20 +49,20 @@ CONTAINS
     INTEGER :: CurrentIndex
 
     ! find index of identifier
-!    CurrentIndex = GetDurationIndex(Identifier)
-!
-!    ! If record with this identifier does not yet exist, create new
-!    IF (CurrentIndex == 0) THEN
-!      SizeDuration = SizeDuration + 1
-!      CurrentIndex = SizeDuration
-!      DurationIdentifiers(CurrentIndex) = Identifier
-!      Durations(CurrentIndex) = 0.0_8
-!      TimeCount(CurrentIndex) = 0
-!      StartMemory(CurrentIndex) = GetCurrentMemoryConsumption()
-!      TotalMemory(CurrentIndex) = 0
-!    ENDIF
-!
-!    CALL CPU_TIME(StartTime(CurrentIndex))
+    CurrentIndex = GetDurationIndex(Identifier)
+
+    ! If record with this identifier does not yet exist, create new
+    IF (CurrentIndex == 0) THEN
+      SizeDuration = SizeDuration + 1
+      CurrentIndex = SizeDuration
+      DurationIdentifiers(CurrentIndex) = Identifier
+      Durations(CurrentIndex) = 0.0_8
+      TimeCount(CurrentIndex) = 0
+      StartMemory(CurrentIndex) = GetCurrentMemoryConsumption()
+      TotalMemory(CurrentIndex) = 0
+    ENDIF
+
+    CALL CPU_TIME(StartTime(CurrentIndex))
   END SUBROUTINE
   !
   !================================================================================================================================
@@ -75,23 +75,23 @@ CONTAINS
     INTEGER :: CurrentIndex, I
     REAL(8) :: EndTime, Duration
 
-    !CALL CPU_TIME(EndTime)
-    !
-    !! find index of identifier
-    !CurrentIndex = GetDurationIndex(Identifier)
-    !
-    !IF (CurrentIndex == 0) THEN
-    !  CALL PrintWarningDuration(Identifier)
-    !  RETURN
-    !ENDIF
-    !
-    !Duration = EndTime - StartTime(CurrentIndex)
-    !Durations(CurrentIndex) = Durations(CurrentIndex) + Duration
-    !TimeCount(CurrentIndex) = TimeCount(CurrentIndex) + 1
-    !
-    !CurrentMemoryConsumption = GetCurrentMemoryConsumption()
-    !TotalMemory(CurrentIndex) = TotalMemory(CurrentIndex) + (CurrentMemoryConsumption - StartMemory(CurrentIndex))
-    !StartMemory(CurrentIndex) = CurrentMemoryConsumption
+    CALL CPU_TIME(EndTime)
+    
+    ! find index of identifier
+    CurrentIndex = GetDurationIndex(Identifier)
+    
+    IF (CurrentIndex == 0) THEN
+      CALL PrintWarningDuration(Identifier)
+      RETURN
+    ENDIF
+    
+    Duration = EndTime - StartTime(CurrentIndex)
+    Durations(CurrentIndex) = Durations(CurrentIndex) + Duration
+    TimeCount(CurrentIndex) = TimeCount(CurrentIndex) + 1
+    
+    CurrentMemoryConsumption = GetCurrentMemoryConsumption()
+    TotalMemory(CurrentIndex) = TotalMemory(CurrentIndex) + (CurrentMemoryConsumption - StartMemory(CurrentIndex))
+    StartMemory(CurrentIndex) = CurrentMemoryConsumption
   END SUBROUTINE
 
   !
@@ -108,31 +108,31 @@ CONTAINS
     INTEGER :: CurrentIndex
     INTEGER(INTG) :: SizePerElement  !< number of bytes of one element
 
-    !MemoryConsumption = REAL(TotalSize, LINTG)
-    !
-    !IF (NumberOfElements > 0) THEN
-    !  SizePerElement = TotalSize / NumberOfElements
-    !ELSE
-    !  SizePerElement = 1
-    !ENDIF
-    !
-    !! find index of identifier
-    !CurrentIndex = GetMemoryIndex(Identifier)
-    !
-    !! If record with this identifier does not yet exist, create new
-    !IF (CurrentIndex == 0) THEN
-    !  SizeMemory = SizeMemory + 1
-    !  CurrentIndex = SizeMemory
-    !  MemoryIdentifiers(CurrentIndex) = Identifier
-    !  MemoryConsumptions(CurrentIndex) = 0
-    !  SizesPerElement(CurrentIndex) = 0
-    !  NumberOfObjects(CurrentIndex) = 0
-    !ENDIF
-    !
-    !! Add value to record of memory consumption
-    !MemoryConsumptions(CurrentIndex) = MemoryConsumptions(CurrentIndex) + MemoryConsumption
-    !SizesPerElement(CurrentIndex) = SizePerElement
-    !NumberOfObjects(CurrentIndex) = NumberOfObjects(CurrentIndex) + 1
+    MemoryConsumption = REAL(TotalSize, LINTG)
+    
+    IF (NumberOfElements > 0) THEN
+      SizePerElement = TotalSize / NumberOfElements
+    ELSE
+      SizePerElement = 1
+    ENDIF
+    
+    ! find index of identifier
+    CurrentIndex = GetMemoryIndex(Identifier)
+    
+    ! If record with this identifier does not yet exist, create new
+    IF (CurrentIndex == 0) THEN
+      SizeMemory = SizeMemory + 1
+      CurrentIndex = SizeMemory
+      MemoryIdentifiers(CurrentIndex) = Identifier
+      MemoryConsumptions(CurrentIndex) = 0
+      SizesPerElement(CurrentIndex) = 0
+      NumberOfObjects(CurrentIndex) = 0
+    ENDIF
+    
+    ! Add value to record of memory consumption
+    MemoryConsumptions(CurrentIndex) = MemoryConsumptions(CurrentIndex) + MemoryConsumption
+    SizesPerElement(CurrentIndex) = SizePerElement
+    NumberOfObjects(CurrentIndex) = NumberOfObjects(CurrentIndex) + 1
 
   END SUBROUTINE
   !
