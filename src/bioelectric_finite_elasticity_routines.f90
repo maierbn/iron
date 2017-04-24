@@ -2137,7 +2137,8 @@ CONTAINS
               DO
                 
                 ! go to next monodomain Node
-                CALL IterateNextMonodomainNode(IsFinished, FEElementIndex, ne, BioelectricNodeGlobalNumber, &
+                CALL IterateNextMonodomainNode(SOLVER_MAPPING, &
+                 & IsFinished, FEElementIndex, ne, BioelectricNodeGlobalNumber, &
                  & BioelectricNodeLocalNumber, BioelectricNodeInFibreNumber, PreviousBioelectricNodeLocalNumber, FibreIdx, XI, &
                  & IsFirstBioelectricNodeOfFibre)
     
