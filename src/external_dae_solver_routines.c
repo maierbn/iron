@@ -80,7 +80,7 @@ void SolverDAEExternalIntegrate(const int NumberOfDofs,
 				int *err)
 {
 
-  printf("Hello World! And greetings from Aaron!\n");
+  printf("Hello World!\n");
      
 }
 
