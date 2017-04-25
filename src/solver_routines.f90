@@ -4216,11 +4216,10 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                       ! TSEIMEX           "eimex"    - ?
                       ! TSMIMEX           "mimex"    - ?
                       !CALL Petsc_TSSetType(ts,PETSC_TS_SUNDIALS,ERR,ERROR,*999) 
+                      
+                      ! CALL Petsc_TSGLSetType() instead ?
                       CALL Petsc_TSSetType(ts,PETSC_TS_GL,ERR,ERROR,*999)
 
-                      ! D I F F E R E N C E  dont need Sundials, so also no sundials specific option needed.
-                      ! needed if sundials lib used. then choose Adams or BDF
-                      !CALL Petsc_TSSundialsSetType(ts,PETSC_SUNDIALS_BDF,ERR,ERROR,*999)
                       
                       ! D I F F E R E N C E  dont need Sundials, so also no sundials specific option needed.
                       ! another sundials specific option? where is 'TSSundialsSetTolerance' implemented? ...probably somewhere in PetSc's fortran interface.
