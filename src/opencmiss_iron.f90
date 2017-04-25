@@ -61987,6 +61987,7 @@ CONTAINS
     TYPE(cmfe_DecompositionType), INTENT(IN) :: Decomposition
     INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
     INTEGER(INTG) :: I, NumberOfComputationalNodes, ComputationalNodeNumber
+    INTEGER(INTG) :: MPI_COMM_WORLD   
     
     ! get computational node numbers
     CALL cmfe_ComputationalNodeNumberGet(ComputationalNodeNumber, Err)
@@ -62015,7 +62016,8 @@ CONTAINS
     TYPE(cmfe_DecompositionType), INTENT(IN) :: Decomposition
     INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
     INTEGER(INTG) :: I, NumberOfComputationalNodes, ComputationalNodeNumber
-    
+    INTEGER(INTG) :: MPI_COMM_WORLD   
+ 
     ! get computational node numbers
     CALL cmfe_ComputationalNodeNumberGet(ComputationalNodeNumber, Err)
     CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
