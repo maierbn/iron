@@ -12858,7 +12858,9 @@ CONTAINS
                     CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                   ENDIF
                 CASE(FIELD_VECTOR_DIMENSION_TYPE)
-                  IF(NUMBER_OF_COMPONENTS>0) THEN
+                  IF(NUMBER_OF_COMPONENTS>0) THEN !this is reason for issue #43572345
+                  WRITE(*,*) 'FIELD_NUMBER_OF_COMPONENTS_SET in field_routines.f90: configuring field variable for field number ',&
+                    & FIELD%USER_NUMBER,'.'
                     IF(FIELD%CREATE_VALUES_CACHE%NUMBER_OF_COMPONENTS(VARIABLE_TYPE)/=NUMBER_OF_COMPONENTS) THEN
                       OLD_NUMBER_OF_COMPONENTS=MAXVAL(FIELD%CREATE_VALUES_CACHE%NUMBER_OF_COMPONENTS)
                       NEW_NUMBER_OF_COMPONENTS=NUMBER_OF_COMPONENTS

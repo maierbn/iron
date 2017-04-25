@@ -76,6 +76,9 @@ MODULE SOLVER_ROUTINES
   IMPLICIT NONE
 
   PRIVATE
+  
+  LOGICAL, PUBLIC :: DEBUG_MODE_A = .FALSE. ! from Aaron
+  
   ! Timing variables
   REAL(DP), PUBLIC :: TIMING_ODE_SOLVER = 0_DP
 
@@ -88,7 +91,6 @@ MODULE SOLVER_ROUTINES
   REAL(INTG), PUBLIC :: SOLVER_NUMBER_ITERATIONS_NEWTON = 0
   REAL(INTG), PUBLIC :: SOLVER_NUMBER_ITERATIONS_NEWTON_MIN = HUGE(SOLVER_NUMBER_ITERATIONS_NEWTON_MIN)
   REAL(INTG), PUBLIC :: SOLVER_NUMBER_ITERATIONS_NEWTON_MAX = 0
-
 
   ! parabolic solver
   !CALL Petsc_KSPGetConvergedReason(LINEAR_ITERATIVE_SOLVER%KSP,CONVERGED_REASON,ERR,ERROR,*999)
@@ -2623,9 +2625,18 @@ CONTAINS
                         IF(ASSOCIATED(INTERMEDIATE_FIELD)) THEN
                           CALL FIELD_PARAMETER_SET_DATA_GET(INTERMEDIATE_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
                             & INTERMEDIATE_DATA,ERR,ERROR,*999)
+                          IF(DEBUG_MODE_A) THEN
+                            WRITE(*,*) 'intermediate_field is associated for euler_forward_solve'
+                          ENDIF
                         ENDIF
+                         IF(DEBUG_MODE_A) THEN
+                            WRITE(*,*) 'intermediate_field? pointer yes, but null'
+                         ENDIF
                       ENDIF
-
+                      IF(DEBUG_MODE_A) THEN
+                        WRITE(*,*) 'intermediate_field? not even pointer'
+                      ENDIF
+ 
 #ifdef USE_CUSTOM_PROFILING
                       CALL CustomProfilingStop('1.1.3. cellml data get')
 #endif
@@ -3804,9 +3815,16 @@ CONTAINS
           ctx%dofIdx=dofIdx
           ALLOCATE(ctx%rates(cellml%MAXIMUM_NUMBER_OF_STATE),STAT=err)
           IF(err/=0) CALL FlagError("Could not allocate context rates.",err,error,*999)
-          ALLOCATE(ctx%ratesIndices(cellml%MAXIMUM_NUMBER_OF_STATE),STAT=err)
-          IF(err/=0) CALL FlagError("Could not allocate context rates.",err,error,*999)
-          ctx%ratesIndices=[(arrayIdx,arrayIdx=0,(cellml%MAXIMUM_NUMBER_OF_STATE-1))]
+          IF(ALLOCATED(ctx%ratesIndices)) THEN
+             IF(DEBUG_MODE_A) THEN
+               WRITE(*,*) 'solver_routines.f90: 3808'
+               WRITE(*,*) 'The 2 vectors rates and ratesIndices are already allocated! Something is wrong!'
+             ENDIF
+          ELSE
+            ALLOCATE(ctx%ratesIndices(cellml%MAXIMUM_NUMBER_OF_STATE),STAT=err)
+            IF(err/=0) CALL FlagError("Could not allocate context rates.",err,error,*999)
+          ENDIF
+            ctx%ratesIndices=[(arrayIdx,arrayIdx=0,(cellml%MAXIMUM_NUMBER_OF_STATE-1))]
         ELSE
           CALL FlagError("CellML environment is not associated.",err,error,*999)
         ENDIF
@@ -3889,20 +3907,71 @@ CONTAINS
                   ALLOCATE(RATES_TEMP(0:NUMBER_STATES-1),STAT=ERR)
                   ALLOCATE(ARRAY_INDICES(0:NUMBER_STATES-1),STAT=ERR)
                   ARRAY_INDICES = (/(array_idx,array_idx=0,(NUMBER_STATES-1))/)
-
-
+                  
+                  IF(DEBUG_MODE_A) THEN
+                    WRITE(*,*) '---------------------------------------------------------------------'
+                    WRITE(*,*) 'The total size of the STATE_DATA vector is ', SIZE(STATE_DATA)
+                    WRITE(*,*) 'The size of MODELS_DATA is ', SIZE(MODELS_DATA)
+                    WRITE(*,*) '---------------------------------------------------------------------'
+                  ENDIF
                   !initialize context for petsc solving.
                   CALL Solver_DAECellMLPETScContextInitialise(ctx,err,error,*999)
                   DO dof_idx=1,N
+                    IF(DEBUG_MODE_A) THEN
+                      WRITE(*,*) 'dof_idx is now ', dof_idx, '. (model_idx is one.)'
+                    ENDIF
                     model_idx = MODELS_DATA(dof_idx)
+                    ! WRITE(*,*) 'The model_idx (=MODELS_DATA(dof_idx)) is now ', model_idx, '.' ! is always one
+                    
                     IF(model_idx>0) THEN !if model is assigned to dof
+!            ! vergleiche zu forwärts euler:
+! 
+!                TIME=START_TIME                   ! <<<< brauchen das nicht, da Sundials alles macht 
+!                DO WHILE(TIME<=END_TIME)          ! <<<<
+!                  DO dof_idx=1,N
+!                    model_idx=MODELS_DATA(dof_idx)
+!                    IF(model_idx.GT.0) THEN
+!
+!                      STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
+!                      STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
+!                      PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
+!                      PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
+!
+!                      CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME, &    ! <<< RHS muss an sundials weiter gegeben werden
+!                        & STATE_DATA(STATE_START_DOF:STATE_END_DOF), &                   ! <<<
+!                        & RATES,INTERMEDIATES,PARAMETERS_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
+!                      STATE_DATA(STATE_START_DOF:STATE_END_DOF)=STATE_DATA(STATE_START_DOF:STATE_END_DOF)+ &
+!                        & TIME_INCREMENT*RATES(1:NUMBER_STATES)
+!                    ENDIF !model_idx
+!                  ENDDO !dof_idx
+!                  TIME=TIME+TIME_INCREMENT
+!                ENDDO !time                       ! <<<<
+!           ! vgl ende 
+                      
+                      !KOMMENTAR: (vor Ostern17) glaube, dass die vektoren hier falsch erzeugt werden (mit nur einer Komponnete, statt mit 5) dadurch
+                      ! sundials nur müll übergeben. ...
+                      
+                      
+! potential !?: circumventing making a new ts every time by "tutorial" on:
+! http://www.mcs.anl.gov/petsc/petsc-current/src/ts/examples/tutorials/ex28.c.html
+! außerdem kann man in petsc geometric und algebraic  multigrid "ganz einfach" einbinden? ...siehe:
+! http://www.mcs.anl.gov/petsc/documentation/tutorials/HandsOnExercise.html#ML
+
+! c code for experimenting with petsc http://www.mcs.anl.gov/petsc/petsc-current/src/ts/examples/tutorials/ex19.c.html
+                      
+                      
                       !access the state field data
                       STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                       STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                       DO state_idx=1,NUMBER_STATES
                         STATES_TEMP(state_idx-1) = STATE_DATA(STATE_START_DOF+state_idx-1)
                       ENDDO
-
+                      
+                      IF(DEBUG_MODE_A) THEN
+                        WRITE(*,*) '-----------------------------------------------------------' 
+                        WRITE(*,*) 'STATES_TEMP: (,', STATES_TEMP(0),STATES_TEMP(1),STATES_TEMP(2),STATES_TEMP(3),STATES_TEMP(4),')'
+                      ENDIF
+                      
                       !create PETSC states vector to initialize solver
                       CALL Petsc_VecCreateSeq(PETSC_COMM_SELF, &
                         & NUMBER_STATES,PETSC_CURRENT_STATES,ERR,ERROR,*999)
@@ -3925,7 +3994,7 @@ CONTAINS
                       CALL Petsc_TSSundialsSetTolerance(ts,0.0000001_DP, &
                         & 0.0000001_DP,ERR,ERROR,*999)
                       !set the initial solution to the current state
-                      CALL Petsc_VecSetValues(PETSC_CURRENT_STATES,(NUMBER_STATES), &
+                      CALL Petsc_VecSetValues(PETSC_CURRENT_STATES,NUMBER_STATES, &
                         & ARRAY_INDICES,STATES_TEMP, &
                         & PETSC_INSERT_VALUES,ERR,ERROR,*999)
                       CALL Petsc_VecAssemblyBegin(PETSC_CURRENT_STATES,ERR,ERROR,*999)
@@ -3965,6 +4034,11 @@ CONTAINS
                         STATE_DATA(STATE_START_DOF+state_idx-1)=  &
                           & STATES_TEMP(state_idx-1)
                       ENDDO
+                      IF(DEBUG_MODE_A) THEN
+                        WRITE(*,*) '___________________________________________________________' 
+                        WRITE(*,*) '-----------------------------------------------------------' 
+                        WRITE(*,*)
+                      ENDIF
                       CALL Petsc_TSFinalise(TS,ERR,ERROR,*999)
                     ENDIF !model_idx
                     CALL Petsc_VecDestroy(PETSC_CURRENT_STATES,ERR,ERROR,*999)
@@ -4142,11 +4216,10 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                       ! TSEIMEX           "eimex"    - ?
                       ! TSMIMEX           "mimex"    - ?
                       !CALL Petsc_TSSetType(ts,PETSC_TS_SUNDIALS,ERR,ERROR,*999) 
+                      
+                      ! CALL Petsc_TSGLSetType() instead ?
                       CALL Petsc_TSSetType(ts,PETSC_TS_GL,ERR,ERROR,*999)
 
-                      ! D I F F E R E N C E  dont need Sundials, so also no sundials specific option needed.
-                      ! needed if sundials lib used. then choose Adams or BDF
-                      !CALL Petsc_TSSundialsSetType(ts,PETSC_SUNDIALS_BDF,ERR,ERROR,*999)
                       
                       ! D I F F E R E N C E  dont need Sundials, so also no sundials specific option needed.
                       ! another sundials specific option? where is 'TSSundialsSetTolerance' implemented? ...probably somewhere in PetSc's fortran interface.
@@ -4333,6 +4406,7 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                       IF(ASSOCIATED(INTERMEDIATE_FIELD)) THEN
                         CALL FIELD_PARAMETER_SET_DATA_GET(INTERMEDIATE_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
                           & INTERMEDIATE_DATA,ERR,ERROR,*999)
+                        WRITE(*,*) 'intermediate_field is associated for bdf_solve.'
                       ENDIF
                     ENDIF
 
@@ -4767,7 +4841,7 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                       PARAMETERS_FIELD=>CELLML_ENVIRONMENT%PARAMETERS_FIELD%PARAMETERS_FIELD
                       IF(ASSOCIATED(PARAMETERS_FIELD)) THEN
                         CALL FIELD_PARAMETER_SET_DATA_GET(PARAMETERS_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                          & PARAMETERS_DATA,ERR,ERROR,*999)
+                          & PARAMETERS_DATA,ERR,ERROR,*999) !aaron - besteht bereits
                       ELSE
                         NULLIFY(PARAMETERS_DATA)
                       ENDIF
@@ -4785,6 +4859,7 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                         NULLIFY(INTERMEDIATE_DATA)
                       ENDIF
                     ELSE
+                      WRITE(*,*) 'Have intermediate_field but no intermediate_data, yet.'
                       NULLIFY(INTERMEDIATE_DATA)
                     ENDIF
 
@@ -4877,8 +4952,19 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
     INTEGER(INTG) :: intermediateIdx,intermediateEndDOF,intermediateStartDOF,numberOfIntermediates,numberOfParameters, &
       & numberOfStates,parameterIdx,parameterEndDOF,parameterStartDOF,rateIdx,rateEndDOF,rateStartDOF,stateIdx,stateEndDOF, &
       & stateStartDOF
+      
+#ifdef WITH_CELLML
+    REAL(DP) :: intermediates(MAX(1,intermediateDataOffset)),parameters(MAX(1,parameterDataOffset)), &
+     & rates(MAX(1,rateDataOffset)), states(MAX(1,stateDataOffset,model%NUMBER_OF_STATE))
+    IF(DEBUG_MODE_A) THEN
+      WRITE(*,*) 'Solver_DAECellMLRHSEvaluate, 49xx: Added model%NUMBER_OF_STATE to: ','states(MAX(1,stateDataOffset,*)'
+      WRITE(*,*) 'ToDo: The STATES vector was assigned with wrong length. Fixed MANUALLY, only.'
+      WRITE(*,*)
+    ENDIF
+#else
     REAL(DP) :: intermediates(MAX(1,intermediateDataOffset)),parameters(MAX(1,parameterDataOffset)),rates(MAX(1,rateDataOffset)), &
-      & states(MAX(1,stateDataOffset))
+     & states(MAX(1,stateDataOffset)
+#endif 
 
     ENTERS("Solver_DAECellMLRHSEvaluate",err,error,*999)
 
