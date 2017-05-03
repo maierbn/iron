@@ -2167,7 +2167,9 @@ CONTAINS
             !Dof components are separated. Will need to copy data to temporary arrays.
             IF(ONLY_ONE_MODEL_INDEX==CELLML_MODELS_FIELD_NOT_CONSTANT) THEN
               !Mulitple models
-              DO WHILE(TIME<=END_TIME)
+              DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
+                !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
+                TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
                 DO dof_idx=1,N
                   model_idx=MODELS_DATA(dof_idx)
                   IF(model_idx.GT.0) THEN
@@ -2211,14 +2213,16 @@ CONTAINS
                 TIME=TIME+TIME_INCREMENT
               ENDDO !time
             ELSE
-              !One one model is used.
+              !Only one model is used.
               MODEL=>CELLML%MODELS(ONLY_ONE_MODEL_INDEX)%PTR
               IF(ASSOCIATED(MODEL)) THEN
                 NUMBER_STATES=MODEL%NUMBER_OF_STATE
                 NUMBER_INTERMEDIATES=MODEL%NUMBER_OF_INTERMEDIATE
                 NUMBER_PARAMETERS=MODEL%NUMBER_OF_PARAMETERS
                 TIME=START_TIME
-                DO WHILE(TIME<=END_TIME)
+                DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
+                  !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
+                  TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
                   DO dof_idx=1,N
 
                     model_idx=MODELS_DATA(dof_idx)
@@ -2248,7 +2252,7 @@ CONTAINS
                     ENDIF !model_idx
                   ENDDO !dof_idx
                   TIME=TIME+TIME_INCREMENT
-                ENDDO !time
+                  ENDDO !time
               ELSE
                 LOCAL_ERROR="CellML environment model is not associated for model index "// &
                   & TRIM(NumberToVString(ONLY_ONE_MODEL_INDEX,"*",ERR,ERROR))//"."
@@ -2260,7 +2264,9 @@ CONTAINS
             IF(ONLY_ONE_MODEL_INDEX==CELLML_MODELS_FIELD_NOT_CONSTANT) THEN
               !Mulitple models
               TIME=START_TIME
-              DO WHILE(TIME<=END_TIME)
+              DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
+                !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
+                TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
                 DO dof_idx=1,N
                   model_idx=MODELS_DATA(dof_idx)
                   IF(model_idx==0) THEN
@@ -2366,7 +2372,9 @@ CONTAINS
                       !We have states, intermediate and parameters for the model
 
                       TIME=START_TIME
-                      DO WHILE(TIME<=END_TIME)
+                      DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
+                        !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
+                        TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
                         DO dof_idx=1,N
                           model_idx=MODELS_DATA(dof_idx)
                           IF(model_idx.GT.0) THEN
@@ -2406,7 +2414,9 @@ CONTAINS
                     ELSE
                       !We do not have parameters in the model
                       TIME=START_TIME
-                      DO WHILE(TIME<=END_TIME)
+                      DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
+                        !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
+                        TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
                         DO dof_idx=1,N
                           model_idx=MODELS_DATA(dof_idx)
                           IF(model_idx.GT.0) THEN
@@ -2432,7 +2442,9 @@ CONTAINS
                       !We do not have intermediates in the model
 
                       TIME=START_TIME
-                      DO WHILE(TIME<=END_TIME)
+                      DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
+                        !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
+                        TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
                         DO dof_idx=1,N
                           model_idx=MODELS_DATA(dof_idx)
                           IF(model_idx.GT.0) THEN
@@ -2455,7 +2467,9 @@ CONTAINS
                     ELSE
                       !We do not have intermediates or parameters in the model
                       TIME=START_TIME
-                      DO WHILE(TIME<=END_TIME)
+                      DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
+                        !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
+                        TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
                         DO dof_idx=1,N
                           model_idx=MODELS_DATA(dof_idx)
                           IF(model_idx.GT.0) THEN
