@@ -745,17 +745,13 @@ CONTAINS
               CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
             ENDIF
           ENDDO !elem_index
-          
-          ! this check is temporarily disabled to see what happens if there are decompositions that do not include elements for each computational domain
-          IF (.FALSE.) THEN
-            DO no_computational_node=0,number_computational_nodes-1
-              IF(ELEMENT_COUNT(no_computational_node)==0) THEN
-                LOCAL_ERROR="Invalid decomposition. There are no elements in computational node "// &
-                  & TRIM(NUMBER_TO_VSTRING(no_computational_node,"*",ERR,ERROR))//"."
-                CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
-              ENDIF
-            ENDDO !no_computational_node
-          ENDIF
+          DO no_computational_node=0,number_computational_nodes-1
+            IF(ELEMENT_COUNT(no_computational_node)==0) THEN
+              LOCAL_ERROR="Invalid decomposition. There are no elements in computational node "// &
+                & TRIM(NUMBER_TO_VSTRING(no_computational_node,"*",ERR,ERROR))//"."
+              CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+            ENDIF
+          ENDDO !no_computational_node
           DEALLOCATE(ELEMENT_COUNT)
           
         ELSE
@@ -4656,17 +4652,13 @@ CONTAINS
                       CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                     ENDIF
                   ENDDO !node_idx
-                  
-                  ! This check is temporarily disabled to see what happens if we get decompositions that do not use all computational nodes
-                  IF (.FALSE.) THEN
-                    DO no_computational_node=0,number_computational_nodes-1
-                      IF(NODE_COUNT(no_computational_node)==0) THEN
-                        LOCAL_ERROR="Invalid decomposition. There are no nodes in computational node "// &
-                          & TRIM(NUMBER_TO_VSTRING(no_computational_node,"*",ERR,ERROR))//"."
-                        CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
-                      ENDIF
-                    ENDDO !no_computational_node
-                  ENDIF
+                  DO no_computational_node=0,number_computational_nodes-1
+                    IF(NODE_COUNT(no_computational_node)==0) THEN
+                      LOCAL_ERROR="Invalid decomposition. There are no nodes in computational node "// &
+                        & TRIM(NUMBER_TO_VSTRING(no_computational_node,"*",ERR,ERROR))//"."
+                      CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+                    ENDIF
+                  ENDDO !no_computational_node
                   DEALLOCATE(NODE_COUNT)
           
                   DEALLOCATE(GHOST_NODES_LIST)
