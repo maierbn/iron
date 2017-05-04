@@ -5866,6 +5866,8 @@ MODULE OpenCMISS_Iron
   PUBLIC cmfe_Problem_SolversDestroy
 
   PUBLIC cmfe_Problem_SpecificationGet,cmfe_Problem_SpecificationSizeGet
+  
+  PUBLIC cmfe_CellML_IntermediateMaxNumberSet
 
 !!==================================================================================================================================
 !!
@@ -14675,7 +14677,34 @@ CONTAINS
   !
   !================================================================================================================================
   !
+  
+  ! sets the MAXIMUM_NUMBER_OF_INTERMEDIATE of a CellML object :: only for debugging issues
+  SUBROUTINE cmfe_CellML_IntermediateMaxNumberSet(CellML,number,err)
+    !DLLEXPORT(cmfe_CellML_ModelImportObjVS)
 
+    !Argument variables
+    TYPE(cmfe_CellMLType), INTENT(INOUT) :: CellML ! The CellML environment to be operated on
+    INTEGER(INTG), INTENT(IN) :: number ! the number that MAXIMUM_NUMBER_OF_INTERMEDIATES shall be set to.
+    INTEGER(INTG), INTENT(OUT) :: err ! The error code.  
+    !Local variables
+    TYPE(VARYING_STRING) :: localError
+    
+    ENTERS("cmfe_CellML_IntermediateMaxNumberSet",err,error,*999)
+    
+    CALL CELLML_INTERMEDIATE_MAX_NUMBER_SET(CellML%CELLML,number,err,error,*999)
+    
+    EXITS("cmfe_CellML_IntermediateMaxNumberSet")
+    RETURN
+999 ERRORSEXITS("cmfe_CellML_IntermediateMaxNumberSet",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+    
+  END SUBROUTINE cmfe_CellML_IntermediateMaxNumberSet
+
+  !
+  !================================================================================================================================
+  !  
+  
   !>Finishes the creation of CellML models field for a CellML environment identified by a user number.
   SUBROUTINE cmfe_CellML_ModelsFieldCreateFinishNumber(regionUserNumber,CellMLUserNumber,err)
     !DLLEXPORT(cmfe_CellML_ModelsFieldCreateFinishNumber)
