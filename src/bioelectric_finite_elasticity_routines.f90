@@ -1191,7 +1191,7 @@ CONTAINS
 !!!! original
               !NOTE: VELOCITY_MAX is the max shortening velocity, and hence negative
               IF(VELOCITY<VELOCITY_MAX) THEN
-                CALL FLAG_WARNING('Exceeded maximum contraction velocity (shortening).',ERR,ERROR,*999)
+              CALL FLAG_WARNING('Exceeded maximum contraction velocity (shortening)1.',ERR,ERROR,*999)
 !                VELOCITY=VELOCITY_MAX
                 !damping
                 IF(ITERATION_NUMBER<(MAXIMUM_NUMBER_OF_ITERATIONS/2)) THEN
@@ -2129,11 +2129,13 @@ CONTAINS
                           IF(.NOT. CALC_CLOSEST_GAUSS_POINT) THEN
                             !NOTE: VELOCITY_MAX is the max shortening velocity, and hence negative!!!
                             IF(VELOCITY<VELOCITY_MAX) THEN
-                              CALL FLAG_WARNING('Exceeded maximum contraction velocity (shortening).',ERR,ERROR,*999)
+                               ! this annoys me! can we skip this if we know that we are provoking it anyway?? :
+                             ! CALL FLAG_WARNING('Exceeded maximum contraction velocity (shortening)2.',ERR,ERROR,*999)
                               VELOCITY=VELOCITY_MAX
                             !The max lengthening velocity is assumed to be VELOCITY_MAX/2.0
                             ELSEIF(VELOCITY>(ABS(VELOCITY_MAX)/2.0_DP)) THEN
-                              CALL FLAG_WARNING('Exceeded maximum contraction velocity (lengthening).',ERR,ERROR,*999)
+                               ! this annoys me! can we skip this if we know that we are provoking it anyway?? :
+                             ! CALL FLAG_WARNING('Exceeded maximum contraction velocity (lengthening)3.',ERR,ERROR,*999)
                               VELOCITY=-VELOCITY_MAX/2.0_DP
                             ENDIF
                           ENDIF
