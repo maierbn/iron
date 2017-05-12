@@ -1546,6 +1546,7 @@ CONTAINS
 
   !>Check for the convergence of the bioelectric finite elasticity while loop, i.e.,
   !> if the force-length and force-velocity relations yielded a different actual configuration.
+  !> This method is not called for cuboid.
   SUBROUTINE BioelectricFiniteElasticity_ConvergenceCheck(CONTROL_LOOP,ERR,ERROR,*)
 
     !Argument variables
@@ -2303,8 +2304,6 @@ CONTAINS
               CALL CONTROL_LOOP_SOLVERS_GET(CONTROL_LOOP_MONODOMAIN,SOLVERS,ERR,ERROR,*999)
               CALL SOLVERS_SOLVER_GET(SOLVERS,2,SOLVER,ERR,ERROR,*999)
               SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
-              ! solverEquations%SOLVER_MAPPING
-              
               IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
                 SOLVER_MAPPING_MONODOMAIN=>SOLVER_EQUATIONS%SOLVER_MAPPING
                 IF(ASSOCIATED(SOLVER_MAPPING_MONODOMAIN)) THEN
