@@ -96,6 +96,7 @@ MODULE OpenCMISS_Iron
   USE ISO_VARYING_STRING
   USE KINDS
   USE MESH_ROUTINES
+  USE MPI
   USE NODE_ROUTINES
   USE PRINT_TYPES_ROUTINES
   USE PROBLEM_CONSTANTS
@@ -62009,7 +62010,6 @@ CONTAINS
     TYPE(cmfe_DecompositionType), INTENT(IN) :: Decomposition
     INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
     INTEGER(INTG) :: I, NumberOfComputationalNodes, ComputationalNodeNumber
-    INTEGER(INTG) :: MPI_COMM_WORLD   
     
     ! get computational node numbers
     CALL cmfe_ComputationalNodeNumberGet(ComputationalNodeNumber, Err)
@@ -62038,7 +62038,6 @@ CONTAINS
     TYPE(cmfe_DecompositionType), INTENT(IN) :: Decomposition
     INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
     INTEGER(INTG) :: I, NumberOfComputationalNodes, ComputationalNodeNumber
-    INTEGER(INTG) :: MPI_COMM_WORLD   
  
     ! get computational node numbers
     CALL cmfe_ComputationalNodeNumberGet(ComputationalNodeNumber, Err)

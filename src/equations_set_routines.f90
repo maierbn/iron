@@ -1204,15 +1204,24 @@ CONTAINS
             NUMBER_OF_TIMES=0
             
             IF (DEBUGGING) THEN
-              PRINT*, "assemble dynamic linear FEM, loop over elements: ", ELEMENTS_MAPPING%INTERNAL_START, &
+              PRINT*, "***********************************"
+              PRINT*, "* EQUATIONS_SET_ASSEMBLE_DYNAMIC_LINEAR_FEM, internal elements: ", ELEMENTS_MAPPING%INTERNAL_START, &
                 & "to",ELEMENTS_MAPPING%INTERNAL_FINISH
+              DO element_idx=ELEMENTS_MAPPING%INTERNAL_START, ELEMENTS_MAPPING%INTERNAL_FINISH
+                PRINT *, "*   ",ELEMENTS_MAPPING%DOMAIN_LIST(element_idx)
+              ENDDO
+              
+              PRINT*, "* boundary and ghost elements: ",ELEMENTS_MAPPING%BOUNDARY_START, "to", ELEMENTS_MAPPING%GHOST_FINISH
+              DO element_idx=ELEMENTS_MAPPING%BOUNDARY_START, ELEMENTS_MAPPING%GHOST_FINISH
+                PRINT *, "*   ",ELEMENTS_MAPPING%DOMAIN_LIST(element_idx)
+              ENDDO
                 
               !CALL Print_DOMAIN_MAPPING(ELEMENTS_MAPPING, 5, 40)
               
-              PRINT*, "internal elements ", ELEMENTS_MAPPING%INTERNAL_START,"to",ELEMENTS_MAPPING%INTERNAL_FINISH
-              PRINT*, "geometric interpolation parameters at elements:"
+              PRINT*, "* geometric interpolation parameters at elements:"
+              PRINT*, "* internal elements ", ELEMENTS_MAPPING%INTERNAL_START,"to",ELEMENTS_MAPPING%INTERNAL_FINISH
               
-              PRINT*, "index        element_no      interpolation_parameters"
+              PRINT*, "*   ","index        element_no      interpolation_parameters"
               DO element_idx=ELEMENTS_MAPPING%INTERNAL_START, ELEMENTS_MAPPING%INTERNAL_FINISH
               
                 ne = ELEMENTS_MAPPING%DOMAIN_LIST(element_idx)
@@ -1229,9 +1238,33 @@ CONTAINS
                 CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,ne,INTERPOLATION_PARAMETERS,ERR,ERROR,*999)
                 
                 DO component_idx = 1,INTERPOLATION_PARAMETERS%FIELD_VARIABLE%NUMBER_OF_COMPONENTS
-                  PRINT*, element_idx, ne, INTERPOLATION_PARAMETERS%PARAMETERS(:,component_idx)
+                  PRINT*, "*   ",element_idx, ne, INTERPOLATION_PARAMETERS%PARAMETERS(:,component_idx)
                 ENDDO
               ENDDO
+              
+              PRINT*, "* boundary & ghost elements ", ELEMENTS_MAPPING%BOUNDARY_START,"to",ELEMENTS_MAPPING%GHOST_FINISH
+              
+              PRINT*, "*   ","index        element_no      interpolation_parameters"
+              DO element_idx=ELEMENTS_MAPPING%BOUNDARY_START, ELEMENTS_MAPPING%GHOST_FINISH
+              
+                ne = ELEMENTS_MAPPING%DOMAIN_LIST(element_idx)
+                
+                ! get interpolation parameters of element
+                ! version which is used with real preallocated variable names:
+                CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,ne,&
+                  & EQUATIONS%INTERPOLATION%GEOMETRIC_INTERP_PARAMETERS(FIELD_U_VARIABLE_TYPE)%PTR,ERR,ERROR,*999)
+          
+                INTERPOLATION_PARAMETERS=> &
+                  & EQUATIONS%INTERPOLATION%GEOMETRIC_INTERP_POINT(FIELD_U_VARIABLE_TYPE)%PTR%INTERPOLATION_PARAMETERS                
+                
+                ! direct version
+                CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,ne,INTERPOLATION_PARAMETERS,ERR,ERROR,*999)
+                
+                DO component_idx = 1,INTERPOLATION_PARAMETERS%FIELD_VARIABLE%NUMBER_OF_COMPONENTS
+                  PRINT*, "*   ",element_idx, ne, INTERPOLATION_PARAMETERS%PARAMETERS(:,component_idx)
+                ENDDO
+              ENDDO
+              PRINT*, "***********************************"
               
             ENDIF
             
