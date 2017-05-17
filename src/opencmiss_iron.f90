@@ -6899,7 +6899,7 @@ MODULE OpenCMISS_Iron
 
   PUBLIC cmfe_Solver_DAESolverTypeGet,cmfe_Solver_DAESolverTypeSet
 
-  PUBLIC cmfe_Solver_DAETimesSet,cmfe_Solver_DAETimeStepSet
+  PUBLIC cmfe_Solver_DAETimesSet,cmfe_Solver_DAETimeStepSet,cmfe_Solver_DAEbdfSetTolerance
 
   PUBLIC cmfe_Solver_DynamicDegreeGet,cmfe_Solver_DynamicDegreeSet
 
@@ -50782,6 +50782,44 @@ CONTAINS
     RETURN
 
   END SUBROUTINE cmfe_Solver_DAETimeStepSetObj
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Changes the absolute and relative error tolerances for the BDF differential-algebraic equation solver.
+  SUBROUTINE cmfe_Solver_DAEbdfSetTolerance(solver,abs_tol,rel_tol,err)
+    !DLLEXPORT(cmfe_Solver_DAESolverTypeSetNumber1)
+
+    !Argument variables
+    TYPE(cmfe_SolverType), INTENT(IN) :: solver !<The solver to set the DAE error tolerance for.
+    REAL(DP), INTENT(IN) :: abs_tol !<The absolute error tolerance to be set.
+    REAL(DP), INTENT(IN) :: rel_tol !<The relative error tolerance to be set.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(VARYING_STRING) :: localError
+
+    ENTERS("cmfe_Solver_DAEbdfSetTolerance",err,error,*999)
+    
+    IF(ASSOCIATED(solver%solver)) THEN
+      IF(ASSOCIATED(solver%solver%DAE_SOLVER)) THEN
+        CALL SOLVER_DAE_BDF_SET_TOLERANCE(solver%solver%DAE_SOLVER,abs_tol,rel_tol,err,error,*999)
+      ELSE
+        localError="The DAE solver is not associated."
+        CALL FlagError(localError,err,error,*999)
+      END IF    
+    ELSE
+      localError="The solver is not associated."
+      CALL FlagError(localError,err,error,*999)
+    END IF
+
+    EXITS("cmfe_Solver_DAEbdfSetTolerance")
+    RETURN
+999 ERRORSEXITS("cmfe_Solver_DAEbdfSetTolerance",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_Solver_DAEbdfSetTolerance
 
   !
   !================================================================================================================================

@@ -560,7 +560,7 @@ MODULE SOLVER_ROUTINES
 
   PUBLIC SOLVER_DAE_SOLVER_TYPE_GET,SOLVER_DAE_SOLVER_TYPE_SET
 
-  PUBLIC SOLVER_DAE_TIMES_SET,SOLVER_DAE_TIME_STEP_SET
+  PUBLIC SOLVER_DAE_TIMES_SET,SOLVER_DAE_TIME_STEP_SET, SOLVER_DAE_BDF_SET_TOLERANCE
 
   PUBLIC SOLVER_DAE_EULER_SOLVER_TYPE_GET,SOLVER_DAE_EULER_SOLVER_TYPE_SET
 
@@ -3562,6 +3562,7 @@ CONTAINS
             CALL FlagError("Not implemented.",ERR,ERROR,*999)
           CASE(SOLVER_PETSC_LIBRARY)
             BDF_DAE_SOLVER%SOLVER_LIBRARY = SOLVER_PETSC_LIBRARY
+            WRITE(*,*) 'SOLVER_DAE_LIBRARY_TYPE_SET, solver_routines, ~3565: petsc library is set. BDF_DAE_SOLVER ready for setup'
           CASE DEFAULT
             LOCAL_ERROR="The solver library type of "//TRIM(NumberToVString(SOLVER_LIBRARY_TYPE,"*",ERR,ERROR))// &
               & " is invalid."
@@ -3675,6 +3676,8 @@ CONTAINS
         !Initialise
         DAE_SOLVER%BDF_SOLVER%DAE_SOLVER=>DAE_SOLVER
         DAE_SOLVER%BDF_SOLVER%SOLVER_LIBRARY=SOLVER_PETSC_LIBRARY
+        DAE_SOLVER%BDF_SOLVER%ABSOLUTE_TOLERANCE=0.0000001_DP
+        DAE_SOLVER%BDF_SOLVER%RELATIVE_TOLERANCE=0.0000001_DP
         !Defaults
       ENDIF
     ELSE
@@ -3688,6 +3691,43 @@ CONTAINS
     RETURN 1
 
   END SUBROUTINE SOLVER_DAE_BDF_INITIALISE 
+  
+  !
+  !================================================================================================================================
+  !
+  
+  !>Initialise a BDF solver for a differential-algebraic equation solver
+  SUBROUTINE SOLVER_DAE_BDF_SET_TOLERANCE(DAE_SOLVER,ABS_TOLERANCE,REL_TOLERANCE,ERR,ERROR,*)
+
+    !Argument variables
+    TYPE(DAE_SOLVER_TYPE), POINTER :: DAE_SOLVER !<A pointer to the differential-algebraic equation solver of which the tolerances shall be set
+    REAL(DP) :: ABS_TOLERANCE !< The value to set ABSOLUTE_TOLERANCE to
+    REAL(DP) :: REL_TOLERANCE !< The value to set RELATIVE_TOLERANCE to
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Local Variables
+    INTEGER(INTG) :: DUMMY_ERR
+    TYPE(VARYING_STRING) :: DUMMY_ERROR
+
+    ENTERS("SOLVER_DAE_BDF_SET_TOLERANCE",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(DAE_SOLVER)) THEN
+      IF(ASSOCIATED(DAE_SOLVER%BDF_SOLVER)) THEN
+        DAE_SOLVER%BDF_SOLVER%ABSOLUTE_TOLERANCE=ABS_TOLERANCE
+        DAE_SOLVER%BDF_SOLVER%RELATIVE_TOLERANCE=REL_TOLERANCE
+      ELSE
+        CALL FlagError("BDF solver is not associated.",ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("Differential-algebraic equation solver is not associated.",ERR,ERROR,*999)
+    ENDIF
+
+    EXITS("SOLVER_DAE_BDF_SET_TOLERANCE")
+    RETURN
+999 ERRORSEXITS("SOLVER_DAE_BDF_SET_TOLERANCE",ERR,ERROR)
+    RETURN 1
+
+  END SUBROUTINE SOLVER_DAE_BDF_SET_TOLERANCE 
   
   !
   !================================================================================================================================
@@ -3885,7 +3925,7 @@ CONTAINS
   !>Integrate using a BDF differential-algebraic equation solver.
   SUBROUTINE SOLVER_DAE_BDF_INTEGRATE(BDF_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_INCREMENT, &
     & ONLY_ONE_MODEL_INDEX,MODELS_DATA,MAX_NUMBER_STATES,STATE_DATA,MAX_NUMBER_PARAMETERS,PARAMETERS_DATA, &
-    & MAX_NUMBER_INTERMEDIATES,INTERMEDIATE_DATA,ERR,ERROR,*)
+    & MAX_NUMBER_INTERMEDIATES,INTERMEDIATE_DATA,ERR,ERROR,*)!,ABS_TOL,REL_TOL
 
     !Argument variables
     TYPE(BDF_DAE_SOLVER_TYPE), POINTER :: BDF_SOLVER !<A pointer the BDF differential-algebraic equation solver to integrate
@@ -3902,11 +3942,14 @@ CONTAINS
     REAL(DP), POINTER, INTENT(INOUT) :: PARAMETERS_DATA(:) !<PARAMETERS_DATA(parameter_idx,dof_idx). The parameters data for the parameter_idx'th parameter variable of the dof_idx'th dof. parameter_idx varies from 1..NUMBER_PARAMETERS.
     INTEGER(INTG), INTENT(IN) :: MAX_NUMBER_INTERMEDIATES !<The maximum number of intermediate variables per dof.
     REAL(DP), POINTER, INTENT(INOUT) :: INTERMEDIATE_DATA(:) !<INTERMEDIATE_DATA(intermediate_idx,dof_idx). The intermediate values data for the intermediate_idx'th intermediate variable of the dof_idx'th dof. intermediate_idx varies from 1.NUMBER_INTERMEDIATE
+    !REAL(DP), INTENT(IN) :: ABS_TOL !<The absolute tolerance the user expects to get. 
+    !REAL(DP), INTENT(IN) :: REL_TOL !<The relative tolerance the user expects to get.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(PetscTSType) :: ts !<The PETSc TS type
     REAL(DP) :: FINALSOLVEDTIME
+    INTEGER(INTG) :: NUMBER_OF_STEPS !<The number of steps the BDF DAE solver needed to compute the next state. This is problem dependent, since PETSc will choose step sizes dynamically. 
     TYPE(PetscVecType) :: PETSC_CURRENT_STATES !<The initial and final states for the DAE
     TYPE(CellMLPETScContextType), POINTER :: CTX !<The passed through context
     INTEGER(INTG) :: dof_idx,DOF_ORDER_TYPE,model_idx, NUMBER_STATES,STATE_END_DOF,state_idx,STATE_START_DOF,array_idx
@@ -3990,8 +4033,8 @@ CONTAINS
                       CALL Petsc_TSSetType(ts,PETSC_TS_SUNDIALS,ERR,ERROR,*999)
                       ! sundials specific options
                       CALL Petsc_TSSundialsSetType(ts,PETSC_SUNDIALS_BDF,ERR,ERROR,*999)
-                      CALL Petsc_TSSundialsSetTolerance(ts,0.0000001_DP, &
-                        & 0.0000001_DP,ERR,ERROR,*999)
+                      CALL Petsc_TSSundialsSetTolerance(ts,BDF_SOLVER%ABSOLUTE_TOLERANCE, &
+                        & BDF_SOLVER%RELATIVE_TOLERANCE,ERR,ERROR,*999)! abs/rel was 0.0000001_DP/0.0000001_DP
                         
 ! the whole PETSc iterface to sundials                      
 !                      EXTERN PetscErrorCode PETSCTS_DLLEXPORT  TSSundialsSetType(TS,TSSundialsLmmType);
@@ -4054,6 +4097,8 @@ CONTAINS
                       ENDIF
                       
                       IF(dof_idx==1 .AND. .TRUE.) THEN
+                        CALL Petsc_TSGetTimeStepNumber(ts,NUMBER_OF_STEPS,ERR,ERROR,*999)
+                        WRITE(*,*) 'Number of steps of BDF solver is ',NUMBER_OF_STEPS,'. New state is:'
                         CALL Petsc_VecView(PETSC_CURRENT_STATES,PETSC_VIEWER_STDOUT_SELF,ERR,ERROR,*999)
                       ENDIF
                       
