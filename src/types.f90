@@ -2556,12 +2556,16 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   TYPE BDF_DAE_SOLVER_TYPE
     TYPE(DAE_SOLVER_TYPE), POINTER :: DAE_SOLVER !<A pointer to the differential-algebraic solver
     INTEGER(INTG) :: SOLVER_LIBRARY !<The library type for the BDF differential-algebraic equation solver \see SOLVER_ROUTINES_SolverLibraries,SOLVER_ROUTINES
+    REAL(DP) :: RELATIVE_TOLERANCE !<The relative tolerance, the user expects to get from the SUNDIALS library
+    REAL(DP) :: ABSOLUTE_TOLERANCE !<The absolute tolerance, the user expects to get from the SUNDIALS library
   END TYPE BDF_DAE_SOLVER_TYPE
 
   !(>)Contains information for a GL differential-algebraic equation solver
   TYPE GL_DAE_SOLVER_TYPE
     TYPE(DAE_SOLVER_TYPE), POINTER :: DAE_SOLVER !(<)A pointer to the differential-algebraic solver
     INTEGER(INTG) :: SOLVER_LIBRARY !(<)The library type for the GL differential-algebraic equation solver \see SOLVER_ROUTINES_SolverLibraries,SOLVER_ROUTINES
+    !REAL(DP) :: RELATIVE_TOLERANCE !The relative tolerance, the user expects to get
+    !REAL(DP) :: ABSOLUTE_TOLERANCE !The absolute tolerance, the user expects to get
   END TYPE GL_DAE_SOLVER_TYPE
   
   !>Contains information for a Rush-Larson differential-algebraic equation solver

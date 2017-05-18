@@ -560,7 +560,7 @@ MODULE SOLVER_ROUTINES
 
   PUBLIC SOLVER_DAE_SOLVER_TYPE_GET,SOLVER_DAE_SOLVER_TYPE_SET
 
-  PUBLIC SOLVER_DAE_TIMES_SET,SOLVER_DAE_TIME_STEP_SET
+  PUBLIC SOLVER_DAE_TIMES_SET,SOLVER_DAE_TIME_STEP_SET, SOLVER_DAE_BDF_SET_TOLERANCE
 
   PUBLIC SOLVER_DAE_EULER_SOLVER_TYPE_GET,SOLVER_DAE_EULER_SOLVER_TYPE_SET
 
@@ -2127,7 +2127,7 @@ CONTAINS
   !
 
   !>Integrate using a forward Euler differential-algebraic equation solver.
-  SUBROUTINE SOLVER_DAE_EULER_FORWARD_INTEGRATE(FORWARD_EULER_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_INCREMENT, &
+  SUBROUTINE SOLVER_DAE_EULER_FORWARD_INTEGRATE(FORWARD_EULER_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_INCREMENT_I, &
     & ONLY_ONE_MODEL_INDEX,MODELS_DATA,MAX_NUMBER_STATES,STATE_DATA,MAX_NUMBER_PARAMETERS,PARAMETERS_DATA, &
     & MAX_NUMBER_INTERMEDIATES,INTERMEDIATE_DATA,ERR,ERROR,*)
 
@@ -2137,7 +2137,7 @@ CONTAINS
     INTEGER(INTG), INTENT(IN) :: N !<The number of degrees-of-freedom
     REAL(DP), INTENT(IN) :: START_TIME !<The start time for the integration
     REAL(DP), INTENT(IN) :: END_TIME !<The end time for the integration
-    REAL(DP), INTENT(INOUT) :: TIME_INCREMENT !<The (initial) time increment for the integration
+    REAL(DP), INTENT(INOUT) :: TIME_INCREMENT_I !<The (initial) time increment for the integration
     INTEGER(INTG), INTENT(IN) :: ONLY_ONE_MODEL_INDEX !<If only one model is used in the models data the index of that model. 0 otherwise.
     INTEGER(INTG), POINTER :: MODELS_DATA(:) !<MODELS_DATA(dof_idx). The models data for the dof_idx'th dof.
     INTEGER(INTG), INTENT(IN) :: MAX_NUMBER_STATES !<The maximum number of state variables per dof
@@ -2156,8 +2156,11 @@ CONTAINS
       & RATES(MAX(1,MAX_NUMBER_STATES)),STATES(MAX(1,MAX_NUMBER_STATES)),TIME
     TYPE(CELLML_MODEL_TYPE), POINTER :: MODEL
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-
+    REAL(DP) :: TIME_INCREMENT
+    
     ENTERS("SOLVER_DAE_EULER_FORWARD_INTEGRATE",ERR,ERROR,*999)
+    
+    TIME_INCREMENT=TIME_INCREMENT_I
 
     IF(ASSOCIATED(FORWARD_EULER_SOLVER)) THEN
       IF(ASSOCIATED(CELLML)) THEN
@@ -2167,7 +2170,9 @@ CONTAINS
             !Dof components are separated. Will need to copy data to temporary arrays.
             IF(ONLY_ONE_MODEL_INDEX==CELLML_MODELS_FIELD_NOT_CONSTANT) THEN
               !Mulitple models
-              DO WHILE(TIME<=END_TIME)
+              DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
+                !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
+                TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
                 DO dof_idx=1,N
                   model_idx=MODELS_DATA(dof_idx)
                   IF(model_idx.GT.0) THEN
@@ -2211,14 +2216,16 @@ CONTAINS
                 TIME=TIME+TIME_INCREMENT
               ENDDO !time
             ELSE
-              !One one model is used.
+              !Only one model is used.
               MODEL=>CELLML%MODELS(ONLY_ONE_MODEL_INDEX)%PTR
               IF(ASSOCIATED(MODEL)) THEN
                 NUMBER_STATES=MODEL%NUMBER_OF_STATE
                 NUMBER_INTERMEDIATES=MODEL%NUMBER_OF_INTERMEDIATE
                 NUMBER_PARAMETERS=MODEL%NUMBER_OF_PARAMETERS
                 TIME=START_TIME
-                DO WHILE(TIME<=END_TIME)
+                DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
+                  !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
+                  TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
                   DO dof_idx=1,N
 
                     model_idx=MODELS_DATA(dof_idx)
@@ -2248,7 +2255,7 @@ CONTAINS
                     ENDIF !model_idx
                   ENDDO !dof_idx
                   TIME=TIME+TIME_INCREMENT
-                ENDDO !time
+                  ENDDO !time
               ELSE
                 LOCAL_ERROR="CellML environment model is not associated for model index "// &
                   & TRIM(NumberToVString(ONLY_ONE_MODEL_INDEX,"*",ERR,ERROR))//"."
@@ -2260,7 +2267,9 @@ CONTAINS
             IF(ONLY_ONE_MODEL_INDEX==CELLML_MODELS_FIELD_NOT_CONSTANT) THEN
               !Mulitple models
               TIME=START_TIME
-              DO WHILE(TIME<=END_TIME)
+              DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
+                !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
+                TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
                 DO dof_idx=1,N
                   model_idx=MODELS_DATA(dof_idx)
                   IF(model_idx==0) THEN
@@ -2366,7 +2375,9 @@ CONTAINS
                       !We have states, intermediate and parameters for the model
 
                       TIME=START_TIME
-                      DO WHILE(TIME<=END_TIME)
+                      DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
+                        !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
+                        TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
                         DO dof_idx=1,N
                           model_idx=MODELS_DATA(dof_idx)
                           IF(model_idx.GT.0) THEN
@@ -2399,14 +2410,25 @@ CONTAINS
 
                             STATE_DATA(STATE_START_DOF:STATE_END_DOF)=STATE_DATA(STATE_START_DOF:STATE_END_DOF)+ &
                               & TIME_INCREMENT*RATES(1:NUMBER_STATES)
-                          ENDIF !model_idx
+                          ENDIF !model_idx  
+                          IF(dof_idx == 1 .AND. TIME+TIME_INCREMENT==END_TIME) THEN
+                            WRITE(*,*) 'time stepping to:'
+                            DO model_idx=0,NUMBER_STATES-1
+                              WRITE(*,*) STATE_DATA(STATE_START_DOF+model_idx)
+                            ENDDO
+                            WRITE(*,*) ''
+                            model_idx=MODELS_DATA(1)
+                          ENDIF
                         ENDDO !dof_idx
                         TIME=TIME+TIME_INCREMENT
                       ENDDO !time
+                    
                     ELSE
                       !We do not have parameters in the model
                       TIME=START_TIME
-                      DO WHILE(TIME<=END_TIME)
+                      DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
+                        !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
+                        TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
                         DO dof_idx=1,N
                           model_idx=MODELS_DATA(dof_idx)
                           IF(model_idx.GT.0) THEN
@@ -2428,11 +2450,12 @@ CONTAINS
                       ENDDO !time
                     ENDIF
                   ELSE
+                  !We do not have intermediates in the model
                     IF(NUMBER_PARAMETERS>0) THEN
-                      !We do not have intermediates in the model
-
-                      TIME=START_TIME
-                      DO WHILE(TIME<=END_TIME)
+                      TIME=START_TIME              
+                      DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
+                        !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
+                        TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
                         DO dof_idx=1,N
                           model_idx=MODELS_DATA(dof_idx)
                           IF(model_idx.GT.0) THEN
@@ -2449,13 +2472,26 @@ CONTAINS
                             STATE_DATA(STATE_START_DOF:STATE_END_DOF)=STATE_DATA(STATE_START_DOF:STATE_END_DOF)+ &
                               & TIME_INCREMENT*RATES(1:NUMBER_STATES)
                           ENDIF !model_idx
+                          IF(dof_idx == 1) THEN
+                           WRITE(*,*) 'Stepping forward by',TIME_INCREMENT,'time instances. State afterwards:'
+                           DO model_idx=0,NUMBER_STATES-1
+                             WRITE(*,*) STATE_DATA(STATE_START_DOF+model_idx)
+                           ENDDO
+                           IF(TIME_INCREMENT/=TIME_INCREMENT_I)THEN
+                             WRITE(*,*)'===================================================',TIME_INCREMENT+TIME, '========'
+                           ENDIF
+                           WRITE(*,*) ''
+                           model_idx=MODELS_DATA(1)
+                          ENDIF
                         ENDDO !dof_idx
                         TIME=TIME+TIME_INCREMENT
                       ENDDO !time
                     ELSE
                       !We do not have intermediates or parameters in the model
                       TIME=START_TIME
-                      DO WHILE(TIME<=END_TIME)
+                      DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
+                        !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
+                        TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
                         DO dof_idx=1,N
                           model_idx=MODELS_DATA(dof_idx)
                           IF(model_idx.GT.0) THEN
@@ -3526,6 +3562,7 @@ CONTAINS
             CALL FlagError("Not implemented.",ERR,ERROR,*999)
           CASE(SOLVER_PETSC_LIBRARY)
             BDF_DAE_SOLVER%SOLVER_LIBRARY = SOLVER_PETSC_LIBRARY
+            WRITE(*,*) 'SOLVER_DAE_LIBRARY_TYPE_SET, solver_routines, ~3565: petsc library is set. BDF_DAE_SOLVER ready for setup'
           CASE DEFAULT
             LOCAL_ERROR="The solver library type of "//TRIM(NumberToVString(SOLVER_LIBRARY_TYPE,"*",ERR,ERROR))// &
               & " is invalid."
@@ -3639,6 +3676,8 @@ CONTAINS
         !Initialise
         DAE_SOLVER%BDF_SOLVER%DAE_SOLVER=>DAE_SOLVER
         DAE_SOLVER%BDF_SOLVER%SOLVER_LIBRARY=SOLVER_PETSC_LIBRARY
+        DAE_SOLVER%BDF_SOLVER%ABSOLUTE_TOLERANCE=0.0000001_DP
+        DAE_SOLVER%BDF_SOLVER%RELATIVE_TOLERANCE=0.0000001_DP
         !Defaults
       ENDIF
     ELSE
@@ -3652,6 +3691,43 @@ CONTAINS
     RETURN 1
 
   END SUBROUTINE SOLVER_DAE_BDF_INITIALISE 
+  
+  !
+  !================================================================================================================================
+  !
+  
+  !>Initialise a BDF solver for a differential-algebraic equation solver
+  SUBROUTINE SOLVER_DAE_BDF_SET_TOLERANCE(DAE_SOLVER,ABS_TOLERANCE,REL_TOLERANCE,ERR,ERROR,*)
+
+    !Argument variables
+    TYPE(DAE_SOLVER_TYPE), POINTER :: DAE_SOLVER !<A pointer to the differential-algebraic equation solver of which the tolerances shall be set
+    REAL(DP) :: ABS_TOLERANCE !< The value to set ABSOLUTE_TOLERANCE to
+    REAL(DP) :: REL_TOLERANCE !< The value to set RELATIVE_TOLERANCE to
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Local Variables
+    INTEGER(INTG) :: DUMMY_ERR
+    TYPE(VARYING_STRING) :: DUMMY_ERROR
+
+    ENTERS("SOLVER_DAE_BDF_SET_TOLERANCE",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(DAE_SOLVER)) THEN
+      IF(ASSOCIATED(DAE_SOLVER%BDF_SOLVER)) THEN
+        DAE_SOLVER%BDF_SOLVER%ABSOLUTE_TOLERANCE=ABS_TOLERANCE
+        DAE_SOLVER%BDF_SOLVER%RELATIVE_TOLERANCE=REL_TOLERANCE
+      ELSE
+        CALL FlagError("BDF solver is not associated.",ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("Differential-algebraic equation solver is not associated.",ERR,ERROR,*999)
+    ENDIF
+
+    EXITS("SOLVER_DAE_BDF_SET_TOLERANCE")
+    RETURN
+999 ERRORSEXITS("SOLVER_DAE_BDF_SET_TOLERANCE",ERR,ERROR)
+    RETURN 1
+
+  END SUBROUTINE SOLVER_DAE_BDF_SET_TOLERANCE 
   
   !
   !================================================================================================================================
@@ -3849,7 +3925,7 @@ CONTAINS
   !>Integrate using a BDF differential-algebraic equation solver.
   SUBROUTINE SOLVER_DAE_BDF_INTEGRATE(BDF_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_INCREMENT, &
     & ONLY_ONE_MODEL_INDEX,MODELS_DATA,MAX_NUMBER_STATES,STATE_DATA,MAX_NUMBER_PARAMETERS,PARAMETERS_DATA, &
-    & MAX_NUMBER_INTERMEDIATES,INTERMEDIATE_DATA,ERR,ERROR,*)
+    & MAX_NUMBER_INTERMEDIATES,INTERMEDIATE_DATA,ERR,ERROR,*)!,ABS_TOL,REL_TOL
 
     !Argument variables
     TYPE(BDF_DAE_SOLVER_TYPE), POINTER :: BDF_SOLVER !<A pointer the BDF differential-algebraic equation solver to integrate
@@ -3866,16 +3942,19 @@ CONTAINS
     REAL(DP), POINTER, INTENT(INOUT) :: PARAMETERS_DATA(:) !<PARAMETERS_DATA(parameter_idx,dof_idx). The parameters data for the parameter_idx'th parameter variable of the dof_idx'th dof. parameter_idx varies from 1..NUMBER_PARAMETERS.
     INTEGER(INTG), INTENT(IN) :: MAX_NUMBER_INTERMEDIATES !<The maximum number of intermediate variables per dof.
     REAL(DP), POINTER, INTENT(INOUT) :: INTERMEDIATE_DATA(:) !<INTERMEDIATE_DATA(intermediate_idx,dof_idx). The intermediate values data for the intermediate_idx'th intermediate variable of the dof_idx'th dof. intermediate_idx varies from 1.NUMBER_INTERMEDIATE
+    !REAL(DP), INTENT(IN) :: ABS_TOL !<The absolute tolerance the user expects to get. 
+    !REAL(DP), INTENT(IN) :: REL_TOL !<The relative tolerance the user expects to get.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(PetscTSType) :: ts !<The PETSc TS type
-    REAL(DP) :: FINALSOLVEDTIME,TIMESTEP
+    REAL(DP) :: FINALSOLVEDTIME
+    INTEGER(INTG) :: NUMBER_OF_STEPS !<The number of steps the BDF DAE solver needed to compute the next state. This is problem dependent, since PETSc will choose step sizes dynamically. 
     TYPE(PetscVecType) :: PETSC_CURRENT_STATES !<The initial and final states for the DAE
     TYPE(CellMLPETScContextType), POINTER :: CTX !<The passed through context
     INTEGER(INTG) :: dof_idx,DOF_ORDER_TYPE,model_idx, NUMBER_STATES,STATE_END_DOF,state_idx,STATE_START_DOF,array_idx
     REAL(DP), ALLOCATABLE  :: STATES_TEMP(:),RATES_TEMP(:)
-    INTEGER(INTG), ALLOCATABLE :: ARRAY_INDICES(:)
+    INTEGER(INTG), ALLOCATABLE :: ARRAY_INDICES(:) ! do they have to be TYPE(PetscIntType)?
     TYPE(CELLML_MODEL_TYPE), POINTER :: MODEL
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     TYPE(PetscVecType) :: PETSC_RATES
@@ -3885,7 +3964,6 @@ CONTAINS
     ENTERS("SOLVER_DAE_BFD_INTEGRATE",ERR,ERROR,*999)
 
     NULLIFY(CTX)
-    TIMESTEP=END_TIME-START_TIME
     IF(ASSOCIATED(BDF_SOLVER)) THEN
       IF(ASSOCIATED(CELLML)) THEN
         IF(ASSOCIATED(CELLML%MODELS_FIELD)) THEN
@@ -3899,7 +3977,7 @@ CONTAINS
               IF(ONLY_ONE_MODEL_INDEX==CELLML_MODELS_FIELD_NOT_CONSTANT) THEN
 
               ELSE !only one model
-                MODEL=>CELLML%MODELS(ONLY_ONE_MODEL_INDEX)%PTR ! NOTE: wird ausgeführt, wenn man in der thomas-main cmfe_Solver_DAESolverTypeSet(SolverDAE,CMFE_SOLVER_DAE_BDF,Err) aufruft.
+                MODEL=>CELLML%MODELS(ONLY_ONE_MODEL_INDEX)%PTR
                 IF(ASSOCIATED(MODEL)) THEN
                   !determine no. of states in model and allocate necessary arrays
                   NUMBER_STATES = MODEL%NUMBER_OF_STATE
@@ -3918,39 +3996,12 @@ CONTAINS
                   CALL Solver_DAECellMLPETScContextInitialise(ctx,err,error,*999)
                   DO dof_idx=1,N
                     IF(DEBUG_MODE_A) THEN
-                      WRITE(*,*) 'dof_idx is now ', dof_idx, '. (model_idx is one.)'
+                      WRITE(*,*) 'dof_idx is now ', dof_idx
                     ENDIF
                     model_idx = MODELS_DATA(dof_idx)
-                    ! WRITE(*,*) 'The model_idx (=MODELS_DATA(dof_idx)) is now ', model_idx, '.' ! is always one
                     
                     IF(model_idx>0) THEN !if model is assigned to dof
-!            ! vergleiche zu forwärts euler:
-! 
-!                TIME=START_TIME                   ! <<<< brauchen das nicht, da Sundials alles macht 
-!                DO WHILE(TIME<=END_TIME)          ! <<<<
-!                  DO dof_idx=1,N
-!                    model_idx=MODELS_DATA(dof_idx)
-!                    IF(model_idx.GT.0) THEN
-!
-!                      STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
-!                      STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
-!                      PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
-!                      PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
-!
-!                      CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME, &    ! <<< RHS muss an sundials weiter gegeben werden
-!                        & STATE_DATA(STATE_START_DOF:STATE_END_DOF), &                   ! <<<
-!                        & RATES,INTERMEDIATES,PARAMETERS_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
-!                      STATE_DATA(STATE_START_DOF:STATE_END_DOF)=STATE_DATA(STATE_START_DOF:STATE_END_DOF)+ &
-!                        & TIME_INCREMENT*RATES(1:NUMBER_STATES)
-!                    ENDIF !model_idx
-!                  ENDDO !dof_idx
-!                  TIME=TIME+TIME_INCREMENT
-!                ENDDO !time                       ! <<<<
-!           ! vgl ende 
-                      
-                      !KOMMENTAR: (vor Ostern17) glaube, dass die vektoren hier falsch erzeugt werden (mit nur einer Komponnete, statt mit 5) dadurch
-                      ! sundials nur müll übergeben. ...
-                      
+                                            
                       
 ! potential !?: circumventing making a new ts every time by "tutorial" on:
 ! http://www.mcs.anl.gov/petsc/petsc-current/src/ts/examples/tutorials/ex28.c.html
@@ -3958,42 +4009,46 @@ CONTAINS
 ! http://www.mcs.anl.gov/petsc/documentation/tutorials/HandsOnExercise.html#ML
 
 ! c code for experimenting with petsc http://www.mcs.anl.gov/petsc/petsc-current/src/ts/examples/tutorials/ex19.c.html
-                      
-                      
+                         
                       !access the state field data
                       STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                       STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                       DO state_idx=1,NUMBER_STATES
                         STATES_TEMP(state_idx-1) = STATE_DATA(STATE_START_DOF+state_idx-1)
                       ENDDO
-                      
-                      IF(DEBUG_MODE_A) THEN
-                        WRITE(*,*) '-----------------------------------------------------------' 
-                        WRITE(*,*) 'STATES_TEMP: (,', STATES_TEMP(0),STATES_TEMP(1),STATES_TEMP(2),STATES_TEMP(3),STATES_TEMP(4),')'
-                      ENDIF
-                      
+                                            
                       !create PETSC states vector to initialize solver
+                      CALL Petsc_VecInitialise(PETSC_CURRENT_STATES,err,error,*999)
                       CALL Petsc_VecCreateSeq(PETSC_COMM_SELF, &
                         & NUMBER_STATES,PETSC_CURRENT_STATES,ERR,ERROR,*999)
-                      !CALL Petsc_VecSetSizes(PETSC_CURRENT_STATES, &
-                      !  & PETSC_DECIDE,(NUMBER_STATES),ERR,ERROR,*999)
-                      !CALL Petsc_VecSetFromOptions(PETSC_CURRENT_STATES,ERR,ERROR,*999)
-
+                     
                       !create PETSC rates vector to return values from evaluating rhs routine
                       CALL Petsc_VecCreateSeq(PETSC_COMM_SELF, &
                         & NUMBER_STATES,PETSC_RATES,ERR,ERROR,*999)
-                      !CALL Petsc_VecSetSizes(PETSC_RATES, &
-                      !  & PETSC_DECIDE,(NUMBER_STATES),ERR,ERROR,*999)
-                      !CALL Petsc_VecSetFromOptions(PETSC_RATES,ERR,ERROR,*999)
 
                       !Set up PETSC TS context for sundials BDF solver
                       CALL Petsc_TSCreate(PETSC_COMM_SELF,ts,ERR,ERROR,*999)
                       CALL Petsc_TSSetProblemType(ts,PETSC_TS_NONLINEAR,ERR,ERROR,*999)
+                      
                       CALL Petsc_TSSetType(ts,PETSC_TS_SUNDIALS,ERR,ERROR,*999)
+                      ! sundials specific options
                       CALL Petsc_TSSundialsSetType(ts,PETSC_SUNDIALS_BDF,ERR,ERROR,*999)
-                      CALL Petsc_TSSundialsSetTolerance(ts,0.0000001_DP, &
-                        & 0.0000001_DP,ERR,ERROR,*999)
-                      !set the initial solution to the current state
+                      CALL Petsc_TSSundialsSetTolerance(ts,BDF_SOLVER%ABSOLUTE_TOLERANCE, &
+                        & BDF_SOLVER%RELATIVE_TOLERANCE,ERR,ERROR,*999)! abs/rel was 0.0000001_DP/0.0000001_DP
+                        
+! the whole PETSc iterface to sundials                      
+!                      EXTERN PetscErrorCode PETSCTS_DLLEXPORT  TSSundialsSetType(TS,TSSundialsLmmType);
+!                      EXTERN PetscErrorCode PETSCTS_DLLEXPORT  TSSundialsGetPC(TS,PC*);
+!                      EXTERN PetscErrorCode PETSCTS_DLLEXPORT  TSSundialsSetTolerance(TS,PetscReal,PetscReal);
+!                      EXTERN PetscErrorCode PETSCTS_DLLEXPORT  TSSundialsGetIterations(TS,PetscInt *,PetscInt *);
+!                      EXTERN PetscErrorCode PETSCTS_DLLEXPORT  TSSundialsSetGramSchmidtType(TS,TSSundialsGramSchmidtType);
+!                      EXTERN PetscErrorCode PETSCTS_DLLEXPORT  TSSundialsSetGMRESRestart(TS,PetscInt);
+!                      EXTERN PetscErrorCode PETSCTS_DLLEXPORT  TSSundialsSetLinearTolerance(TS,PetscReal);
+!                      EXTERN PetscErrorCode PETSCTS_DLLEXPORT  TSSundialsSetExactFinalTime(TS,PetscTruth);
+!                      EXTERN PetscErrorCode PETSCTS_DLLEXPORT  TSSundialsMonitorInternalSteps(TS,PetscTruth);
+!                      EXTERN PetscErrorCode PETSCTS_DLLEXPORT  TSSundialsGetParameters(TS,PetscInt *,long*[],double*[]);  
+
+                      !set the initial solution to the current state, stored in STATES_TEMP
                       CALL Petsc_VecSetValues(PETSC_CURRENT_STATES,NUMBER_STATES, &
                         & ARRAY_INDICES,STATES_TEMP, &
                         & PETSC_INSERT_VALUES,ERR,ERROR,*999)
@@ -4034,11 +4089,19 @@ CONTAINS
                         STATE_DATA(STATE_START_DOF+state_idx-1)=  &
                           & STATES_TEMP(state_idx-1)
                       ENDDO
+                      
                       IF(DEBUG_MODE_A) THEN
                         WRITE(*,*) '___________________________________________________________' 
                         WRITE(*,*) '-----------------------------------------------------------' 
                         WRITE(*,*)
                       ENDIF
+                      
+                      IF(dof_idx==1 .AND. .TRUE.) THEN
+                        CALL Petsc_TSGetTimeStepNumber(ts,NUMBER_OF_STEPS,ERR,ERROR,*999)
+                        WRITE(*,*) 'Number of steps of BDF solver is ',NUMBER_OF_STEPS,'. New state is:'
+                        CALL Petsc_VecView(PETSC_CURRENT_STATES,PETSC_VIEWER_STDOUT_SELF,ERR,ERROR,*999)
+                      ENDIF
+                      
                       CALL Petsc_TSFinalise(TS,ERR,ERROR,*999)
                     ENDIF !model_idx
                     CALL Petsc_VecDestroy(PETSC_CURRENT_STATES,ERR,ERROR,*999)
@@ -4105,7 +4168,7 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
 !              ACHTUNG: ts ist nicht das PetSc TS. PetSc TS == ts%ts.
 !
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    REAL(DP) :: FINALSOLVEDTIME,TIMESTEP
+    REAL(DP) :: FINALSOLVEDTIME
     TYPE(PetscVecType) :: PETSC_CURRENT_STATES !(<)The initial and final states for the DAE
     TYPE(CellMLPETScContextType), POINTER :: CTX !(<)The passed through context
     INTEGER(INTG) :: dof_idx,DOF_ORDER_TYPE,model_idx, NUMBER_STATES,STATE_END_DOF,state_idx,STATE_START_DOF,array_idx
@@ -4120,7 +4183,6 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
     ENTERS("SOLVER_DAE_BFD_INTEGRATE",ERR,ERROR,*999)
 
     NULLIFY(CTX)
-    TIMESTEP=END_TIME-START_TIME
     IF(ASSOCIATED(GL_SOLVER)) THEN
       IF(ASSOCIATED(CELLML)) THEN
         IF(ASSOCIATED(CELLML%MODELS_FIELD)) THEN
@@ -4155,7 +4217,7 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                   DO dof_idx=1,N
                     model_idx = MODELS_DATA(dof_idx)
                     IF(model_idx>0) THEN !if model is assigned to dof
-                      !access the state field data --> was steht hier drin? (Bedeutung?, Sinn?)
+                      !access the state field data
                       STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                       STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                       DO state_idx=1,NUMBER_STATES
@@ -4176,7 +4238,6 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
 
                       !would configure the vector from the options database. Init as vec: 'PETSC_CURRENT_STATES'
                       !CALL Petsc_VecSetFromOptions(PETSC_CURRENT_STATES,ERR,ERROR,*999)
-                      ! wahrscheinlich unbebutzt, da vec 'P_C_States' keine sinnvollen (current) Werte hat
 
                       !create PETSC rates vector to return values from evaluating rhs routine
                       CALL Petsc_VecCreateSeq(PETSC_COMM_SELF, &
@@ -4184,14 +4245,10 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                       !CALL Petsc_VecSetSizes(PETSC_RATES, &
                       !  & PETSC_DECIDE,(NUMBER_STATES),ERR,ERROR,*999)
                       !CALL Petsc_VecSetFromOptions(PETSC_RATES,ERR,ERROR,*999)
-                      ! wahrscheinlich unbebutzt, da vec 'P_Rates' keine sinnvollen Werte hat
 
                       !Set up PETSC TS context for GL solver
-                      ! unveränderter TSCreate von PetSc. + CMISS error-check
                       CALL Petsc_TSCreate(PETSC_COMM_SELF,ts,ERR,ERROR,*999)
 
-
-                      ! unveränderter TSSetProblemType von PetSc. + CMISS error-check
                       CALL Petsc_TSSetProblemType(ts,PETSC_TS_NONLINEAR,ERR,ERROR,*999)
 !
                       ! D I F F E R E N C E   T O   P E T S C   E X A M P L E S : 
@@ -4219,32 +4276,27 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                       
                       ! CALL Petsc_TSGLSetType() instead ?
                       CALL Petsc_TSSetType(ts,PETSC_TS_GL,ERR,ERROR,*999)
+                      ! set max r, s
+                      !todo: ttv sagt, hier stimmt was nicht. muss vielleicht r und s setzen.
+                      ! is TSCreate_GL run within this call?
+                      ! more precise: gl->schemes is not associated! but used in [tssolve ... TSGLGetMaxSizes()]
 
-                      
-                      ! D I F F E R E N C E  dont need Sundials, so also no sundials specific option needed.
-                      ! another sundials specific option? where is 'TSSundialsSetTolerance' implemented? ...probably somewhere in PetSc's fortran interface.
-                      !CALL Petsc_TSSundialsSetTolerance(ts,0.0000001_DP,0.0000001_DP,ERR,ERROR,*999)
+! as petsc choses a new scheme, it is documented somewhere. this could be useful somewhere..:
+! PetscInfo7(ts,"Adapt chose scheme %d (%d,%d,%d,%d) with step size %6.2e, finish=%d\n",*next_scheme,gl->schemes[*next_scheme]->p,gl->schemes[*next_scheme]->q,gl->schemes[*next_scheme]->r,gl->schemes[*next_scheme]->s,*next_h,*finish);
+
                       ! Q U E S T I O N : use 'TSSetTolerances()' instead?
-
-                      !set the initial solution to the current state
-                      ! arg1 - vector to insert in
-                      ! arg2 - number of elements to add
-                      ! arg3 - indices where to add
-                      ! arg4 - array of values to set
-                      ! arg5 - the insert mode, INSERT_VALUES (overwriting) or ADD_VALUES (~ arg1(arg3)+arg4)
                       CALL Petsc_VecSetValues(PETSC_CURRENT_STATES,(NUMBER_STATES), &
                         & ARRAY_INDICES,STATES_TEMP, &
                         & PETSC_INSERT_VALUES,ERR,ERROR,*999)
                       !Begins assembling the vector. This routine should be called after completing all calls to VecSetValues()
-                      !nichts um was ich mich gesondert kümmern müsste:
                       CALL Petsc_VecAssemblyBegin(PETSC_CURRENT_STATES,ERR,ERROR,*999)
                       CALL Petsc_VecAssemblyEnd(PETSC_CURRENT_STATES,ERR,ERROR,*999)
                       !Sets the initial solution vector for use by the TS routines:
                       CALL Petsc_TSSetSolution(TS,PETSC_CURRENT_STATES,ERR,ERROR,*999)
 
                       !set up the time data
-                      CALL Petsc_TSSetInitialTimeStep(ts,START_TIME,TIME_INCREMENT,ERR,ERROR,*999) !as expected
-                      CALL Petsc_TSSetDuration(ts,5000,END_TIME,ERR,ERROR,*999)                    !arg2: 'maxsteps' ToDo: maxsteps-Höhe untersuchen.
+                      CALL Petsc_TSSetInitialTimeStep(ts,START_TIME,TIME_INCREMENT,ERR,ERROR,*999)
+                      CALL Petsc_TSSetDuration(ts,5000,END_TIME,ERR,ERROR,*999)   !arg2: 'maxsteps' ToDo: maxsteps-Höhe untersuchen.
                       ! LOGICAL option in arg2 does not correlate with PetSc's TSS..alTime() 'eftopt'.
                       ! <eftopt> = stepover|interpolate|matchstep. Implemented interp. or match?!
                       CALL Petsc_TSSetExactFinalTime(ts,.TRUE.,ERR,ERROR,*999) ! ToDo: match?!?.
@@ -4259,7 +4311,7 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
 
                       !Set ctx's pointers to ~arg2 - ~arg4
                       CALL Solver_DAECellMLPETScContextSet(ctx,GL_SOLVER%DAE_SOLVER%SOLVER,cellML,dof_idx,ERR,ERROR,*999)
-
+       ! solver%global_number ist hier 1, wie ist das bei bdf?
                       ! aus PetSc: TSSetRHSFunction mit Argumenten:
                       ! '(ts,NULL,RHSFunction,&appctx)' <=vlg.=>
                       ! (TS,PETSC_RATES,Problem_SolverDAECellMLRHSPetsc,CTX,ERR,ERROR,*999) 
@@ -4267,7 +4319,7 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                       !
                       ! 'Problem_SolverDAECellMLRHSPetsc' is the external RHS function to call
                       CALL Petsc_TSSetRHSFunction(TS,PETSC_RATES,Problem_SolverDAECellMLRHSPetsc,CTX,ERR,ERROR,*999)
-                      ! calls TSSetRHSFunction(ts%ts,   rates%vec,   rhsFunction,ctx,err) inside. '%vec' must be set!
+                      ! calls TSSetRHSFunction(ts%ts,   rates%vec,   rhsFunction,ctx,err) inside. '%vec' must be set (allocated?!)!
 
 !NOTE: For nonlinear problems, one can provide a Jacobian evaluation routine (or use a finite differencing approximation).
 
@@ -4406,7 +4458,7 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                       IF(ASSOCIATED(INTERMEDIATE_FIELD)) THEN
                         CALL FIELD_PARAMETER_SET_DATA_GET(INTERMEDIATE_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
                           & INTERMEDIATE_DATA,ERR,ERROR,*999)
-                        WRITE(*,*) 'intermediate_field is associated for bdf_solve.'
+                         ! WRITE(*,*) 'intermediate_field is associated for bdf_solve.'
                       ENDIF
                     ENDIF
 
@@ -4937,7 +4989,7 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
     INTEGER(INTG), INTENT(IN) :: stateStartIdx !<The state start data offset.
     INTEGER(INTG), INTENT(IN) :: stateDataOffset !<The offset to the next state data
     REAL(DP), POINTER :: stateData(:) !<A pointer to the state data
-    INTEGER(INTG), INTENT(IN) :: parameterStartIdx !<The parameter start data offset.
+    INTEGER(INTG), INTENT(IN) :: parameterStartIdx !<The parameter start data offset. !!! wird evtl falsch übergeben. (aufgerufen)
     INTEGER(INTG), INTENT(IN) :: parameterDataOffset !<The offset to the next parameters data
     REAL(DP), POINTER :: parameterData(:) !<A pointer to the parameters data
     INTEGER(INTG), INTENT(IN) :: intermediateStartIdx !<The intermediate start data offset.
@@ -4955,7 +5007,7 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
       
 #ifdef WITH_CELLML
     REAL(DP) :: intermediates(MAX(1,intermediateDataOffset)),parameters(MAX(1,parameterDataOffset)), &
-     & rates(MAX(1,rateDataOffset)), states(MAX(1,stateDataOffset,model%NUMBER_OF_STATE))
+     & rates(MAX(1,rateDataOffset,model%NUMBER_OF_STATE)), states(MAX(1,stateDataOffset,model%NUMBER_OF_STATE))
     IF(DEBUG_MODE_A) THEN
       WRITE(*,*) 'Solver_DAECellMLRHSEvaluate, 49xx: Added model%NUMBER_OF_STATE to: ','states(MAX(1,stateDataOffset,*)'
       WRITE(*,*) 'ToDo: The STATES vector was assigned with wrong length. Fixed MANUALLY, only.'
@@ -4963,8 +5015,10 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
     ENDIF
 #else
     REAL(DP) :: intermediates(MAX(1,intermediateDataOffset)),parameters(MAX(1,parameterDataOffset)),rates(MAX(1,rateDataOffset)), &
-     & states(MAX(1,stateDataOffset)
+     & states(MAX(1,stateDataOffset))
 #endif 
+
+! has to be: intermediates(2),parameters(3),rates(9), states(9)
 
     ENTERS("Solver_DAECellMLRHSEvaluate",err,error,*999)
 
@@ -5140,6 +5194,8 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
         stateStartDOF=(stateStartIdx-1)*stateDataOffset+1
         stateEndDOF=stateStartDOF+numberOfStates-1
 
+        states = stateData(stateStartDOF:stateEndDOF)
+
         IF(parameterDataOffset>1.OR.numberOfParameters==0) THEN
           !Parameter data is not contiguous or there are no parameters
 
@@ -5154,7 +5210,7 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
             IF(rateDataOffset>1.OR.numberOfStates==0) THEN
               !Rates data is not contiguous or there are no rates
 
-              CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(model%ptr,time,states(stateStartDOF:stateEndDOF), &
+              CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(model%ptr,time,states, &
                 & rates,intermediates,parameters)
 
               !Copy intermediate data from temporary array
@@ -5279,7 +5335,7 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
 
               CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(model%ptr,time,states(stateStartDOF:stateEndDOF), &
                 & rateData(rateStartDOF:rateEndDOF),intermediateData(intermediateStartDOF:intermediateEndDOF), &
-                & parameters(parameterStartDOF:parameterEndDOF))
+                & parameterData(parameterStartDOF:parameterEndDOF)) !!Aaron: Corrected. was wrongly 'parameters' instead of 'parameterData'
 
             ENDIF
           ENDIF
