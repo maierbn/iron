@@ -1473,6 +1473,8 @@ CONTAINS
             B(1,1)=1.0_DP/A(1,1)
           ELSE
             CALL FLAG_WARNING("Matrix A is zero and cannot be inverted",ERR,ERROR,*999)
+            PRINT *, "Abort execution in maths.f90:1476"
+            STOP
             B(1,1)=0.0_DP
           ENDIF
         CASE(2)
