@@ -2465,8 +2465,8 @@ CONTAINS
 
     ENTERS("BioelectricFiniteElasticity_UpdateGeometricField",ERR,ERROR,*999)
 
-    CALL MPI_COMM_RANK(MPI_COMM_WORLD,ComputationalNodeNumber,MPI_IERROR)
-    CALL MPI_COMM_SIZE(MPI_COMM_WORLD,NumberOfComputationalNodes,MPI_IERROR)
+    !CALL MPI_COMM_RANK(MPI_COMM_WORLD,ComputationalNodeNumber,MPI_IERROR)
+    !CALL MPI_COMM_SIZE(MPI_COMM_WORLD,NumberOfComputationalNodes,MPI_IERROR)
 
 #if 0
     ! turn on debugging depending on computational node number
