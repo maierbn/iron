@@ -2411,7 +2411,7 @@ CONTAINS
                             STATE_DATA(STATE_START_DOF:STATE_END_DOF)=STATE_DATA(STATE_START_DOF:STATE_END_DOF)+ &
                               & TIME_INCREMENT*RATES(1:NUMBER_STATES)
                           ENDIF !model_idx  
-                          IF(dof_idx == 1 .AND. TIME+TIME_INCREMENT==END_TIME) THEN
+                          IF(DEBUG_MODE_A .AND. dof_idx == 1 .AND. TIME+TIME_INCREMENT==END_TIME) THEN
                             WRITE(*,*) 'time stepping to:'
                             DO model_idx=0,NUMBER_STATES-1
                               WRITE(*,*) STATE_DATA(STATE_START_DOF+model_idx)
@@ -2472,7 +2472,7 @@ CONTAINS
                             STATE_DATA(STATE_START_DOF:STATE_END_DOF)=STATE_DATA(STATE_START_DOF:STATE_END_DOF)+ &
                               & TIME_INCREMENT*RATES(1:NUMBER_STATES)
                           ENDIF !model_idx
-                          IF(dof_idx == 1) THEN
+                          IF(dof_idx == 1 .AND. DEBUG_MODE_A) THEN
                            WRITE(*,*) 'Stepping forward by',TIME_INCREMENT,'time instances. State afterwards:'
                            DO model_idx=0,NUMBER_STATES-1
                              WRITE(*,*) STATE_DATA(STATE_START_DOF+model_idx)
@@ -2480,7 +2480,7 @@ CONTAINS
                            IF(TIME_INCREMENT/=TIME_INCREMENT_I)THEN
                              WRITE(*,*)'===================================================',TIME_INCREMENT+TIME, '========'
                            ENDIF
-                           WRITE(*,*) ''
+                            WRITE(*,*) ''
                            model_idx=MODELS_DATA(1)
                           ENDIF
                         ENDDO !dof_idx
@@ -3562,7 +3562,7 @@ CONTAINS
             CALL FlagError("Not implemented.",ERR,ERROR,*999)
           CASE(SOLVER_PETSC_LIBRARY)
             BDF_DAE_SOLVER%SOLVER_LIBRARY = SOLVER_PETSC_LIBRARY
-            WRITE(*,*) 'SOLVER_DAE_LIBRARY_TYPE_SET, solver_routines, ~3565: petsc library is set. BDF_DAE_SOLVER ready for setup'
+            ! WRITE(*,*) 'SOLVER_DAE_LIBRARY_TYPE_SET, solver_routines, ~3565: petsc library is set. BDF_DAE_SOLVER ready for setup'
           CASE DEFAULT
             LOCAL_ERROR="The solver library type of "//TRIM(NumberToVString(SOLVER_LIBRARY_TYPE,"*",ERR,ERROR))// &
               & " is invalid."
@@ -4098,7 +4098,7 @@ CONTAINS
                         WRITE(*,*)
                       ENDIF
                       
-                      IF(dof_idx==1 .AND. .TRUE.) THEN
+                      IF(dof_idx==1 .AND. .FALSE.) THEN
                         CALL Petsc_TSGetTimeStepNumber(ts,NUMBER_OF_STEPS,ERR,ERROR,*999)
                         WRITE(*,*) 'Number of steps of BDF solver is ',NUMBER_OF_STEPS,'. New state is:'
                         CALL Petsc_VecView(PETSC_CURRENT_STATES,PETSC_VIEWER_STDOUT_SELF,ERR,ERROR,*999)
@@ -4913,7 +4913,7 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
                         NULLIFY(INTERMEDIATE_DATA)
                       ENDIF
                     ELSE
-                      WRITE(*,*) 'Have intermediate_field but no intermediate_data, yet.'
+                      !WRITE(*,*) 'Have intermediate_field but no intermediate_data, yet.'
                       NULLIFY(INTERMEDIATE_DATA)
                     ENDIF
 
