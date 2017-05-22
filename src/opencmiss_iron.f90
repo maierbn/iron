@@ -96,6 +96,7 @@ MODULE OpenCMISS_Iron
   USE ISO_VARYING_STRING
   USE KINDS
   USE MESH_ROUTINES
+  USE MPI
   USE NODE_ROUTINES
   USE PRINT_TYPES_ROUTINES
   USE PROBLEM_CONSTANTS
@@ -7052,6 +7053,8 @@ MODULE OpenCMISS_Iron
   PUBLIC cmfe_SolverEquations_RhsVectorGet
 
   PUBLIC cmfe_BioelectricsFiniteElasticity_UpdateGeometricField
+  
+  PUBLIC cmfe_BioelectricFiniteElasticity_GetLocalElementNumber
   
 !!==================================================================================================================================
 !!
@@ -62017,6 +62020,26 @@ CONTAINS
   
   END FUNCTION cmfe_getFieldSize
   
+  SUBROUTINE cmfe_BioelectricFiniteElasticity_GetLocalElementNumber(GeometricField, ElementGlobalNumber, ElementLocalNumber, Err)
+    TYPE(cmfe_FieldType), INTENT(IN) :: GeometricField  !< the geometric field of the elements
+    INTEGER(INTG), INTENT(IN) :: ElementGlobalNumber !< the global element number of the element for which the local number is seeked
+    INTEGER(INTG), INTENT(OUT) :: ElementLocalNumber !< the local number of the element with the global number (or 0 if the element is not on the local domain)
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    
+    ENTERS("cmfe_GetLocalElementNumber", err, error, *999)
+
+    CALL BioelectricFiniteElasticity_GetLocalElementNumber(GeometricField%Field, ElementGlobalNumber, ElementLocalNumber, Err, &
+     & Error, *999)
+    
+    EXITS("cmfe_GetLocalElementNumber")
+    RETURN
+999 ERRORSEXITS("cmfe_GetLocalElementNumber",err,error)
+    CALL cmfe_HandleError( err, error )
+    RETURN
+    
+  END SUBROUTINE cmfe_BioelectricFiniteElasticity_GetLocalElementNumber
+    
+  
   !
   !================================================================================================================================
   !
@@ -62037,7 +62060,7 @@ CONTAINS
         PRINT*, "Process ",I," of ",NumberOfComputationalNodes,": Element mapping for DecompositionM"
         ! print variables
         CALL Print_Domain_Mapping(Decomposition%DECOMPOSITION%DOMAIN( &
-          & Decomposition%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%ELEMENTS, 2, 1000)
+          & Decomposition%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%ELEMENTS, 1, 1000)
         CALL FLUSH()   ! flush stdout
       ENDIF
     ENDDO
@@ -62053,7 +62076,6 @@ CONTAINS
     TYPE(cmfe_DecompositionType), INTENT(IN) :: Decomposition
     INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
     INTEGER(INTG) :: I, NumberOfComputationalNodes, ComputationalNodeNumber
-    
     ! get computational node numbers
     CALL cmfe_ComputationalNodeNumberGet(ComputationalNodeNumber, Err)
     CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
