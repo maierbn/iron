@@ -200,8 +200,9 @@ CONTAINS
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: GHOST_SEND_LISTS(:),GHOST_RECEIVE_LISTS(:)
     TYPE(VARYING_STRING) :: LOCAL_ERROR,DUMMY_ERROR
     INTEGER(INTG), SAVE :: CALL_COUNTER = 1
-    LOGICAL :: DEBUGGING = .FALSE.
-    DEBUGGING = .FALSE.
+    LOGICAL :: DEBUGGING = .FALSE.       ! more debugging output
+    LOGICAL :: DEBUGGING2 = .FALSE.       ! less debugging output
+    !DEBUGGING = .TRUE.
     
     CALL_COUNTER = CALL_COUNTER + 1
     
@@ -404,7 +405,13 @@ CONTAINS
       NUMBER_BOUNDARY=0
       NUMBER_GHOST=0
       
-      IF (CALL_COUNTER == 27 .AND. my_computational_node_number == 0) DEBUGGING = .TRUE.
+      ! CALL_COUNTER == 27 is the case when FIELD_VARIABLE_DOFS_MAPPING for IndependentFieldM CMFE_FIELD_U2_VARIABLE_TYPE: ("contraction_velocity") gets calculated
+      IF (CALL_COUNTER == 27 .AND. my_computational_node_number == 0) THEN
+        DEBUGGING = .TRUE.
+        PRINT *, "domain_mappings.f90:409 (DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE): " // &
+          & " Receive and send indices will be computed here. (process 0)"
+      ENDIF
+      DEBUGGING = .FALSE.
       
       ! loop over global elements
       DO global_number=1,DOMAIN_MAPPING%NUMBER_OF_GLOBAL
@@ -488,7 +495,7 @@ CONTAINS
               DOMAIN_MAPPING%DOMAIN_LIST(DOMAIN_MAPPING%INTERNAL_FINISH+NUMBER_BOUNDARY)=local_number
             CASE(DOMAIN_LOCAL_GHOST)
               IF (DEBUGGING) PRINT "(3(A,I4),A,I2)", "element local",local_number,", global", global_number,&
-                & ", domain ", domain_idx, " is ghost, receive from no. (not idx):", RECEIVE_FROM_DOMAIN
+                & ", domain ", domain_idx, " is ghost, receive from process (not idx):", RECEIVE_FROM_DOMAIN
               NUMBER_GHOST=NUMBER_GHOST+1
               DOMAIN_MAPPING%DOMAIN_LIST(DOMAIN_MAPPING%BOUNDARY_FINISH+NUMBER_GHOST)=local_number
               
@@ -530,22 +537,22 @@ CONTAINS
       ENDIF
       
       ! print receive and send lists
-      IF (DEBUGGING) THEN
+      IF (CALL_COUNTER == 27 .AND. (DEBUGGING.OR.DEBUGGING2)) THEN
         
         DO domain_idx=1,DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
           PRINT "(I1,A,I3)", my_computational_node_number, ": call no", CALL_COUNTER
-!          PRINT "(I1,A,I3,A)", my_computational_node_number, ": domain ",domain_idx, ", ghost send list (initial):"
-!          PRINT "(A)", "    local  global"
-!          
-!          DO idx=1,GHOST_SEND_LISTS(domain_idx)%PTR%NUMBER_IN_LIST
-!            
-!            local_number = GHOST_SEND_LISTS(domain_idx)%PTR%LIST_INTG(idx)
-!            
-!            IF (local_number == 0) CYCLE
-!            global_number = DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_number)
-!            
-!            PRINT "(I1,A,I4,A,I4)", my_computational_node_number, ": ", local_number,",",global_number
-!          ENDDO
+          PRINT "(I1,A,I3,A)", my_computational_node_number, ": domain ",domain_idx, ", ghost send list (initial):"
+          PRINT "(A)", "   idx   local  global"
+          
+          DO idx=1,GHOST_SEND_LISTS(domain_idx)%PTR%NUMBER_IN_LIST
+            
+            local_number = GHOST_SEND_LISTS(domain_idx)%PTR%LIST_INTG(idx)
+            
+            IF (local_number == 0) CYCLE
+            global_number = DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_number)
+            
+            PRINT "(I1,A,I4,A,I4,A,I4)", my_computational_node_number, ": ",idx, ",", local_number,",",global_number
+          ENDDO
           
           PRINT "(I1,A,I3,A)", my_computational_node_number, ": domain ",domain_idx, ", ghost receive list (initial):"
           PRINT "(A)", "   idx   local  global"
@@ -624,10 +631,10 @@ CONTAINS
         ENDDO
       ENDIF
       
-      !IF (CALL_COUNTER == 27) THEN
-      !  PRINT *, "stop in domain_mappings.f90:628"
-      !  STOP
-      !ENDIF
+      IF (CALL_COUNTER == 27) THEN
+        !PRINT *, "stop in domain_mappings.f90:628"
+        !STOP
+      ENDIF
       
       DEALLOCATE(ADJACENT_DOMAIN_MAP)
       DEALLOCATE(GHOST_SEND_LISTS)
