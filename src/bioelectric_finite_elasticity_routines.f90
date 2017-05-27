@@ -1823,15 +1823,16 @@ CONTAINS
     INTEGER(INTG) :: NodeDomain
     INTEGER(INTG) :: I    
     INTEGER(INTG) :: PreviousBioelectricElementLocalNumber
-    !LOGICAL :: DEBUGGING = .FALSE.
-    LOGICAL, PARAMETER :: DEBUGGING = .FALSE.
+    LOGICAL :: DEBUGGING = .FALSE.
+    !LOGICAL, PARAMETER :: DEBUGGING = .FALSE.
     
     ENTERS("BioelectricFiniteElasticity_IterateNextMonodomainNode",ERR,ERROR,*999)
 
-    
-    !IF (COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR) == 1) THEN
-    !  DEBUGGING = .TRUE.
-    !ENDIF
+#if 0     
+    IF (COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR) == 1) THEN
+      DEBUGGING = .TRUE.
+    ENDIF
+#endif    
     
     IsFinished = .FALSE.
     IsFirstBioelectricNodeOfFibre = .FALSE.
@@ -2072,22 +2073,26 @@ CONTAINS
         
     ! determine if this is the first node of a fibre or if the fibre already started more left on a different processors domain
     IsFirstBioelectricNodeOfFibre = .FALSE.
-    IF (CurrentBioelectricNodeIsLeftNode) THEN    ! if this is an other fibre than the previous element
+    IF (CurrentBioelectricNodeIsLeftNode) THEN    ! if this is another fibre than the previous element
       
       ! if the current node has no left neighbour
       IF (LeftNeighbourBioelectricNodeLocalNumber == 0) THEN  ! if there is no left neighbour, it is the first node of the 1D mesh and therefore the first node of a fibre
         IsFirstBioelectricNodeOfFibre = .TRUE.
       ELSE
+        ! this does not work because there is no communication that sets fibre numbers in ghost nodes
+        ! but it is not required when there are no in-series fibres, so no problem here
+#if 0        
         ! get the fibre number of the left node, maybe it is from a different in series fibre
         DofIdx=FIELD_VAR_IND_M_V%COMPONENTS(3)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
           & NODES(LeftNeighbourBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
         CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
           & FIELD_VALUES_SET_TYPE,DofIdx,LeftNodeFibreNumber,ERR,ERROR,*999)
 
+        IF (DEBUGGING) PRINT *, "LeftNodeFibreNumber: ", LeftNodeFibreNumber,", current FibreNumber", FibreNumber
         IF (LeftNodeFibreNumber /= FibreNumber) THEN
           IsFirstBioelectricNodeOfFibre = .TRUE.
         ENDIF
-        
+#endif        
       ENDIF
     ENDIF
       
@@ -2105,11 +2110,19 @@ CONTAINS
 
     ! if new FE element is reached, reset BioelectricElementInFEElementNumber counter
     IF (CurrentBioelectricNodeIsLeftNode) THEN    ! new element is reached and left node is considered
-      BioelectricNodeInFEElementNumber = 1
+      IF (IsFirstBioelectricNodeOfFibre) THEN     ! the fibre starts here, so the current node is on the left boundary of the domain and the first node of the element
+        BioelectricNodeInFEElementNumber = 1
+      ELSE      ! the fibre started ealier, so the current node is owned by the left FE element and the last node of that element
+        BioelectricNodeInFEElementNumber = NumberOfBioelectricElementsPerElementFE+1
+      ENDIF
     ELSEIF (LastFEElementGlobalNumber /= FEElementGlobalNumber) THEN ! new element is reached
       BioelectricNodeInFEElementNumber = 2
     ENDIF
     
+    IF (DEBUGGING) PRINT *, "CurrentBioelectricNodeIsLeftNode: ", CurrentBioelectricNodeIsLeftNode, &
+      & ", IsFirstBioelectricNodeOfFibre: ", IsFirstBioelectricNodeOfFibre, &
+      & ", BioelectricNodeInFEElementNumber: ", BioelectricNodeInFEElementNumber
+      
     ! set flag if last node had no previous neighbour
     PreviousNodeHadNoLeftNeighbour = (LastLeftNeighbourBioelectricNodeLocalNumber == 0)
     LastLeftNeighbourBioelectricNodeLocalNumber = LeftNeighbourBioelectricNodeLocalNumber
@@ -2213,7 +2226,7 @@ CONTAINS
     TYPE(DISTRIBUTED_VECTOR_TYPE), POINTER :: DISTRIBUTED_VECTOR
     INTEGER(INTG) :: DOMAIN_IDX, RecvIndex, SendIndex
     !LOGICAL, PARAMETER :: DEBUGGING = .TRUE.   ! enable debugging output with this parameter
-    LOGICAL :: DEBUGGING = .TRUE.   ! enable debugging output with this parameter
+    LOGICAL :: DEBUGGING = .FALSE.   ! enable debugging output with this parameter
 
     TYPE(LIST_TYPE), POINTER :: List
     
@@ -2260,20 +2273,24 @@ CONTAINS
     STOP
 #endif
     
+#if 0    
+    DEBUGGING = .FALSE.
+    IF (COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR) == 1) DEBUGGING = .TRUE.
+#endif    
+    
     IF (DEBUGGING) THEN
       ! output all values
-      PRINT *, "process ",COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), " before communication"
+      PRINT *, "process ",COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), " in BioelectricFiniteElasticity_GhostElements, " // &
+        & "before communication"
       PRINT *, "    process       node, dof no.(r),        distance (r),              distance (l)"
       PRINT *, "internal"
       DO BioelectricNodeIdx = M_NODES_MAPPING%INTERNAL_START, M_NODES_MAPPING%INTERNAL_FINISH
         BioelectricNodeLocalNumber = M_NODES_MAPPING%DOMAIN_LIST(BioelectricNodeIdx)
         BioelectricNodeGlobalNumber = M_NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(BioelectricNodeLocalNumber)
         
-        
         ! store global number in U(1)
-        CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-          & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,DBLE(BioelectricNodeGlobalNumber),ERR,ERROR,*999)
-        
+        !CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+        !  & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,DBLE(BioelectricNodeGlobalNumber),ERR,ERROR,*999)
         
         DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(7)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
           & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
@@ -2294,8 +2311,8 @@ CONTAINS
         BioelectricNodeGlobalNumber = M_NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(BioelectricNodeLocalNumber)
         
         ! store global number in U(1)
-        CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-          & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,DBLE(BioelectricNodeGlobalNumber),ERR,ERROR,*999)
+        !CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+        !  & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,DBLE(BioelectricNodeGlobalNumber),ERR,ERROR,*999)
         
         
         DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(7)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
@@ -2317,8 +2334,8 @@ CONTAINS
         BioelectricNodeGlobalNumber = M_NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(BioelectricNodeLocalNumber)
         
         ! store global number in U(1)
-        CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-          & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,DBLE(BioelectricNodeGlobalNumber),ERR,ERROR,*999)
+        !CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+        !  & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,DBLE(BioelectricNodeGlobalNumber),ERR,ERROR,*999)
         
         DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(7)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
           & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
@@ -2334,9 +2351,7 @@ CONTAINS
       ENDDO
     ENDIF
       
-      
-    
-    IF (DEBUGGING) THEN
+    IF (DEBUGGING.AND..FALSE.) THEN
       DISTRIBUTED_VECTOR=>INDEPENDENT_FIELD_MONODOMAIN%VARIABLE_TYPE_MAP(FIELD_U2_VARIABLE_TYPE)%PTR%PARAMETER_SETS% &
         & SET_TYPE(FIELD_VALUES_SET_TYPE)%PTR%PARAMETERS
       
@@ -2420,8 +2435,8 @@ CONTAINS
       ENDDO
     ENDIF
     
-    PRINT *, "stop in bioelectric_finite_elasticity_routines.f90:2426"
-    STOP
+    !PRINT *, "stop in bioelectric_finite_elasticity_routines.f90:2426"
+    !STOP
     
     ! transfer geometric field of biolectric nodes 
     !CALL FIELD_PARAMETER_SET_UPDATE_START(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
@@ -2470,9 +2485,9 @@ CONTAINS
         CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
           & FIELD_VALUES_SET_TYPE,1,1,RightBioelectricNodeLocalNumber,1,Position1DRightNode,ERR,ERROR,*999)
 
-          
-        PRINT "(I2,3(A,F8.3),A,I3,A)", COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), ": fibre left, r=l+d(r) ",Position1DRightNode,"=",&
-           & Position1DLeftNode,"+",DistanceNodes,"(",RightBioelectricNodeGlobalNumber,")"
+        IF (DEBUGGING) PRINT "(I2,3(A,F8.3),A,I3,A)", COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), &
+          & ": fibre continues left, r=l+d(at r) ", Position1DRightNode,"=",&
+          & Position1DLeftNode,"+",DistanceNodes,"(node global ",RightBioelectricNodeGlobalNumber,")"
           
       ELSE        
         ! get 1D position of right node (should already been computed by the local process)
@@ -2482,7 +2497,7 @@ CONTAINS
           & FIELD_VALUES_SET_TYPE,DofIdx,Position1DRightNode,ERR,ERROR,*999)
     
     
-        PRINT *, "position 1D right node: ", Position1DRightNode
+        IF (DEBUGGING) PRINT *, "position 1D right node: ", Position1DRightNode
     
         ! get distance between nodes, which is stored at the right node
         DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
@@ -2495,9 +2510,9 @@ CONTAINS
           ! compute position of left node
           Position1DLeftNode = Position1DRightNode - DistanceNodes
           
-          PRINT "(I2,3(A,F8.3),A,I3,A)", COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), ": fibre right, l=r-d(r) ",Position1DLeftNode,&
-            & "=",&
-           & Position1DRightNode,"-",DistanceNodes,"(",RightBioelectricNodeGlobalNumber,")"
+          IF (DEBUGGING) PRINT "(I2,3(A,F8.3),A,I3,A)", COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), &
+            & ": fibre continues right, l=r-d(at r) ", Position1DLeftNode, "=",&
+            & Position1DRightNode,"-",DistanceNodes,"(node global ",RightBioelectricNodeGlobalNumber,")"
         ELSE
           
           ! get distance between nodes, which is stored at the left node
@@ -2509,9 +2524,9 @@ CONTAINS
           ! compute position of left node
           Position1DLeftNode = Position1DRightNode - DistanceNodes
           
-          PRINT "(I2,3(A,F8.3),A,I3,A)", COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), ": fibre right, l=r-d(l) ",Position1DLeftNode,&
-            & "=",& 
-           & Position1DRightNode,"-",DistanceNodes,"(",LeftBioelectricNodeGlobalNumber,")"
+          IF (DEBUGGING) PRINT "(I2,3(A,F8.3),A,I3,A)", COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), &
+            & ": fibre continues right, d(at r)=0, l=r-d(at l) ",Position1DLeftNode, "=",& 
+            & Position1DRightNode,"-",DistanceNodes,"(node global ",LeftBioelectricNodeGlobalNumber,")"
        ENDIF
           
         ! store the new position of the left node to ghost node
@@ -3033,6 +3048,7 @@ CONTAINS
               DO
                 ! debugging output
                 IF (DEBUGGING) THEN
+                  PRINT *, ""
                   PRINT "(I1,6(A,I4))", ComputationalNodeNumber, ": FE element, global:", FEElementGlobalNumber, &
                    & ", local: ", FEElementLocalNumber, &
                    & ", Bioelectric node, global: ", BioelectricNodeGlobalNumber, ", local: ", BioelectricNodeLocalNumber, &
