@@ -1171,6 +1171,11 @@ MODULE CmissPetsc
       PetscInt ierr
     END SUBROUTINE TSGetSolution
     
+ !   SUBROUTINE TSGLCreate_IRKS(ts,ierr)
+ !     TS ts
+ !     PetscInt ierr
+ !   END SUBROUTINE TSGLCreate_IRKS  
+    
     SUBROUTINE TSMonitorSet(ts,mfunction,mctx,monitordestroy,ierr)
       USE TYPES
       TS ts
@@ -1717,7 +1722,8 @@ MODULE CmissPetsc
   PUBLIC Petsc_TSCreate,Petsc_TSDestroy,Petsc_TSGetSolution,Petsc_TSMonitorSet,Petsc_TSSetDuration,Petsc_TSSetExactFinalTime, &
     & Petsc_TSSetFromOptions,Petsc_TSSetInitialTimeStep,Petsc_TSSetProblemType,Petsc_TSSetRHSFunction,Petsc_TSSetSolution, &
     & Petsc_TSSetTimeStep,Petsc_TSGetTImeStepNumber, Petsc_TSSetType,Petsc_TSSolve,Petsc_TSStep,Petsc_TSSundialsSetTolerance, &
-    & Petsc_TSSundialsSetType
+    & Petsc_TSSundialsSetType!, Petsc_TSGLCreate_IRKS ! muss noch alphabetisch einsortiert werden..
+    !MISSING: TSSetTolerances, TSGLCreate_IRKS needed to set up GL scheme. (to build gl->schemes[], otherwise error in TSSolve(){...TSSetUP(){...TSSetUp_GL(){TSGLGetMaxSizes()}}})
 
   !Vector routines and constants
 
@@ -5970,6 +5976,35 @@ CONTAINS
     
   END SUBROUTINE Petsc_TSGetSolution
     
+  !
+  !================================================================================================================================
+  !
+    
+!  !>Buffer routine to the PETSc TSGLCreate_IRKS routine.
+!  SUBROUTINE Petsc_TSGLCreate_IRKS(ts,err,error,*)
+!
+!    TYPE(PetscTSType), INTENT(INOUT) :: ts !<The TS to create the IRKS schemes for (one of more options for GL)
+!    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+!    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+!    !Local Variables
+!
+!    ENTERS("Petsc_TSGLCreate_IRKS",err,error,*999)
+!
+!    CALL TSGLCreate_IRKS(ts%ts,err)
+!    IF(err/=0) THEN
+!      IF(petscHandleError) THEN
+!        CHKERRQ(err)
+!      ENDIF
+!      CALL FlagError("PETSc error in TSGLCreate_IRKS.",err,error,*999)
+!    ENDIF
+!    
+!    EXITS("Petsc_TSGLCreate_IRKS")
+!    RETURN
+!999 ERRORSEXITS("Petsc_TSGLCreate_IRKS",err,error)
+!    RETURN 1
+!    
+!  END SUBROUTINE Petsc_TSGLCreate_IRKS
+
   !
   !================================================================================================================================
   !

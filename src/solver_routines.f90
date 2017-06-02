@@ -4136,249 +4136,6 @@ CONTAINS
     RETURN 1
 
   END SUBROUTINE SOLVER_DAE_BDF_INTEGRATE
- 
-  !
-  !================================================================================================================================
-  !
-  !(>)Integrate using a GL differential-algebraic equation solver.
-
-SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_INCREMENT, &
-    & ONLY_ONE_MODEL_INDEX,MODELS_DATA,MAX_NUMBER_STATES,STATE_DATA,MAX_NUMBER_PARAMETERS,PARAMETERS_DATA, &
-    & MAX_NUMBER_INTERMEDIATES,INTERMEDIATE_DATA,ERR,ERROR,*)
-
-    !Argument variables
-    TYPE(GL_DAE_SOLVER_TYPE), POINTER :: GL_SOLVER !(<)A pointer the GL differential-algebraic equation solver to integrate
-    TYPE(CELLML_TYPE), POINTER :: CELLML !(<)A pointer to the CellML environment to integrate the equations for.
-    INTEGER(INTG), INTENT(IN) :: N !(<)The number of degrees-of-freedom
-    REAL(DP), INTENT(IN) :: START_TIME !(<)The start time for the integration
-    REAL(DP), INTENT(IN) :: END_TIME !(<)The end time for the integration
-    REAL(DP), INTENT(INOUT) :: TIME_INCREMENT !(<)The (initial) time increment for the integration
-    INTEGER(INTG), INTENT(IN) :: ONLY_ONE_MODEL_INDEX !(<)If only one model is used in the models data the index of that model. 0 otherwise.
-    INTEGER(INTG), POINTER, INTENT(IN) :: MODELS_DATA(:) !(<)MODELS_DATA(dof_idx). The models data for the dof_idx'th dof.
-    INTEGER(INTG), INTENT(IN) :: MAX_NUMBER_STATES !(<)The maximum number of state variables per dof
-    REAL(DP), POINTER, INTENT (INOUT) :: STATE_DATA(:) !(<)STATE_DATA(state_idx,dof_idx). The state data for the state_idx'th state variable of the dof_idx'th dof. state_idx varies from 1..NUMBER_STATES.
-    INTEGER(INTG), INTENT(IN) :: MAX_NUMBER_PARAMETERS !(<)The maximum number of parameter variables per dof.
-    REAL(DP), POINTER, INTENT(INOUT) :: PARAMETERS_DATA(:) !(<)PARAMETERS_DATA(parameter_idx,dof_idx). The parameters data for the parameter_idx'th parameter variable of the dof_idx'th dof. parameter_idx varies from 1..NUMBER_PARAMETERS.
-    INTEGER(INTG), INTENT(IN) :: MAX_NUMBER_INTERMEDIATES !(<)The maximum number of intermediate variables per dof.
-    REAL(DP), POINTER, INTENT(INOUT) :: INTERMEDIATE_DATA(:) !(<)INTERMEDIATE_DATA(intermediate_idx,dof_idx). The intermediate values data for the intermediate_idx'th intermediate variable of the dof_idx'th dof. intermediate_idx varies from 1.NUMBER_INTERMEDIATE
-    INTEGER(INTG), INTENT(OUT) :: ERR !(<)The error code
-    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !(<)The error string
-    !Local Variables
-    TYPE(PetscTSType) :: ts !(<)The PETSc TS type
-    INTEGER(INTG) :: NUMBER_OF_STEPS !<The number of steps the GL DAE solver needed to compute the next state. This is problem dependent, since PETSc will choose step sizes dynamically. 
-    REAL(DP) :: FINALSOLVEDTIME
-    TYPE(PetscVecType) :: PETSC_CURRENT_STATES !(<)The initial and final states for the DAE
-    TYPE(CellMLPETScContextType), POINTER :: CTX !(<)The passed through context
-    INTEGER(INTG) :: dof_idx,DOF_ORDER_TYPE,model_idx, NUMBER_STATES,STATE_END_DOF,state_idx,STATE_START_DOF,array_idx
-    REAL(DP), ALLOCATABLE  :: STATES_TEMP(:),RATES_TEMP(:)
-    INTEGER(INTG), ALLOCATABLE :: ARRAY_INDICES(:)
-    TYPE(CELLML_MODEL_TYPE), POINTER :: MODEL
-    TYPE(VARYING_STRING) :: LOCAL_ERROR
-    TYPE(PetscVecType) :: PETSC_RATES
-    EXTERNAL :: Problem_SolverDAECellMLRHSPetsc
-
-
-    ENTERS("SOLVER_DAE_GL_INTEGRATE",ERR,ERROR,*999)
-
-    NULLIFY(CTX)
-    IF(ASSOCIATED(GL_SOLVER)) THEN
-      IF(ASSOCIATED(CELLML)) THEN
-        IF(ASSOCIATED(CELLML%MODELS_FIELD)) THEN
-          SELECT CASE(GL_SOLVER%SOLVER_LIBRARY)
-          CASE(SOLVER_PETSC_LIBRARY)
-            CALL FIELD_DOF_ORDER_TYPE_GET(CELLML%MODELS_FIELD%MODELS_FIELD, &
-              & FIELD_U_VARIABLE_TYPE,DOF_ORDER_TYPE,ERR,ERROR,*999)
-            IF(DOF_ORDER_TYPE==FIELD_SEPARATED_COMPONENT_DOF_ORDER) THEN
-
-            ELSE !dof component order is contiguous
-              IF(ONLY_ONE_MODEL_INDEX==CELLML_MODELS_FIELD_NOT_CONSTANT) THEN
-
-              ELSE !only one model
-                MODEL=>CELLML%MODELS(ONLY_ONE_MODEL_INDEX)%PTR
-                IF(ASSOCIATED(MODEL)) THEN
-                  !determine no. of states in model and allocate necessary arrays
-                  NUMBER_STATES = MODEL%NUMBER_OF_STATE
-                  ALLOCATE(STATES_TEMP(0:NUMBER_STATES-1),STAT=ERR)
-                  ALLOCATE(RATES_TEMP(0:NUMBER_STATES-1),STAT=ERR)
-                  ALLOCATE(ARRAY_INDICES(0:NUMBER_STATES-1),STAT=ERR)
-                  ARRAY_INDICES = (/(array_idx,array_idx=0,(NUMBER_STATES-1))/)
-
-
-                  !initialize context for petsc solving.
-                  CALL Solver_DAECellMLPETScContextInitialise(ctx,err,error,*999) 
-!                      ctx beinhaltet:  
-!                                       ctx%solver, - A pointer to the solver
-!                                       ctx%cellml, - A pointer to the CellML environment
-!                                       ctx%rates,  - the time derivative of the state
-!                                       ctx%dofIdx, - The DOF index of the cellml-petsc context
-
-                  DO dof_idx=1,N
-                    model_idx = MODELS_DATA(dof_idx)
-                    IF(model_idx>0) THEN !if model is assigned to dof
-                      !access the state field data
-                      STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
-                      STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
-                      DO state_idx=1,NUMBER_STATES
-                        STATES_TEMP(state_idx-1) = STATE_DATA(STATE_START_DOF+state_idx-1)
-                      ENDDO
-
-                      !+++++++create PETSC states vector to initialize solver+++++++++
-                      !Create a standard, sequential array-style vector:
-                      !Input: MPI-communicator, Vector length
-                      !OUTPUT: PETSC_CURRENT_STATES - the created vector.
-                      CALL Petsc_VecInitialise(PETSC_CURRENT_STATES,err,error,*999)
-                      CALL Petsc_VecCreateSeq(PETSC_COMM_SELF, &
-                        & NUMBER_STATES,PETSC_CURRENT_STATES,ERR,ERROR,*999)
-
-                      !would set the local and global sizes, and check to determine compatibility
-                      ! see: http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Vec/VecSetFromOptions.html
-                      !CALL Petsc_VecSetSizes(PETSC_CURRENT_STATES, &
-                      !  & PETSC_DECIDE,(NUMBER_STATES),ERR,ERROR,*999)
-
-                      !would configure the vector from the options database. Init as vec: 'PETSC_CURRENT_STATES'
-                      !CALL Petsc_VecSetFromOptions(PETSC_CURRENT_STATES,ERR,ERROR,*999)
-
-                      !create PETSC rates vector to return values from evaluating rhs routine (dx/dt=rhs)
-                      CALL Petsc_VecCreateSeq(PETSC_COMM_SELF, &
-                        & NUMBER_STATES,PETSC_RATES,ERR,ERROR,*999)
-                      !CALL Petsc_VecSetSizes(PETSC_RATES, &
-                      !  & PETSC_DECIDE,(NUMBER_STATES),ERR,ERROR,*999)
-                      !CALL Petsc_VecSetFromOptions(PETSC_RATES,ERR,ERROR,*999)
-
-                      !Set up PETSC TS context for GL solver
-                      CALL Petsc_TSCreate(PETSC_COMM_SELF,ts,ERR,ERROR,*999)
-
-                      CALL Petsc_TSSetProblemType(ts,PETSC_TS_NONLINEAR,ERR,ERROR,*999)
-!
-                      ! D I F F E R E N C E   T O   P E T S C   E X A M P L E S : 
-!
-!                     # TSSetRHSFunction(ts,NULL,RHSFunction,&appctx) is called here, after SetProblemType() and before creating Jacobian evaluation routine.   
-!
-!++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Hier drin wird der Löser spezifiziert. (wenn nicht, dann default = BACKWARD Euler)+++++++++++++++++++++++++++++++++vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-                      ! Hier geht auch allerhand anderes: 
-                      ! TSEULER           "euler"    - forward version
-                      ! TSBEULER          "beuler"   - backward version (DEFAULT)
-                      ! TSPSEUDO          "pseudo"   - ?
-                      ! TSCN              "cn"       - Crank-Nicolson                               POTENTIAL
-                      ! TSSUNDIALS        "sundials" - indir. meth.s via Sundials lib; esp. BDF     POTENTIAL
-                      ! TSRK              "rk"       - prob. not enough performance since few time steps
-                      ! TSPYTHON          "python"   - ?
-                      ! TSTHETA           "theta"    - weighted btw fw and bw?
-                      ! TSALPHA           "alpha"    - weighted btw fw and bw?
-                      ! TSGL              "gl"       - General Linear method                        POTENTIAL
-                      ! TSSSP             "ssp"      - StrongStab.Pres. - unnec.attr. for high costs ?
-                      ! TSARKIMEX         "arkimex"  - prob. not enough performance since few time steps 
-                      ! TSROSW            "rosw"     - ?
-                      ! TSEIMEX           "eimex"    - ?
-                      ! TSMIMEX           "mimex"    - ?
-                     
-                      ! CALL Petsc_TSGLSetType() instead ?
-                      CALL Petsc_TSSetType(ts,PETSC_TS_GL,ERR,ERROR,*999)
-                      ! set max r, s
-                      !todo: ttv sagt, hier stimmt was nicht. muss vielleicht r und s setzen.
-                      ! is TSCreate_GL run within this call?
-                      ! more precise: gl->schemes is not associated! but used in [tssolve ... TSGLGetMaxSizes()]
-
-! when petsc chooses a new scheme, it is documented somewhere. this could be useful information..:
-! PetscInfo7(ts,"Adapt chose scheme %d (%d,%d,%d,%d) with step size %6.2e, finish=%d\n",*next_scheme,gl->schemes[*next_scheme]->p,gl->schemes[*next_scheme]->q,gl->schemes[*next_scheme]->r,gl->schemes[*next_scheme]->s,*next_h,*finish);
-
-                      ! Q U E S T I O N : use 'TSSetTolerances()' instead?
-                      
-                      
-                      !set the initial solution to the current state, stored in STATES_TEMP
-                      CALL Petsc_VecSetValues(PETSC_CURRENT_STATES,(NUMBER_STATES), &
-                        & ARRAY_INDICES,STATES_TEMP, &
-                        & PETSC_INSERT_VALUES,ERR,ERROR,*999)
-                      !Begins assembling the vector. This routine should be called after completing all calls to VecSetValues()
-                      CALL Petsc_VecAssemblyBegin(PETSC_CURRENT_STATES,ERR,ERROR,*999)
-                      CALL Petsc_VecAssemblyEnd(PETSC_CURRENT_STATES,ERR,ERROR,*999)
-                      !Sets the initial solution vector for use by the TS routines:
-                      CALL Petsc_TSSetSolution(TS,PETSC_CURRENT_STATES,ERR,ERROR,*999)
-
-                      !set up the time data
-                      CALL Petsc_TSSetInitialTimeStep(ts,START_TIME,TIME_INCREMENT,ERR,ERROR,*999)
-                      CALL Petsc_TSSetDuration(ts,5000,END_TIME,ERR,ERROR,*999)   !arg2: 'maxsteps' ToDo: maxsteps-Höhe untersuchen.
-                      
-                      ! LOGICAL option in arg2 does not correlate with PetSc's TSSetExactFinalTime() 'eftopt'.
-                      ! <eftopt> = stepover|interpolate|matchstep. Implemented interp. or match?!
-                      CALL Petsc_TSSetExactFinalTime(ts,.TRUE.,ERR,ERROR,*999) ! ToDo: match?!?.
-
-                      IF(DIAGNOSTICS1) THEN
-                        CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  DAE START TIME = ",START_TIME,ERR,ERROR,*999)
-                        CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  DAE END TIME = ",END_TIME,ERR,ERROR,*999)
-                      ENDIF
-!^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-                      !set rhs function and pass through the cellml model context++++++++++++++++++++++++++++
-
-                      !Set ctx's pointers to ~arg2 - ~arg4
-                      CALL Solver_DAECellMLPETScContextSet(ctx,GL_SOLVER%DAE_SOLVER%SOLVER,cellML,dof_idx,ERR,ERROR,*999)
-
-                      ! aus PetSc: TSSetRHSFunction mit Argumenten:
-                      ! '(ts,NULL,RHSFunction,&appctx)' <=vgl.=>
-                      ! (TS,PETSC_RATES,Problem_SolverDAECellMLRHSPetsc,CTX,ERR,ERROR,*999) 
-                      !'NULL' creates the vector - we already have one.
-                      !
-                      ! 'Problem_SolverDAECellMLRHSPetsc' is the external RHS function to call
-                      CALL Petsc_TSSetRHSFunction(TS,PETSC_RATES,Problem_SolverDAECellMLRHSPetsc,CTX,ERR,ERROR,*999)
-                      ! calls TSSetRHSFunction(ts%ts,   rates%vec,   rhsFunction,ctx,err) inside. '%vec' must be set ( orallocated?!)!
-
-!NOTE: For nonlinear problems, one can provide a Jacobian evaluation routine (or use a finite differencing approximation).
-
-                      !solves all. Calls TSSolve(4 args). In PetSc implemented only with first 2!
-                      CALL Petsc_TSSolve(TS,PETSC_CURRENT_STATES,FINALSOLVEDTIME,ERR,ERROR,*999)
-                      !FINALSOLVEDTIME vllt auch erreichbar über ts%ts%solvetime?
-
-                      IF(DIAGNOSTICS1) THEN
-                        CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  FINAL SOLVED TIME = ", &
-                          & FINALSOLVEDTIME,ERR,ERROR,*999)
-                      ENDIF
-
-
-                      !update the states to new integrated values
-                      CALL Petsc_VecAssemblyBegin(PETSC_CURRENT_STATES,ERR,ERROR,*999)
-                      CALL Petsc_VecAssemblyEnd(PETSC_CURRENT_STATES,ERR,ERROR,*999)
-                      CALL Petsc_VecGetValues(PETSC_CURRENT_STATES, &
-                        & NUMBER_STATES, ARRAY_INDICES, &
-                        & STATES_TEMP, &
-                        & ERR,ERROR,*999)
-
-                      DO state_idx=1,NUMBER_STATES
-                        STATE_DATA(STATE_START_DOF+state_idx-1) = STATES_TEMP(state_idx-1)
-                      ENDDO
-                      
-                      CALL Petsc_TSFinalise(TS,ERR,ERROR,*999)
-                    ENDIF !model_idx
-                    CALL Petsc_VecDestroy(PETSC_CURRENT_STATES,ERR,ERROR,*999)
-                    CALL Petsc_VecDestroy(PETSC_RATES,ERR,ERROR,*999)
-                  ENDDO !dof_idx
-
-                ELSE
-                  CALL FlagError("Cellml model is not associated.",ERR,ERROR,*999)
-                ENDIF
-              ENDIF
-            ENDIF !dof continguous
-          CASE DEFAULT
-            LOCAL_ERROR="The GL solver library type of  "// &
-              & TRIM(NumberToVString(GL_SOLVER%SOLVER_LIBRARY,"*",ERR,ERROR))//" is not implemented."
-            CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
-          END SELECT
-        ELSE
-          CALL FlagError("CELLML models field is not associated.",ERR,ERROR,*999)
-        ENDIF
-      ELSE
-        CALL FlagError("CELLML environment is not associated.",ERR,ERROR,*999)
-      ENDIF
-    ELSE
-      CALL FlagError("GL solver is not associated.",ERR,ERROR,*999)
-    ENDIF
-
-    EXITS("SOLVER_DAE_GL_INTEGRATE")
-    RETURN
-999 ERRORSEXITS("SOLVER_DAE_GL_INTEGRATE",ERR,ERROR)
-    RETURN 1
-
-  END SUBROUTINE SOLVER_DAE_GL_INTEGRATE
   
   !
   !================================================================================================================================
@@ -4520,6 +4277,252 @@ SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_I
     RETURN 1
 
   END SUBROUTINE SOLVER_DAE_BDF_SOLVE
+ 
+  !
+  !================================================================================================================================
+  !
+  !(>)Integrate using a GL differential-algebraic equation solver.
+
+SUBROUTINE SOLVER_DAE_GL_INTEGRATE(GL_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_INCREMENT, &
+    & ONLY_ONE_MODEL_INDEX,MODELS_DATA,MAX_NUMBER_STATES,STATE_DATA,MAX_NUMBER_PARAMETERS,PARAMETERS_DATA, &
+    & MAX_NUMBER_INTERMEDIATES,INTERMEDIATE_DATA,ERR,ERROR,*)
+
+    !Argument variables
+    TYPE(GL_DAE_SOLVER_TYPE), POINTER :: GL_SOLVER !(<)A pointer the GL differential-algebraic equation solver to integrate
+    TYPE(CELLML_TYPE), POINTER :: CELLML !(<)A pointer to the CellML environment to integrate the equations for.
+    INTEGER(INTG), INTENT(IN) :: N !(<)The number of degrees-of-freedom
+    REAL(DP), INTENT(IN) :: START_TIME !(<)The start time for the integration
+    REAL(DP), INTENT(IN) :: END_TIME !(<)The end time for the integration
+    REAL(DP), INTENT(INOUT) :: TIME_INCREMENT !(<)The (initial) time increment for the integration
+    INTEGER(INTG), INTENT(IN) :: ONLY_ONE_MODEL_INDEX !(<)If only one model is used in the models data the index of that model. 0 otherwise.
+    INTEGER(INTG), POINTER, INTENT(IN) :: MODELS_DATA(:) !(<)MODELS_DATA(dof_idx). The models data for the dof_idx'th dof.
+    INTEGER(INTG), INTENT(IN) :: MAX_NUMBER_STATES !(<)The maximum number of state variables per dof
+    REAL(DP), POINTER, INTENT (INOUT) :: STATE_DATA(:) !(<)STATE_DATA(state_idx,dof_idx). The state data for the state_idx'th state variable of the dof_idx'th dof. state_idx varies from 1..NUMBER_STATES.
+    INTEGER(INTG), INTENT(IN) :: MAX_NUMBER_PARAMETERS !(<)The maximum number of parameter variables per dof.
+    REAL(DP), POINTER, INTENT(INOUT) :: PARAMETERS_DATA(:) !(<)PARAMETERS_DATA(parameter_idx,dof_idx). The parameters data for the parameter_idx'th parameter variable of the dof_idx'th dof. parameter_idx varies from 1..NUMBER_PARAMETERS.
+    INTEGER(INTG), INTENT(IN) :: MAX_NUMBER_INTERMEDIATES !(<)The maximum number of intermediate variables per dof.
+    REAL(DP), POINTER, INTENT(INOUT) :: INTERMEDIATE_DATA(:) !(<)INTERMEDIATE_DATA(intermediate_idx,dof_idx). The intermediate values data for the intermediate_idx'th intermediate variable of the dof_idx'th dof. intermediate_idx varies from 1.NUMBER_INTERMEDIATE
+    INTEGER(INTG), INTENT(OUT) :: ERR !(<)The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !(<)The error string
+    !Local Variables
+    TYPE(PetscTSType) :: ts !(<)The PETSc TS type
+    INTEGER(INTG) :: NUMBER_OF_STEPS !<The number of steps the GL DAE solver needed to compute the next state. This is problem dependent, since PETSc will choose step sizes dynamically. 
+    REAL(DP) :: FINALSOLVEDTIME
+    TYPE(PetscVecType) :: PETSC_CURRENT_STATES !(<)The initial and final states for the DAE
+    TYPE(CellMLPETScContextType), POINTER :: CTX !(<)The passed through context
+    INTEGER(INTG) :: dof_idx,DOF_ORDER_TYPE,model_idx, NUMBER_STATES,STATE_END_DOF,state_idx,STATE_START_DOF,array_idx
+    REAL(DP), ALLOCATABLE  :: STATES_TEMP(:),RATES_TEMP(:)
+    INTEGER(INTG), ALLOCATABLE :: ARRAY_INDICES(:)
+    TYPE(CELLML_MODEL_TYPE), POINTER :: MODEL
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
+    TYPE(PetscVecType) :: PETSC_RATES
+    EXTERNAL :: Problem_SolverDAECellMLRHSPetsc
+
+
+    ENTERS("SOLVER_DAE_GL_INTEGRATE",ERR,ERROR,*999)
+
+    NULLIFY(CTX)
+    IF(ASSOCIATED(GL_SOLVER)) THEN
+      IF(ASSOCIATED(CELLML)) THEN
+        IF(ASSOCIATED(CELLML%MODELS_FIELD)) THEN
+          SELECT CASE(GL_SOLVER%SOLVER_LIBRARY)
+          CASE(SOLVER_PETSC_LIBRARY)
+            CALL FIELD_DOF_ORDER_TYPE_GET(CELLML%MODELS_FIELD%MODELS_FIELD, &
+              & FIELD_U_VARIABLE_TYPE,DOF_ORDER_TYPE,ERR,ERROR,*999)
+            IF(DOF_ORDER_TYPE==FIELD_SEPARATED_COMPONENT_DOF_ORDER) THEN
+
+            ELSE !dof component order is contiguous
+              IF(ONLY_ONE_MODEL_INDEX==CELLML_MODELS_FIELD_NOT_CONSTANT) THEN
+
+              ELSE !only one model
+                MODEL=>CELLML%MODELS(ONLY_ONE_MODEL_INDEX)%PTR
+                IF(ASSOCIATED(MODEL)) THEN
+                  !determine no. of states in model and allocate necessary arrays
+                  NUMBER_STATES = MODEL%NUMBER_OF_STATE
+                  ALLOCATE(STATES_TEMP(0:NUMBER_STATES-1),STAT=ERR)
+                  ALLOCATE(RATES_TEMP(0:NUMBER_STATES-1),STAT=ERR)
+                  ALLOCATE(ARRAY_INDICES(0:NUMBER_STATES-1),STAT=ERR)
+                  ARRAY_INDICES = (/(array_idx,array_idx=0,(NUMBER_STATES-1))/)
+
+
+                  !initialize context for petsc solving.
+                  CALL Solver_DAECellMLPETScContextInitialise(CTX,err,error,*999) 
+!                      ctx beinhaltet:  
+!                                       ctx%solver, - A pointer to the solver
+!                                       ctx%cellml, - A pointer to the CellML environment
+!                                       ctx%rates,  - the time derivative of the state
+!                                       ctx%dofIdx, - The DOF index of the cellml-petsc context
+
+                  DO dof_idx=1,N
+                    model_idx = MODELS_DATA(dof_idx)
+                    IF(model_idx>0) THEN !if model is assigned to dof
+                      !access the state field data
+                      STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
+                      STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
+                      DO state_idx=1,NUMBER_STATES
+                        STATES_TEMP(state_idx-1) = STATE_DATA(STATE_START_DOF+state_idx-1)
+                      ENDDO
+
+                      !+++++++create PETSC states vector to initialize solver+++++++++
+                      !Create a standard, sequential array-style vector:
+                      !Input: MPI-communicator, Vector length
+                      !OUTPUT: PETSC_CURRENT_STATES - the created vector.
+                      CALL Petsc_VecInitialise(PETSC_CURRENT_STATES,err,error,*999)
+                      CALL Petsc_VecCreateSeq(PETSC_COMM_SELF, &
+                        & NUMBER_STATES,PETSC_CURRENT_STATES,ERR,ERROR,*999)
+
+                      !would set the local and global sizes, and check to determine compatibility
+                      ! see: http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Vec/VecSetFromOptions.html
+                      !CALL Petsc_VecSetSizes(PETSC_CURRENT_STATES, &
+                      !  & PETSC_DECIDE,(NUMBER_STATES),ERR,ERROR,*999)
+
+                      !would configure the vector from the options database. Init as vec: 'PETSC_CURRENT_STATES'
+                      !CALL Petsc_VecSetFromOptions(PETSC_CURRENT_STATES,ERR,ERROR,*999)
+
+                      !create PETSC rates vector to return values from evaluating rhs routine (dx/dt=rhs)
+                      CALL Petsc_VecCreateSeq(PETSC_COMM_SELF, &
+                        & NUMBER_STATES,PETSC_RATES,ERR,ERROR,*999)
+                      !CALL Petsc_VecSetSizes(PETSC_RATES, &
+                      !  & PETSC_DECIDE,(NUMBER_STATES),ERR,ERROR,*999)
+                      !CALL Petsc_VecSetFromOptions(PETSC_RATES,ERR,ERROR,*999)
+
+                      !Set up PETSC TS context for GL solver
+                      CALL Petsc_TSCreate(PETSC_COMM_SELF,ts,ERR,ERROR,*999)
+
+                      CALL Petsc_TSSetProblemType(ts,PETSC_TS_NONLINEAR,ERR,ERROR,*999)
+!
+                      ! D I F F E R E N C E   T O   P E T S C   E X A M P L E S : 
+!
+!                     # TSSetRHSFunction(ts,NULL,RHSFunction,&appctx) is called here, after SetProblemType() and before creating Jacobian evaluation routine.   
+!
+!++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Hier drin wird der Löser spezifiziert. (wenn nicht, dann default = BACKWARD Euler)+++++++++++++++++++++++++++++++++vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+                      ! Hier geht auch allerhand anderes: 
+                      ! TSEULER           "euler"    - forward version
+                      ! TSBEULER          "beuler"   - backward version (DEFAULT)
+                      ! TSPSEUDO          "pseudo"   - ?
+                      ! TSCN              "cn"       - Crank-Nicolson                               POTENTIAL
+                      ! TSSUNDIALS        "sundials" - indir. meth.s via Sundials lib; esp. BDF     POTENTIAL
+                      ! TSRK              "rk"       - prob. not enough performance since few time steps
+                      ! TSPYTHON          "python"   - ?
+                      ! TSTHETA           "theta"    - weighted btw fw and bw?
+                      ! TSALPHA           "alpha"    - weighted btw fw and bw?
+                      ! TSGL              "gl"       - General Linear method                        POTENTIAL
+                      ! TSSSP             "ssp"      - StrongStab.Pres. - unnec.attr. for high costs ?
+                      ! TSARKIMEX         "arkimex"  - prob. not enough performance since few time steps 
+                      ! TSROSW            "rosw"     - ?
+                      ! TSEIMEX           "eimex"    - ?
+                      ! TSMIMEX           "mimex"    - ?
+                     
+
+! when petsc chooses a new scheme, it is documented somewhere. this could be useful information..:
+! PetscInfo7(ts,"Adapt chose scheme %d (%d,%d,%d,%d) with step size %6.2e, finish=%d\n",*next_scheme,gl->schemes[*next_scheme]->p,gl->schemes[*next_scheme]->q,gl->schemes[*next_scheme]->r,gl->schemes[*next_scheme]->s,*next_h,*finish);
+
+                      ! Q U E S T I O N : use 'TSSetTolerances()' instead?
+                      
+                      
+                      !set the initial solution to the current state, stored in STATES_TEMP
+                      CALL Petsc_VecSetValues(PETSC_CURRENT_STATES,(NUMBER_STATES), &
+                        & ARRAY_INDICES,STATES_TEMP, &
+                        & PETSC_INSERT_VALUES,ERR,ERROR,*999)
+                      !Begins assembling the vector. This routine should be called after completing all calls to VecSetValues()
+                      CALL Petsc_VecAssemblyBegin(PETSC_CURRENT_STATES,ERR,ERROR,*999)
+                      CALL Petsc_VecAssemblyEnd(PETSC_CURRENT_STATES,ERR,ERROR,*999)
+                      !Sets the initial solution vector for use by the TS routines:
+                      CALL Petsc_TSSetSolution(TS,PETSC_CURRENT_STATES,ERR,ERROR,*999) 
+                      
+                      ! CALL Petsc_TSGLSetType() instead ?
+                      CALL Petsc_TSSetType(ts,PETSC_TS_GL,ERR,ERROR,*999)
+                      !CALL Petsc_TSGLCreate_IRKS(ts,ERR,ERROR,*999)
+                      ! set max r, s
+                      !todo: ttv sagt, hier stimmt was nicht. muss vielleicht r und s setzen.
+                      ! is TSCreate_GL run within this call?
+                      ! more precise: gl->schemes is not associated! but used in [tssolve ... TSGLGetMaxSizes()]
+
+                      !set up the time data
+                      CALL Petsc_TSSetDuration(ts,5000,END_TIME,ERR,ERROR,*999)   !arg2: 'maxsteps' ToDo: maxsteps-Höhe untersuchen.
+                      CALL Petsc_TSSetInitialTimeStep(ts,START_TIME,TIME_INCREMENT,ERR,ERROR,*999)
+                      ! LOGICAL option in arg2 does not correlate with PetSc's TSSetExactFinalTime() 'eftopt'.
+                      ! <eftopt> = stepover|interpolate|matchstep. Implemented interp. or match?!
+                      CALL Petsc_TSSetExactFinalTime(ts,.TRUE.,ERR,ERROR,*999) ! ToDo: match?!?.
+                      
+                      
+
+                      IF(DIAGNOSTICS1) THEN
+                        CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  DAE START TIME = ",START_TIME,ERR,ERROR,*999)
+                        CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  DAE END TIME = ",END_TIME,ERR,ERROR,*999)
+                      ENDIF
+!^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                      ! set rhs function and pass through the cellml model context++++++++++++++++++++++++++++
+                      !Set ctx's pointers to ~arg2 - ~arg4
+                      CALL Solver_DAECellMLPETScContextSet(CTX,GL_SOLVER%DAE_SOLVER%SOLVER,cellML,dof_idx,ERR,ERROR,*999)
+
+                      ! aus PetSc: TSSetRHSFunction mit Argumenten:
+                      ! '(ts,NULL,RHSFunction,&appctx)' <=vgl.=>
+                      ! (TS,PETSC_RATES,Problem_SolverDAECellMLRHSPetsc,CTX,ERR,ERROR,*999) 
+                      !'NULL' creates the vector - we already have one.
+                      !
+                      ! 'Problem_SolverDAECellMLRHSPetsc' is the external RHS function to call
+                      CALL Petsc_TSSetRHSFunction(TS,PETSC_RATES,Problem_SolverDAECellMLRHSPetsc,CTX,ERR,ERROR,*999)
+                      ! calls TSSetRHSFunction(ts%ts,   rates%vec,   rhsFunction,ctx,err) inside. '%vec' must be set ( orallocated?!)!
+                      ! The CALL to Petsc_TSSetFromOptions() has to be after Petsc_TSSetRHSFunction() since PETScs ts->snes has to be allocated BEFORE it is used in SetFromOptions.
+                      CALL Petsc_TSSetFromOptions(ts,ERR,ERROR,*999)
+                      ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!NOTE: For nonlinear problems, one can provide a Jacobian evaluation routine (or use a finite differencing approximation).
+
+                      !solves all. Calls TSSolve(4 args). In PetSc implemented only with first 2!
+                      CALL Petsc_TSSolve(TS,PETSC_CURRENT_STATES,FINALSOLVEDTIME,ERR,ERROR,*999)
+                      !FINALSOLVEDTIME vllt auch erreichbar über ts%ts%solvetime?
+
+                      IF(DIAGNOSTICS1) THEN
+                        CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  FINAL SOLVED TIME = ", &
+                          & FINALSOLVEDTIME,ERR,ERROR,*999)
+                      ENDIF
+
+
+                      !update the states to new integrated values
+                      CALL Petsc_VecAssemblyBegin(PETSC_CURRENT_STATES,ERR,ERROR,*999)
+                      CALL Petsc_VecAssemblyEnd(PETSC_CURRENT_STATES,ERR,ERROR,*999)
+                      CALL Petsc_VecGetValues(PETSC_CURRENT_STATES, &
+                        & NUMBER_STATES, ARRAY_INDICES, &
+                        & STATES_TEMP, &
+                        & ERR,ERROR,*999)
+
+                      DO state_idx=1,NUMBER_STATES
+                        STATE_DATA(STATE_START_DOF+state_idx-1) = STATES_TEMP(state_idx-1)
+                      ENDDO
+                      
+                      CALL Petsc_TSFinalise(TS,ERR,ERROR,*999)
+                    ENDIF !model_idx
+                    CALL Petsc_VecDestroy(PETSC_CURRENT_STATES,ERR,ERROR,*999)
+                    CALL Petsc_VecDestroy(PETSC_RATES,ERR,ERROR,*999)
+                  ENDDO !dof_idx
+
+                ELSE
+                  CALL FlagError("Cellml model is not associated.",ERR,ERROR,*999)
+                ENDIF
+              ENDIF
+            ENDIF !dof continguous
+          CASE DEFAULT
+            LOCAL_ERROR="The GL solver library type of  "// &
+              & TRIM(NumberToVString(GL_SOLVER%SOLVER_LIBRARY,"*",ERR,ERROR))//" is not implemented."
+            CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+          END SELECT
+        ELSE
+          CALL FlagError("CELLML models field is not associated.",ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        CALL FlagError("CELLML environment is not associated.",ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("GL solver is not associated.",ERR,ERROR,*999)
+    ENDIF
+
+    EXITS("SOLVER_DAE_GL_INTEGRATE")
+    RETURN
+999 ERRORSEXITS("SOLVER_DAE_GL_INTEGRATE",ERR,ERROR)
+    RETURN 1
+
+  END SUBROUTINE SOLVER_DAE_GL_INTEGRATE
 
   !
   !================================================================================================================================
