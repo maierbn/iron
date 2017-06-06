@@ -116,7 +116,7 @@ MODULE DISTRIBUTED_MATRIX_VECTOR
 
   !Module variables
 
-  INTEGER(INTG), SAVE :: DISTRIBUTED_DATA_ID=10
+  INTEGER(INTG), SAVE :: DISTRIBUTED_DATA_ID=1    ! 100000000
 
   !Interfaces
 
@@ -6375,6 +6375,7 @@ CONTAINS
               & TRIM(NumberToVString(DISTRIBUTED_VECTOR%DATA_TYPE,"*",ERR,ERROR))//" is invalid."
             CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
           END SELECT
+          
           CMISS_VECTOR%BASE_TAG_NUMBER=DISTRIBUTED_DATA_ID
           IF(DOMAIN_MAPPING%NUMBER_OF_DOMAINS==1) THEN
             DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID+1
@@ -8111,6 +8112,10 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: domain_idx,i,MPI_IERROR,NUMBER_OF_COMPUTATIONAL_NODES
     TYPE(VARYING_STRING) :: LOCAL_ERROR
+    LOGICAL :: FLAG
+    
+    INTEGER :: COMM, COMM_KEYVAL, IERROR
+    INTEGER(KIND=MPI_ADDRESS_KIND) :: TAG_UB
     
     ENTERS("DISTRIBUTED_VECTOR_UPDATE_START",ERR,ERROR,*999)
 
@@ -8161,12 +8166,24 @@ CONTAINS
                   DO domain_idx=1,DISTRIBUTED_VECTOR%DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
                     SELECT CASE(DISTRIBUTED_VECTOR%DATA_TYPE)
                     CASE(MATRIX_VECTOR_INTG_TYPE)
+                      
                       CALL MPI_IRECV(DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_BUFFER_INTG, &
                         & DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_BUFFER_SIZE,MPI_INTEGER, &
                         & DISTRIBUTED_VECTOR%DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%DOMAIN_NUMBER, &
                         & DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM, &
                         & DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%MPI_RECEIVE_REQUEST,MPI_IERROR)
                       CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
+                      
+                      !PRINT*, "(INTG) IRecv count=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_BUFFER_SIZE,&
+                      !  & ", src=",DISTRIBUTED_VECTOR%DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%DOMAIN_NUMBER,&
+                      !  & ", tag=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,&
+                      !  & ", MPI_IERROR: ",MPI_IERROR
+                        
+                      !CALL MPI_COMM_GET_ATTR(COMPUTATIONAL_ENVIRONMENT%MPI_COMM, MPI_TAG_UB, TAG_UB, FLAG)
+                      
+                      !PRINT*, "FLAG: ", FLAG, ", TAG_UB: ",TAG_UB,", MPI_IERROR:",MPI_IERROR
+                      
+                      
                       IF(DIAGNOSTICS5) THEN
                         CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"MPI IRECV call posted:",ERR,ERROR,*999)
                         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Receive count = ",DISTRIBUTED_VECTOR% &
@@ -8188,6 +8205,13 @@ CONTAINS
                         & DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM, &
                         & DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%MPI_RECEIVE_REQUEST,MPI_IERROR)
                       CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
+                      
+                      !PRINT*, "(SP) IRecv count=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_BUFFER_SIZE,&
+                      !  & ", src=",DISTRIBUTED_VECTOR%DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%DOMAIN_NUMBER,&
+                      !  & ", tag=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,&
+                      !  & ", MPI_IERROR: ",MPI_IERROR
+                        
+                      
                       IF(DIAGNOSTICS5) THEN
                         CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"MPI IRECV call posted:",ERR,ERROR,*999)
                         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Receive count = ",DISTRIBUTED_VECTOR% &
@@ -8209,6 +8233,15 @@ CONTAINS
                         & DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM, &
                         & DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%MPI_RECEIVE_REQUEST,MPI_IERROR)
                       CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
+                      
+                      !PRINT*, "(DP) IRecv count=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_BUFFER_SIZE,&
+                      !  & ", src=",DISTRIBUTED_VECTOR%DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%DOMAIN_NUMBER,&
+                      !  & ", tag=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,&
+                      !  & ", MPI_IERROR: ",MPI_IERROR
+                        
+                      !CALL MPI_COMM_GET_ATTR(COMPUTATIONAL_ENVIRONMENT%MPI_COMM, MPI_TAG_UB, TAG_UB, FLAG, IERROR)
+                      !PRINT*, "TAG_UB:",TAG_UB,", FLAG:",FLAG,", IERROR:",IERROR,", MPI_ANY_TAG:",MPI_ANY_TAG
+                      
                       IF(DIAGNOSTICS5) THEN
                         CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"MPI IRECV call posted:",ERR,ERROR,*999)
                         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Receive count = ",DISTRIBUTED_VECTOR% &
@@ -8230,6 +8263,13 @@ CONTAINS
                         & DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM, &
                         & DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%MPI_RECEIVE_REQUEST,MPI_IERROR)
                       CALL MPI_ERROR_CHECK("MPI_IRECV",MPI_IERROR,ERR,ERROR,*999)
+                      
+                      !PRINT*, "(L) IRecv count=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_BUFFER_SIZE,&
+                      !  & ", src=",DISTRIBUTED_VECTOR%DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%DOMAIN_NUMBER,&
+                      !  & ", tag=",DISTRIBUTED_VECTOR%CMISS%TRANSFERS(domain_idx)%RECEIVE_TAG_NUMBER,&
+                      !  & ", MPI_IERROR: ",MPI_IERROR
+                        
+                      
                       IF(DIAGNOSTICS5) THEN
                         CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"MPI IRECV call posted:",ERR,ERROR,*999)
                         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Receive count = ",DISTRIBUTED_VECTOR% &

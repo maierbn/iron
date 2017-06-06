@@ -408,7 +408,9 @@ MODULE OpenCMISS_Iron
 
   PUBLIC cmfe_SolverEquationsType,cmfe_SolverEquations_Finalise,cmfe_SolverEquations_Initialise
 
-  PUBLIC cmfe_CustomProfilingStart,cmfe_CustomProfilingStop,cmfe_CustomProfilingMemory,cmfe_CustomProfilingGetInfo, &
+  PUBLIC cmfe_OutputInterpolationParameters, cmfe_getFieldSize, cmfe_PrintElementsMapping, cmfe_PrintNodesMapping, &
+    & cmfe_PrintSolverEquationsM, &
+    & cmfe_CustomProfilingStart,cmfe_CustomProfilingStop,cmfe_CustomProfilingMemory,cmfe_CustomProfilingGetInfo, &
     & cmfe_CustomProfilingGetDuration,cmfe_CustomProfilingGetMemory,cmfe_CustomProfilingGetSizePerElement, &
     & cmfe_CustomProfilingGetNumberObjects, cmfe_CustomProfilingGetEnabled
   PUBLIC cmfe_PrintMesh, cmfe_PrintFields, cmfe_PrintDistributedMatrix, cmfe_PrintRegion, cmfe_PrintMeshelementstype, &
@@ -7048,6 +7050,8 @@ MODULE OpenCMISS_Iron
   PUBLIC cmfe_SolverEquations_RhsVectorGet
 
   PUBLIC cmfe_BioelectricsFiniteElasticity_UpdateGeometricField
+  
+  PUBLIC cmfe_BioelectricFiniteElasticity_GetLocalElementNumber
   
 !!==================================================================================================================================
 !!
@@ -61811,6 +61815,230 @@ CONTAINS
 
   END SUBROUTINE cmfe_FieldMLIO_GetSession
 
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_OutputInterpolationParameters(Problem, DependentFieldM, SolverParabolic, Err)
+    TYPE(cmfe_ProblemType), INTENT(IN) :: Problem
+    TYPE(cmfe_FieldType), INTENT(IN) :: DependentFieldM
+    TYPE(cmfe_SolverType) :: SolverParabolic
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    
+    !Local variables
+    TYPE(FIELD_TYPE), POINTER :: DEPENDENT_FIELD
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS_MAPPING
+    TYPE(EQUATIONS_TYPE), POINTER :: EQUATIONS
+    INTEGER(INTG) :: element_idx, ne, component_idx, equations_set_idx
+    TYPE(FIELD_INTERPOLATION_PARAMETERS_TYPE), POINTER :: INTERPOLATION_PARAMETERS
+    TYPE(SOLVER_TYPE), POINTER :: SOLVER
+    TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS
+    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
+    TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET
+    INTEGER(INTG) :: ComputationalNodeNumber
+    
+    ENTERS("cmfe_OutputInterpolationParameters", err, error, *999 )
+
+    !NULLIFY(INTERPOLATION_PARAMETERS)
+    !ALLOCATE(INTERPOLATION_PARAMETERS)
+    
+    CALL cmfe_ComputationalNodeNumberGet(ComputationalNodeNumber, Err)
+    
+    SOLVER=>SolverParabolic%Solver
+    
+    !CALL cmfe_PrintProblem(Problem, 1, 5, Err)
+    !CALL cmfe_PrintField(DependentFieldM, 1, 5, Err)
+    IF(ASSOCIATED(SOLVER)) THEN
+      IF(SOLVER%SOLVER_FINISHED) THEN
+        SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
+        IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
+          SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
+        ENDIF
+      ENDIF
+    ENDIF
+          
+    PRINT*, "Output interpolation parameters (opencmiss_iron.f90:61815), process ", ComputationalNodeNumber
+          
+    DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
+      EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+      PRINT*, "equation_set ",equations_set_idx,"of",SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
+      
+  !    
+  !    IF(ASSOCIATED(EQUATIONS_SET)) THEN
+  !      DEPENDENT_FIELD=>EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD
+      DEPENDENT_FIELD=>DependentFieldM%Field
+      
+      EQUATIONS=>EQUATIONS_SET%EQUATIONS
+
+     IF(ASSOCIATED(DEPENDENT_FIELD)) THEN
+        
+        ELEMENTS_MAPPING=>DEPENDENT_FIELD%DECOMPOSITION%DOMAIN( &
+          & DEPENDENT_FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR% &
+          & MAPPINGS%ELEMENTS
+          
+        PRINT*, "------- internal elements ------------------------"
+        PRINT*, "      index  local elno   interpolation_parameters"
+        
+        DO element_idx=ELEMENTS_MAPPING%INTERNAL_START, ELEMENTS_MAPPING%INTERNAL_FINISH
+        
+          ne = ELEMENTS_MAPPING%DOMAIN_LIST(element_idx)
+          
+          ! get interpolation parameters of element
+          ! version which is used with real preallocated variable names:
+          !CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,ne,&
+          !  & EQUATIONS%INTERPOLATION%GEOMETRIC_INTERP_PARAMETERS(FIELD_U_VARIABLE_TYPE)%PTR,ERR,ERROR,*999)
+
+          INTERPOLATION_PARAMETERS=> &
+            & EQUATIONS%INTERPOLATION%GEOMETRIC_INTERP_POINT(FIELD_U_VARIABLE_TYPE)%PTR%INTERPOLATION_PARAMETERS                
+          
+          ! direct version
+          CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,ne,INTERPOLATION_PARAMETERS,ERR,ERROR,*999)
+          
+          DO component_idx = 1,INTERPOLATION_PARAMETERS%FIELD_VARIABLE%NUMBER_OF_COMPONENTS
+            PRINT*, element_idx, ne, INTERPOLATION_PARAMETERS%PARAMETERS(:,component_idx)
+          ENDDO
+        ENDDO
+        
+        PRINT*, "------- boundary elements ------------------------"
+        PRINT*, "      index  local elno   interpolation_parameters"
+        DO element_idx=ELEMENTS_MAPPING%BOUNDARY_START, ELEMENTS_MAPPING%BOUNDARY_FINISH
+        
+          ne = ELEMENTS_MAPPING%DOMAIN_LIST(element_idx)
+          
+          ! get interpolation parameters of element
+          ! version which is used with real preallocated variable names:
+          !CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,ne,&
+          !  & EQUATIONS%INTERPOLATION%GEOMETRIC_INTERP_PARAMETERS(FIELD_U_VARIABLE_TYPE)%PTR,ERR,ERROR,*999)
+
+          INTERPOLATION_PARAMETERS=> &
+            & EQUATIONS%INTERPOLATION%GEOMETRIC_INTERP_POINT(FIELD_U_VARIABLE_TYPE)%PTR%INTERPOLATION_PARAMETERS                
+          
+          ! direct version
+          CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,ne,INTERPOLATION_PARAMETERS,ERR,ERROR,*999)
+          
+          DO component_idx = 1,INTERPOLATION_PARAMETERS%FIELD_VARIABLE%NUMBER_OF_COMPONENTS
+            PRINT*, element_idx, ne, INTERPOLATION_PARAMETERS%PARAMETERS(:,component_idx)
+          ENDDO
+        ENDDO
+      ENDIF
+    ENDDO
+    
+    EXITS("cmfe_OutputInterpolationParameters")
+    RETURN
+999 ERRORSEXITS("cmfe_OutputInterpolationParameters",err,error)
+    CALL cmfe_HandleError( err, error )
+    RETURN
+    
+  END SUBROUTINE cmfe_OutputInterpolationParameters
+  
+  !
+  !================================================================================================================================
+  !
+
+  FUNCTION cmfe_getFieldSize(Field, Err)
+    TYPE(cmfe_FieldType), INTENT(IN) :: Field
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: NumberOfBytes, cmfe_getFieldSize
+    INTEGER(INTG) :: idx
+    
+    NumberOfBytes = SIZEOF(Field%Field)
+    DO idx=1,SIZE(Field%Field%Variables)
+      NumberOfBytes = NumberOfBytes + SIZEOF(Field%Field%VARIABLES(idx))
+    ENDDO
+    DO idx=1,SIZE(Field%Field%Variable_Type_Map)
+      NumberOfBytes = NumberOfBytes + SIZEOF(Field%Field%Variable_Type_Map(idx))
+    ENDDO
+    cmfe_getFieldSize = NumberOfBytes
+  
+  END FUNCTION cmfe_getFieldSize
+  
+  SUBROUTINE cmfe_BioelectricFiniteElasticity_GetLocalElementNumber(GeometricField, ElementGlobalNumber, ElementLocalNumber, Err)
+    TYPE(cmfe_FieldType), INTENT(IN) :: GeometricField  !< the geometric field of the elements
+    INTEGER(INTG), INTENT(IN) :: ElementGlobalNumber !< the global element number of the element for which the local number is seeked
+    INTEGER(INTG), INTENT(OUT) :: ElementLocalNumber !< the local number of the element with the global number (or 0 if the element is not on the local domain)
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    
+    ENTERS("cmfe_GetLocalElementNumber", err, error, *999)
+
+    CALL BioelectricFiniteElasticity_GetLocalElementNumber(GeometricField%Field, ElementGlobalNumber, ElementLocalNumber, Err, &
+     & Error, *999)
+    
+    EXITS("cmfe_GetLocalElementNumber")
+    RETURN
+999 ERRORSEXITS("cmfe_GetLocalElementNumber",err,error)
+    CALL cmfe_HandleError( err, error )
+    RETURN
+    
+  END SUBROUTINE cmfe_BioelectricFiniteElasticity_GetLocalElementNumber
+    
+  
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_PrintElementsMapping(Decomposition, Err)
+    TYPE(cmfe_DecompositionType), INTENT(IN) :: Decomposition
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, ComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(ComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    ! print ELement mappings
+    DO I = 0,NumberOfComputationalNodes-1
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+      IF (ComputationalNodeNumber == I) THEN
+        PRINT*, "Process ",I," of ",NumberOfComputationalNodes,": Element mapping for DecompositionM"
+        ! print variables
+        CALL Print_Domain_Mapping(Decomposition%DECOMPOSITION%DOMAIN( &
+          & Decomposition%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%ELEMENTS, 1, 1000)
+        CALL FLUSH()   ! flush stdout
+      ENDIF
+    ENDDO
+    CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    
+    END SUBROUTINE cmfe_PrintElementsMapping
+  
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_PrintNodesMapping(Decomposition, Err)
+    TYPE(cmfe_DecompositionType), INTENT(IN) :: Decomposition
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    INTEGER(INTG) :: I, NumberOfComputationalNodes, ComputationalNodeNumber
+    
+    ! get computational node numbers
+    CALL cmfe_ComputationalNodeNumberGet(ComputationalNodeNumber, Err)
+    CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
+    
+    ! print ELement mappings
+    DO I = 0,NumberOfComputationalNodes-1
+      CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+      IF (ComputationalNodeNumber == I) THEN
+        PRINT*, "Process ",I," of ",NumberOfComputationalNodes,": Node mapping for DecompositionM"
+        ! print variables
+        CALL Print_Domain_Mapping(Decomposition%DECOMPOSITION%DOMAIN( &
+          & Decomposition%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%NODES, 2, 1000)
+        CALL FLUSH()   ! flush stdout
+      ENDIF
+    ENDDO
+    CALL MPI_BARRIER(MPI_COMM_WORLD, ERR)
+    
+    END SUBROUTINE cmfe_PrintNodesMapping
+  
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_PrintSolverEquationsM(SolverEquationsM, Err)
+    TYPE(cmfe_SolverEquationsType), INTENT(IN) :: SolverEquationsM
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    
+    CALL Print_Solver_Mapping(SolverEquationsM%solverEquations%SOLVER_MAPPING, 5, 10)
+  
+  END SUBROUTINE 
   !
   !================================================================================================================================
   !
