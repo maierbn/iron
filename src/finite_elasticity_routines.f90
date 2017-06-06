@@ -5461,10 +5461,10 @@ CONTAINS
     ENTERS("FINITE_ELASTICITY_GAUSS_DFDZ",ERR,ERROR,*999)
 
     !Initialise DFDXI array
-    DFDXI=0.0_DP  ! DFDXI(component_idx,parameter_idx,xi_idx)
+    !DFDXI=0.0_DP  ! DFDXI(component_idx,parameter_idx,xi_idx)
     DFDZ=0.0_DP
-    DO component_idx2=1,NUMBER_OF_DIMENSIONS !Always 3 spatial coordinates (3D)
-      DO xi_idx=1,NUMBER_OF_XI !Thus always 3 element coordinates
+    DO xi_idx=1,NUMBER_OF_XI !Thus always 3 element coordinates
+      DO component_idx2=1,NUMBER_OF_DIMENSIONS !Always 3 spatial coordinates (3D)
         derivative_idx=PARTIAL_DERIVATIVE_FIRST_DERIVATIVE_MAP(xi_idx)  !2,4,7
         DZDXI(component_idx2,xi_idx)=INTERPOLATED_POINT%VALUES(component_idx2,derivative_idx)  !dz/dxi
       ENDDO
