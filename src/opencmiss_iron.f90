@@ -6182,6 +6182,7 @@ MODULE OpenCMISS_Iron
   INTEGER(INTG), PARAMETER :: CMFE_SOLVER_DAE_GL = SOLVER_DAE_GL !<General Linear (GL) differential-algebraic equation solver. \see
   INTEGER(INTG), PARAMETER :: CMFE_SOLVER_DAE_RUSH_LARSON = SOLVER_DAE_RUSH_LARSON !<Rush-Larson differential-algebraic equation solver. \see
   INTEGER(INTG), PARAMETER :: CMFE_SOLVER_DAE_EXTERNAL = SOLVER_DAE_EXTERNAL !<External (e.g., CellML generated) differential-algebraic equation solver. \see
+
   !>@}
   !> \addtogroup OPENCMISS_EulerDAESolverTypes OPENCMISS::Solver::EulerDAESolverTypes
   !> \brief The Euler solver types for a differential-algebriac equation solver.

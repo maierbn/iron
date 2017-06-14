@@ -4788,7 +4788,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Buffer routine to the PETSc SNESSetJacobian routine for solver contexts.
+  !>Buffer routine to the PETSc SNESGetJacobian routine for solver contexts.
   SUBROUTINE Petsc_SnesGetJacobianSolver(snes,a,b,jFunction,err,error,*)
 
     !Argument Variables
@@ -4822,7 +4822,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Buffer routine to the PETSc SNESSetJacobian routine for solver contexts.
+  !>Buffer routine to the PETSc SNESGetJacobian routine for solver contexts.
   SUBROUTINE Petsc_SnesGetJacobianSpecial(snes,a,err,error,*)
 
     !Argument Variables
