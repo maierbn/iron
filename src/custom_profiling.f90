@@ -5,6 +5,7 @@ MODULE Custom_Profiling
   USE KINDS
   IMPLICIT NONE
   PRIVATE
+#include "mpif.h"
 
   PUBLIC :: CustomProfilingStart
   PUBLIC :: CustomProfilingStop
@@ -62,7 +63,8 @@ CONTAINS
       TotalMemory(CurrentIndex) = 0
     ENDIF
 
-    CALL CPU_TIME(StartTime(CurrentIndex))
+    !CALL CPU_TIME(StartTime(CurrentIndex))
+    StartTime(CurrentIndex) = MPI_WTIME()
   END SUBROUTINE
   !
   !================================================================================================================================
@@ -72,10 +74,11 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(IN)  :: Identifier !< A custom Identifier that describes the timer
 
     ! LOCAL VARIABLES
-    INTEGER :: CurrentIndex, I
+    INTEGER :: CurrentIndex
     REAL(8) :: EndTime, Duration
 
-    CALL CPU_TIME(EndTime)
+    !CALL CPU_TIME(EndTime)
+    EndTime = MPI_WTIME()
     
     ! find index of identifier
     CurrentIndex = GetDurationIndex(Identifier)
@@ -108,7 +111,7 @@ CONTAINS
     INTEGER :: CurrentIndex
     INTEGER(INTG) :: SizePerElement  !< number of bytes of one element
 
-    MemoryConsumption = REAL(TotalSize, LINTG)
+    MemoryConsumption = INT8(TotalSize)
     
     IF (NumberOfElements > 0) THEN
       SizePerElement = TotalSize / NumberOfElements
