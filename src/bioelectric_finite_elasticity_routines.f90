@@ -50,6 +50,7 @@ MODULE BIOELECTRIC_FINITE_ELASTICITY_ROUTINES
   USE BASIS_ROUTINES
   USE BIOELECTRIC_ROUTINES
   USE BIODOMAIN_EQUATION_ROUTINES
+  USE COMP_ENVIRONMENT
   USE CONSTANTS
   USE CONTROL_LOOP_ROUTINES
   USE EQUATIONS_ROUTINES
@@ -62,6 +63,7 @@ MODULE BIOELECTRIC_FINITE_ELASTICITY_ROUTINES
   USE INPUT_OUTPUT
   USE ISO_VARYING_STRING
   USE KINDS
+  USE LISTS
   USE MATHS
   USE MESH_ROUTINES
 #ifndef NOMPIMOD
@@ -796,7 +798,7 @@ CONTAINS
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VAR_U1
     INTEGER(INTG) :: DEPENDENT_NUMBER_OF_GAUSS_POINTS
     INTEGER(INTG) :: MESH_COMPONENT_NUMBER,NUMBER_OF_ELEMENTS,FIELD_VAR_TYPE
-    INTEGER(INTG) :: equations_set_idx,gauss_idx,dof_idx,FEElementIndex,idx
+    INTEGER(INTG) :: equations_set_idx,gauss_idx,DofIdx,FEElementGlobalNumber,idx
     REAL(DP) :: DZDNU(3,3),DZDNUT(3,3),dZdXi(3,3),AZL(3,3)
 
     ENTERS("BioelectricFiniteElasticity_ComputeFibreStretch",ERR,ERROR,*999)
@@ -888,13 +890,13 @@ CONTAINS
           NUMBER_OF_ELEMENTS=DEPENDENT_FIELD%GEOMETRIC_FIELD%DECOMPOSITION%TOPOLOGY%ELEMENTS%NUMBER_OF_ELEMENTS
 
           !loop over the elements of the finite elasticity mesh (internal and boundary elements)
-          DO FEElementIndex=1,NUMBER_OF_ELEMENTS
+          DO FEElementGlobalNumber=1,NUMBER_OF_ELEMENTS
 
-            DEPENDENT_BASIS=>DECOMPOSITION%DOMAIN(MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(FEElementIndex)%BASIS       
+            DEPENDENT_BASIS=>DECOMPOSITION%DOMAIN(MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(FEElementGlobalNumber)%BASIS       
             DEPENDENT_QUADRATURE_SCHEME=>DEPENDENT_BASIS%QUADRATURE%QUADRATURE_SCHEME_MAP(BASIS_DEFAULT_QUADRATURE_SCHEME)%PTR
             DEPENDENT_NUMBER_OF_GAUSS_POINTS=DEPENDENT_QUADRATURE_SCHEME%NUMBER_OF_GAUSS
             GEOMETRIC_BASIS=>GEOMETRIC_FIELD%DECOMPOSITION%DOMAIN(GEOMETRIC_FIELD%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR% &
-              & TOPOLOGY%ELEMENTS%ELEMENTS(FEElementIndex)%BASIS
+              & TOPOLOGY%ELEMENTS%ELEMENTS(FEElementGlobalNumber)%BASIS
 
             !Initialise tensors and matrices
             DZDNU=0.0_DP
@@ -908,11 +910,11 @@ CONTAINS
             GEOMETRIC_INTERPOLATION_PARAMETERS=>EQUATIONS%INTERPOLATION%GEOMETRIC_INTERP_PARAMETERS(FIELD_U_VARIABLE_TYPE)%PTR
             FIBRE_INTERPOLATION_PARAMETERS=>EQUATIONS%INTERPOLATION%FIBRE_INTERP_PARAMETERS(FIELD_U_VARIABLE_TYPE)%PTR
 
-            CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,FEElementIndex, &
+            CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,FEElementGlobalNumber, &
               & GEOMETRIC_INTERPOLATION_PARAMETERS,ERR,ERROR,*999)
-            CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,FEElementIndex, &
+            CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,FEElementGlobalNumber, &
               & FIBRE_INTERPOLATION_PARAMETERS,ERR,ERROR,*999)
-            CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,FEElementIndex, &
+            CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,FEElementGlobalNumber, &
               & DEPENDENT_INTERPOLATION_PARAMETERS,ERR,ERROR,*999)
 
             !Point interpolation pointer
@@ -947,12 +949,13 @@ CONTAINS
               CALL MATRIX_PRODUCT(DZDNUT,DZDNU,AZL,ERR,ERROR,*999)
 
               !store the fibre stretch lambda_f, i.e., sqrt(C_11) or AZL(1,1)
-              dof_idx=FIELD_VAR_U1%COMPONENTS(1)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx,FEElementIndex)
+              DofIdx=FIELD_VAR_U1%COMPONENTS(1)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx, &
+               & FEElementGlobalNumber)
               CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_DOF(INDEPENDENT_FIELD,FIELD_U1_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                & dof_idx,SQRT(AZL(1,1)),ERR,ERROR,*999)
+                & DofIdx,SQRT(AZL(1,1)),ERR,ERROR,*999)
 
             ENDDO !gauss_idx
-          ENDDO !FEElementIndex
+          ENDDO !FEElementGlobalNumber
 
           !now the ghost elements -- get the relevant info from the other computational nodes
           CALL FIELD_PARAMETER_SET_UPDATE_START(INDEPENDENT_FIELD,FIELD_U1_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,ERR,ERROR,*999)
@@ -1012,7 +1015,7 @@ CONTAINS
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VAR_U,FIELD_VAR_U1
     INTEGER(INTG) :: DEPENDENT_NUMBER_OF_GAUSS_POINTS
     INTEGER(INTG) :: MESH_COMPONENT_NUMBER,NUMBER_OF_ELEMENTS
-    INTEGER(INTG) :: equations_set_idx,gauss_idx,dof_idx,FEElementIndex
+    INTEGER(INTG) :: equations_set_idx,gauss_idx,DofIdx,FEElementGlobalNumber
     INTEGER(INTG) :: ITERATION_NUMBER,MAXIMUM_NUMBER_OF_ITERATIONS
     REAL(DP) :: LENGTH_HS,LENGTH_HS_0,ACTIVE_STRESS,FIBRE_STRETCH,FIBRE_STRETCH_OLD
     REAL(DP) :: FACTOR_LENGTH,FACTOR_VELO,SARCO_LENGTH,VELOCITY,VELOCITY_MAX,TIME_STEP,kappa,A,S,d,c
@@ -1088,14 +1091,14 @@ CONTAINS
           CALL FIELD_VARIABLE_GET(INDEPENDENT_FIELD,FIELD_U1_VARIABLE_TYPE,FIELD_VAR_U1,ERR,ERROR,*999)
 
           !get the inital half-sarcomere length
-          dof_idx=FIELD_VAR_U1%COMPONENTS(2)%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP
+          DofIdx=FIELD_VAR_U1%COMPONENTS(2)%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP
           CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD,FIELD_U1_VARIABLE_TYPE, &
-            & FIELD_VALUES_SET_TYPE,dof_idx,LENGTH_HS_0,ERR,ERROR,*999)
+            & FIELD_VALUES_SET_TYPE,DofIdx,LENGTH_HS_0,ERR,ERROR,*999)
 
           !get the maximum contraction velocity
-          dof_idx=FIELD_VAR_U1%COMPONENTS(3)%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP
+          DofIdx=FIELD_VAR_U1%COMPONENTS(3)%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP
           CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD,FIELD_U1_VARIABLE_TYPE, &
-            & FIELD_VALUES_SET_TYPE,dof_idx,VELOCITY_MAX,ERR,ERROR,*999)
+            & FIELD_VALUES_SET_TYPE,DofIdx,VELOCITY_MAX,ERR,ERROR,*999)
 
           ITERATION_NUMBER=CONTROL_LOOP%WHILE_LOOP%ITERATION_NUMBER
           MAXIMUM_NUMBER_OF_ITERATIONS=CONTROL_LOOP%WHILE_LOOP%MAXIMUM_NUMBER_OF_ITERATIONS
@@ -1124,9 +1127,9 @@ CONTAINS
           NUMBER_OF_ELEMENTS=DEPENDENT_FIELD%GEOMETRIC_FIELD%DECOMPOSITION%TOPOLOGY%ELEMENTS%NUMBER_OF_ELEMENTS
 
           !loop over the elements of the finite elasticity mesh (internal and boundary elements)
-          DO FEElementIndex=1,NUMBER_OF_ELEMENTS
+          DO FEElementGlobalNumber=1,NUMBER_OF_ELEMENTS
 
-            DEPENDENT_BASIS=>DECOMPOSITION%DOMAIN(MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(FEElementIndex)%BASIS       
+            DEPENDENT_BASIS=>DECOMPOSITION%DOMAIN(MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(FEElementGlobalNumber)%BASIS       
             DEPENDENT_QUADRATURE_SCHEME=>DEPENDENT_BASIS%QUADRATURE%QUADRATURE_SCHEME_MAP(BASIS_DEFAULT_QUADRATURE_SCHEME)%PTR
             DEPENDENT_NUMBER_OF_GAUSS_POINTS=DEPENDENT_QUADRATURE_SCHEME%NUMBER_OF_GAUSS
 
@@ -1134,16 +1137,18 @@ CONTAINS
             DO gauss_idx=1,DEPENDENT_NUMBER_OF_GAUSS_POINTS
 
               !get the unaltered ACTIVE_STRESS at the GP
-              dof_idx=FIELD_VAR_U%COMPONENTS(1)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx,FEElementIndex)
+              DofIdx=FIELD_VAR_U%COMPONENTS(1)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx, &
+               & FEElementGlobalNumber)
               CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_PREVIOUS_VALUES_SET_TYPE, &
-                & dof_idx,ACTIVE_STRESS,ERR,ERROR,*999)
+                & DofIdx,ACTIVE_STRESS,ERR,ERROR,*999)
 
               ! FORCE-LENGTH RELATION -------------------------------------------------------------------------------
               
               !get the current fibre stretch at the GP
-              dof_idx=FIELD_VAR_U1%COMPONENTS(1)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx,FEElementIndex)
+              DofIdx=FIELD_VAR_U1%COMPONENTS(1)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx, &
+               & FEElementGlobalNumber)
               CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD,FIELD_U1_VARIABLE_TYPE, &
-                & FIELD_VALUES_SET_TYPE,dof_idx,FIBRE_STRETCH,ERR,ERROR,*999)
+                & FIELD_VALUES_SET_TYPE,DofIdx,FIBRE_STRETCH,ERR,ERROR,*999)
 
               !compute the current half-sarcomere length at the GP: l_hs = lambda_f * l_hs_0
               LENGTH_HS=LENGTH_HS_0*FIBRE_STRETCH
@@ -1170,9 +1175,10 @@ CONTAINS
               ACTIVE_STRESS=ACTIVE_STRESS*FACTOR_LENGTH
 
               !update the ACTIVE_STRESS at GP
-              dof_idx=FIELD_VAR_U%COMPONENTS(1)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx,FEElementIndex)
+              DofIdx=FIELD_VAR_U%COMPONENTS(1)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx, &
+               & FEElementGlobalNumber)
               CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_DOF(INDEPENDENT_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                & dof_idx,ACTIVE_STRESS,ERR,ERROR,*999)
+                & DofIdx,ACTIVE_STRESS,ERR,ERROR,*999)
 
 
 
@@ -1181,9 +1187,10 @@ CONTAINS
               ! FORCE-VELOCITY RELATION -------------------------------------------------------------------------------
               
               !get fibre stretch at the GP of the previous time step
-              dof_idx=FIELD_VAR_U1%COMPONENTS(1)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx,FEElementIndex)
+              DofIdx=FIELD_VAR_U1%COMPONENTS(1)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx, &
+               & FEElementGlobalNumber)
               CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD,FIELD_U1_VARIABLE_TYPE, &
-                & FIELD_PREVIOUS_VALUES_SET_TYPE,dof_idx,FIBRE_STRETCH_OLD,ERR,ERROR,*999)
+                & FIELD_PREVIOUS_VALUES_SET_TYPE,DofIdx,FIBRE_STRETCH_OLD,ERR,ERROR,*999)
 
               !compute the contraction velocity
               VELOCITY=(FIBRE_STRETCH-FIBRE_STRETCH_OLD)/TIME_STEP
@@ -1225,12 +1232,13 @@ CONTAINS
               ACTIVE_STRESS=ACTIVE_STRESS*FACTOR_VELO
 
               !update the ACTIVE_STRESS at GP
-              dof_idx=FIELD_VAR_U%COMPONENTS(1)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx,FEElementIndex)
+              DofIdx=FIELD_VAR_U%COMPONENTS(1)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx, & 
+               & FEElementGlobalNumber)
               CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_DOF(INDEPENDENT_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                & dof_idx,ACTIVE_STRESS,ERR,ERROR,*999)
+                & DofIdx,ACTIVE_STRESS,ERR,ERROR,*999)
 
             ENDDO !gauss_idx
-          ENDDO !FEElementIndex
+          ENDDO !FEElementGlobalNumber
 !!!!end original
 
 
@@ -1244,7 +1252,7 @@ CONTAINS
 !!!              counter=counter+1
 
 !!!            ENDDO !gauss_idx
-!!!          ENDDO !FEElementIndex
+!!!          ENDDO !FEElementGlobalNumber
 
 !!!          VELOCITY=VELOCITY_AVERAGE/REAL(counter)
 !!!          FIBRE_STRETCH=STRETCH_AVERAGE/REAL(counter)
@@ -1296,9 +1304,9 @@ CONTAINS
 !!!            ENDIF
 !!!          ENDIF
 
-!!!          DO FEElementIndex=1,NUMBER_OF_ELEMENTS
+!!!          DO FEElementGlobalNumber=1,NUMBER_OF_ELEMENTS
 
-!!!            DEPENDENT_BASIS=>DECOMPOSITION%DOMAIN(MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(FEElementIndex)%BASIS       
+!!!            DEPENDENT_BASIS=>DECOMPOSITION%DOMAIN(MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(FEElementGlobalNumber)%BASIS       
 !!!            DEPENDENT_QUADRATURE_SCHEME=>DEPENDENT_BASIS%QUADRATURE%QUADRATURE_SCHEME_MAP(BASIS_DEFAULT_QUADRATURE_SCHEME)%PTR
 !!!            DEPENDENT_NUMBER_OF_GAUSS_POINTS=DEPENDENT_QUADRATURE_SCHEME%NUMBER_OF_GAUSS
 
@@ -1306,20 +1314,20 @@ CONTAINS
 !!!            DO gauss_idx=1,DEPENDENT_NUMBER_OF_GAUSS_POINTS
 
 !!!              !get the ACTIVE_STRESS at the GP
-!!!              dof_idx=FIELD_VAR_U%COMPONENTS(1)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx,FEElementIndex)
+!!!              DofIdx=FIELD_VAR_U%COMPONENTS(1)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx,FEElementGlobalNumber)
 !!!              CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-!!!                & dof_idx,ACTIVE_STRESS,ERR,ERROR,*999)
+!!!                & DofIdx,ACTIVE_STRESS,ERR,ERROR,*999)
 
 !!!              !multiply the ACTIVE_STRESS with the scale factor
 !!!              ACTIVE_STRESS=ACTIVE_STRESS*FACTOR_VELO
 
 !!!              !update the ACTIVE_STRESS at GP
-!!!              dof_idx=FIELD_VAR_U%COMPONENTS(1)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx,FEElementIndex)
+!!!              DofIdx=FIELD_VAR_U%COMPONENTS(1)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx,FEElementGlobalNumber)
 !!!              CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_DOF(INDEPENDENT_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-!!!                & dof_idx,ACTIVE_STRESS,ERR,ERROR,*999)
+!!!                & DofIdx,ACTIVE_STRESS,ERR,ERROR,*999)
 !!!              
 !!!            ENDDO !gauss_idx
-!!!          ENDDO !FEElementIndex
+!!!          ENDDO !FEElementGlobalNumber
 !tomo end
 
           !now the ghost elements -- get the relevant info from the other computational nodes
@@ -1421,8 +1429,6 @@ CONTAINS
             IF(ASSOCIATED(TIME_LOOP)) THEN
               PROBLEM=>CONTROL_LOOP%PROBLEM
               IF(ASSOCIATED(PROBLEM)) THEN
-                
-                
               
                 NULLIFY(SOLVERS)
                 NULLIFY(SOLVER)
@@ -1515,9 +1521,9 @@ CONTAINS
             CALL CPU_TIMER(SYSTEM_CPU, TIME_SYSTEM_STOP, ERR,ERROR,*999)
             TIMING_FILE_OUTPUT_USER = TIMING_FILE_OUTPUT_USER + (TIME_USER_STOP(1) - TIME_USER_START(1))
             TIMING_FILE_OUTPUT_SYSTEM = TIMING_FILE_OUTPUT_SYSTEM + (TIME_SYSTEM_STOP(1) - TIME_SYSTEM_START(1))
-            PRINT *, "duration file output: user: ", (TIME_USER_STOP(1) - TIME_USER_START(1))
-            PRINT *, "                      system: ",(TIME_SYSTEM_STOP(1) - TIME_SYSTEM_START(1)), &
-             & ", new total duration: ",TIMING_FILE_OUTPUT_USER,",",TIMING_FILE_OUTPUT_SYSTEM
+            !PRINT *, "duration file output: user: ", (TIME_USER_STOP(1) - TIME_USER_START(1))
+            !PRINT *, "                      system: ",(TIME_SYSTEM_STOP(1) - TIME_SYSTEM_START(1)), &
+            ! & ", new total duration: ",TIMING_FILE_OUTPUT_USER,",",TIMING_FILE_OUTPUT_SYSTEM
           
           ENDIF
         ENDIF
@@ -1541,6 +1547,7 @@ CONTAINS
 
   !>Check for the convergence of the bioelectric finite elasticity while loop, i.e.,
   !> if the force-length and force-velocity relations yielded a different actual configuration.
+  !> This method is not called for cuboid.
   SUBROUTINE BioelectricFiniteElasticity_ConvergenceCheck(CONTROL_LOOP,ERR,ERROR,*)
 
     !Argument variables
@@ -1549,7 +1556,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(PROBLEM_TYPE), POINTER :: PROBLEM
-    INTEGER(INTG) :: equations_set_idx,NUMBER_OF_NODES,dof_idx,node_idx
+    INTEGER(INTG) :: equations_set_idx,NUMBER_OF_NODES,DofIdx,node_idx
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET
     TYPE(FIELD_TYPE), POINTER :: DEPENDENT_FIELD
     TYPE(SOLVERS_TYPE), POINTER :: SOLVERS
@@ -1615,30 +1622,34 @@ CONTAINS
               DO node_idx=1,NUMBER_OF_NODES
 
                 !get the current node position (x) and the node position of the last iteration (y)
-                dof_idx=FIELD_VAR%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)% &
+                DofIdx=FIELD_VAR%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)% &
                   & DERIVATIVES(1)%VERSIONS(1)
                 CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,FIELD_U_VARIABLE_TYPE, &
-                  & FIELD_VALUES_SET_TYPE,dof_idx,x1,ERR,ERROR,*999)
+                  & FIELD_VALUES_SET_TYPE,DofIdx,x1,ERR,ERROR,*999)
                 CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,FIELD_U_VARIABLE_TYPE, &
-                  & FIELD_PREVIOUS_ITERATION_VALUES_SET_TYPE,dof_idx,y1,ERR,ERROR,*999)
-                dof_idx=FIELD_VAR%COMPONENTS(2)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)% &
+                  & FIELD_PREVIOUS_ITERATION_VALUES_SET_TYPE,DofIdx,y1,ERR,ERROR,*999)
+                DofIdx=FIELD_VAR%COMPONENTS(2)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)% &
                   & DERIVATIVES(1)%VERSIONS(1)
                 CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,FIELD_U_VARIABLE_TYPE, &
-                  & FIELD_VALUES_SET_TYPE,dof_idx,x2,ERR,ERROR,*999)
+                  & FIELD_VALUES_SET_TYPE,DofIdx,x2,ERR,ERROR,*999)
                 CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,FIELD_U_VARIABLE_TYPE, &
-                  & FIELD_PREVIOUS_ITERATION_VALUES_SET_TYPE,dof_idx,y2,ERR,ERROR,*999)
-                dof_idx=FIELD_VAR%COMPONENTS(3)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)% &
+                  & FIELD_PREVIOUS_ITERATION_VALUES_SET_TYPE,DofIdx,y2,ERR,ERROR,*999)
+                DofIdx=FIELD_VAR%COMPONENTS(3)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)% &
                   & DERIVATIVES(1)%VERSIONS(1)
                 CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,FIELD_U_VARIABLE_TYPE, &
-                  & FIELD_VALUES_SET_TYPE,dof_idx,x3,ERR,ERROR,*999)
+                  & FIELD_VALUES_SET_TYPE,DofIdx,x3,ERR,ERROR,*999)
                 CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD,FIELD_U_VARIABLE_TYPE, &
-                  & FIELD_PREVIOUS_ITERATION_VALUES_SET_TYPE,dof_idx,y3,ERR,ERROR,*999)
+                  & FIELD_PREVIOUS_ITERATION_VALUES_SET_TYPE,DofIdx,y3,ERR,ERROR,*999)
 
                 !sum up
                 my_sum=my_sum+SQRT((x1-y1)**2+(x2-y2)**2+(x3-y3)**2)
               ENDDO
               
               IF(my_sum<1.0E-06_DP) THEN !if converged then:
+              
+                PRINT*, "In bioelectric_finite_elasticity_routines.f90:1650: while loop converged after", &
+                  CONTROL_LOOP%WHILE_LOOP%ITERATION_NUMBER, "iterations."
+              
                 CONTROL_LOOP%WHILE_LOOP%CONTINUE_LOOP=.FALSE.
                 CALL BioelectricFiniteElasticity_UpdateGeometricField(CONTROL_LOOP,.FALSE.,ERR,ERROR,*999)
                 !copy the current solution to the previous solution
@@ -1679,6 +1690,489 @@ CONTAINS
     
   END SUBROUTINE BioelectricFiniteElasticity_ConvergenceCheck
 
+  !
+  !================================================================================================================================
+  !
+  
+  !> Get the local element number for an element with its global number
+  SUBROUTINE BioelectricFiniteElasticity_GetLocalElementNumber(GEOMETRIC_FIELD, ElementGlobalNumber, ElementLocalNumber, &
+   & ERR, ERROR, *)
+    TYPE(FIELD_TYPE), POINTER, INTENT(IN) :: GEOMETRIC_FIELD  !< the geometric field of the elements
+    INTEGER(INTG), INTENT(IN) :: ElementGlobalNumber !< the global element number of the element for which the local number is seeked
+    INTEGER(INTG), INTENT(OUT) :: ElementLocalNumber !< the local number of the element with the global number (or 0 if the element is not on the local domain)
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    
+    ! local variables
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
+    INTEGER(INTG) :: DomainIdx, J
+    TYPE(DECOMPOSITION_ELEMENTS_TYPE), POINTER :: ELEMENTS_TOPOLOGY
+    TYPE(DOMAIN_GLOBAL_MAPPING_TYPE), POINTER :: GLOBAL_TO_LOCAL_MAP
+    LOGICAL, PARAMETER :: DEBUGGING = .FALSE.
+    
+    ENTERS("BioelectricFiniteElasticity_GetLocalElementNumber",ERR,ERROR,*999)
+
+    ELEMENTS_TOPOLOGY=>GEOMETRIC_FIELD%DECOMPOSITION%TOPOLOGY%ELEMENTS
+    
+    ! get local element number from global element number
+    GLOBAL_TO_LOCAL_MAP=>ELEMENTS_TOPOLOGY%DECOMPOSITION%DOMAIN(GEOMETRIC_FIELD%DECOMPOSITION% &
+      & MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%ELEMENTS%GLOBAL_TO_LOCAL_MAP(ElementGlobalNumber)
+    DomainIdx = 0
+    DO J = 1, GLOBAL_TO_LOCAL_MAP%NUMBER_OF_DOMAINS
+      IF (GLOBAL_TO_LOCAL_MAP%DOMAIN_NUMBER(j) == COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)) THEN
+        DomainIdx = J
+        EXIT
+      ENDIF
+    ENDDO
+    
+    IF (DomainIdx == 0) THEN
+      LOCAL_ERROR="Element with global number "//TRIM(NUMBER_TO_VSTRING(ElementGlobalNumber,"*",ERR,ERROR))// &
+        & " is not on local domain of process "//TRIM(NUMBER_TO_VSTRING(COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR),"*",ERR,ERROR))
+      CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+    ENDIF
+
+    ElementLocalNumber = GLOBAL_TO_LOCAL_MAP%LOCAL_NUMBER(DomainIdx)
+    
+    IF (DEBUGGING) &
+      PRINT "(I1.1,2(A,I6),2(A,I2))", COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR),": global->local: ", &
+       & ElementGlobalNumber,"->",ElementLocalNumber, & 
+       & ", domain",DomainIdx,"/",&
+       & GLOBAL_TO_LOCAL_MAP%NUMBER_OF_DOMAINS
+    
+    EXITS("BioelectricFiniteElasticity_GetLocalElementNumber")
+    RETURN
+999 ERRORS("BioelectricFiniteElasticity_GetLocalElementNumber",ERR,ERROR)
+    EXITS("BioelectricFiniteElasticity_GetLocalElementNumber")
+    RETURN 1
+  END SUBROUTINE BioelectricFiniteElasticity_GetLocalElementNumber
+
+  !
+  !================================================================================================================================
+  !
+  
+  !> Advance to the next monodomain node and set the corresponding FE element
+  SUBROUTINE BioelectricFiniteElasticity_IterateNextMonodomainNode(SOLVER_MAPPING_MONODOMAIN, GEOMETRIC_FIELD_ELASTICITY, &
+   & INDEPENDENT_FIELD_ELASTICITY, &
+   & Initialize, GEOMETRIC_FIELD_MONODOMAIN, DEPENDENT_FIELD_MONODOMAIN, INDEPENDENT_FIELD_MONODOMAIN, &
+   & FIELD_VAR_DEP_M, FIELD_VAR_GEO_M, FIELD_VAR_IND_M_U1, FIELD_VAR_IND_M_U2, FIELD_VAR_IND_M_V, &
+   & IsFinished, FEElementGlobalNumber, FEElementLocalNumber, BioelectricNodeGlobalNumber, BioelectricNodeLocalNumber, &
+   & BioelectricNodeInFibreNumber, LeftNeighbourBioelectricNodeLocalNumber, FibreNumber, XI, DELTA_XI1, &
+   & IsFirstBioelectricNodeOfFibre, LeftNeighbourIsGhost, PreviousNodeHadNoLeftNeighbour, ERR, ERROR, *)
+    TYPE(SOLVER_MAPPING_TYPE), POINTER, INTENT(IN) :: SOLVER_MAPPING_MONODOMAIN
+    TYPE(FIELD_TYPE), POINTER, INTENT(IN) :: GEOMETRIC_FIELD_ELASTICITY
+    TYPE(FIELD_TYPE), POINTER, INTENT(IN) :: INDEPENDENT_FIELD_ELASTICITY
+    LOGICAL, INTENT(IN) :: Initialize
+    
+    TYPE(FIELD_TYPE), POINTER, INTENT(OUT) :: DEPENDENT_FIELD_MONODOMAIN
+    TYPE(FIELD_TYPE), POINTER, INTENT(OUT) :: INDEPENDENT_FIELD_MONODOMAIN
+    TYPE(FIELD_TYPE), POINTER, INTENT(OUT) :: GEOMETRIC_FIELD_MONODOMAIN
+    TYPE(FIELD_VARIABLE_TYPE), POINTER, INTENT(OUT) :: FIELD_VAR_DEP_M
+    TYPE(FIELD_VARIABLE_TYPE), POINTER, INTENT(OUT) :: FIELD_VAR_GEO_M
+    TYPE(FIELD_VARIABLE_TYPE), POINTER, INTENT(OUT) :: FIELD_VAR_IND_M_U1
+    TYPE(FIELD_VARIABLE_TYPE), POINTER, INTENT(OUT) :: FIELD_VAR_IND_M_U2
+    TYPE(FIELD_VARIABLE_TYPE), POINTER, INTENT(OUT) :: FIELD_VAR_IND_M_V
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    
+    LOGICAL, INTENT(OUT) :: IsFinished    !< if the iteration over all monodomain nodes is finished
+    INTEGER(INTG), INTENT(OUT) :: FEElementGlobalNumber  !< current FE element user number
+    INTEGER(INTG), INTENT(OUT) :: FEElementLocalNumber     !< local element number of FE element
+    INTEGER(INTG), INTENT(OUT) :: BioelectricNodeGlobalNumber   !< global number of the bioelectric node, per fibre, i.e. there can be multiple nodes with the same global number
+    INTEGER(INTG), INTENT(OUT) :: BioelectricNodeLocalNumber    !< local number of the bioelectric node
+    INTEGER(INTG), INTENT(OUT) :: BioelectricNodeInFibreNumber    !< contiguous number of the node starting with 1 for the first node of the fibre
+    INTEGER(INTG), INTENT(OUT) :: LeftNeighbourBioelectricNodeLocalNumber    !< local number of the bioelectrics node to the left of the current, if it exists, else 0
+    INTEGER(INTG), INTENT(OUT) :: FibreNumber  !< index of the current fibre
+    REAL(DP), INTENT(OUT) :: XI(3)        !< position of the current bioelectric node in the current FE element, in [0,1]^3
+    REAL(DP), INTENT(OUT) :: DELTA_XI1    !< the increment of XI(1) between two bioelectric nodes of a fibre
+    LOGICAL, INTENT(OUT) :: IsFirstBioelectricNodeOfFibre    !< if the current node is the first node of the fibre
+    LOGICAL, INTENT(OUT) :: LeftNeighbourIsGhost   !< If LeftNeighbourBioelectricNodeLocalNumber is the number of a ghost node to the local domain
+    LOGICAL, INTENT(OUT) :: PreviousNodeHadNoLeftNeighbour   !< for the previous node LeftNeighbourBioelectricNodeLocalNumber was 0, i.e. the current node is next to a node that had no left neighbour (useful to update the values of the left node from the current)
+    
+    ! local variables
+    INTEGER(INTG), SAVE :: PreviousFibreNumber
+    TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET_MONODOMAIN
+    TYPE(DOMAIN_TYPE), POINTER, SAVE :: MONODOMAIN_DOMAIN
+    TYPE(DOMAIN_MAPPINGS_TYPE), POINTER, SAVE :: MONODOMAIN_MAPPINGS
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER, SAVE :: M_NODES_MAPPING
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER, SAVE :: M_ELEMENTS_MAPPING
+    TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER, SAVE :: M_DOMAIN_TOPOLOGY
+    TYPE(DOMAIN_NODES_TYPE), POINTER, SAVE :: M_DOMAIN_TOPOLOGY_NODES
+    TYPE(DOMAIN_ELEMENTS_TYPE), POINTER, SAVE :: M_DOMAIN_TOPOLOGY_ELEMENTS
+    TYPE(DECOMPOSITION_ELEMENTS_TYPE), POINTER, SAVE :: M_ELEMENTS_TOPOLOGY
+    TYPE(DECOMPOSITION_ELEMENTS_TYPE), POINTER, SAVE :: FE_ELEMENTS_TOPOLOGY
+    TYPE(FIELD_VARIABLE_TYPE), POINTER, SAVE  :: FIELD_VAR_IND_FE
+    
+    !INTEGER(INTG), SAVE :: NumberOfElementsMPerElementFE
+    !INTEGER(INTG), SAVE :: BioelectricElementIdx
+    INTEGER(INTG), SAVE :: BioelectricElementLocalNumber
+    LOGICAL, SAVE :: CurrentBioelectricNodeIsLeftNode               !< if the currently considered monodomain node is the left node of the current monodomain element (only true at the beginning of a fibre domain, subsequently always the right node of the element is considered)
+    INTEGER(INTG), SAVE :: ComputationalNodeNumber
+    INTEGER(INTG), SAVE :: LastBioelectricElementLocalNumber
+    INTEGER(INTG), SAVE :: LastFEElementGlobalNumber
+    INTEGER(INTG), SAVE :: BioelectricElementInFEElementNumber
+    INTEGER(INTG), SAVE :: BioelectricNodeInFEElementNumber
+    INTEGER(INTG), SAVE :: NumberOfBioelectricElementsPerElementFE
+    INTEGER(INTG), SAVE :: NumberOfNodesInXi2PerElementFE
+    INTEGER(INTG), SAVE :: NumberOfNodesInXi3PerElementFE
+    INTEGER(INTG), SAVE :: NumberGlobalYElements
+    INTEGER(INTG), SAVE :: LastLeftNeighbourBioelectricNodeLocalNumber     !< the value of LastLeftNeighbourBioelectricNodeLocalNumber after the last call to this function
+    INTEGER(INTG) :: TemporaryFEElementLocalNumber, TemporaryPreviousFEElementLocalNumber
+    INTEGER(INTG) :: TemporaryBiolectricNodeLocalNumber
+    INTEGER(INTG) :: DofIdx
+    INTEGER(INTG) :: LeftNodeFibreNumber
+    INTEGER(INTG) :: NodeDomain
+    INTEGER(INTG) :: I    
+    INTEGER(INTG) :: PreviousBioelectricElementLocalNumber
+    LOGICAL :: DEBUGGING = .FALSE.
+    !LOGICAL, PARAMETER :: DEBUGGING = .FALSE.
+    
+    ENTERS("BioelectricFiniteElasticity_IterateNextMonodomainNode",ERR,ERROR,*999)
+
+#if 0     
+    IF (COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR) == 1) THEN
+      DEBUGGING = .TRUE.
+    ENDIF
+#endif    
+    
+    IsFinished = .FALSE.
+    IsFirstBioelectricNodeOfFibre = .FALSE.
+  
+    ! in the first IF-ELSE statement the bioelectric element number gets set/advanced
+    ! afterwards all needed numbers get derived
+  
+    ! Initialize values
+    IF (Initialize) THEN
+      
+      IF (DEBUGGING) THEN
+        PRINT *, "'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''"
+        PRINT *, "BioelectricFiniteElasticity_IterateNextMonodomainNode, initialize"
+      ENDIF
+      
+      ! field variables
+      EQUATIONS_SET_MONODOMAIN=>SOLVER_MAPPING_MONODOMAIN%EQUATIONS_SETS(1)%PTR       ! Select the 1st equation set. If there were multiple fibre meshes, this would be affected.
+      GEOMETRIC_FIELD_MONODOMAIN=>EQUATIONS_SET_MONODOMAIN%GEOMETRY%GEOMETRIC_FIELD
+      DEPENDENT_FIELD_MONODOMAIN=>EQUATIONS_SET_MONODOMAIN%DEPENDENT%DEPENDENT_FIELD
+      INDEPENDENT_FIELD_MONODOMAIN=>EQUATIONS_SET_MONODOMAIN%INDEPENDENT%INDEPENDENT_FIELD
+      
+      NULLIFY(FIELD_VAR_GEO_M)
+      NULLIFY(FIELD_VAR_DEP_M)
+      NULLIFY(FIELD_VAR_IND_M_U1)
+      NULLIFY(FIELD_VAR_IND_M_U2)
+      NULLIFY(FIELD_VAR_IND_M_V)
+      NULLIFY(FIELD_VAR_IND_FE)
+    
+      CALL FIELD_VARIABLE_GET(GEOMETRIC_FIELD_MONODOMAIN,  FIELD_U_VARIABLE_TYPE, FIELD_VAR_GEO_M,   ERR,ERROR,*999)
+      CALL FIELD_VARIABLE_GET(DEPENDENT_FIELD_MONODOMAIN,  FIELD_V_VARIABLE_TYPE, FIELD_VAR_DEP_M,   ERR,ERROR,*999)
+      CALL FIELD_VARIABLE_GET(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U1_VARIABLE_TYPE,FIELD_VAR_IND_M_U1,ERR,ERROR,*999)
+      CALL FIELD_VARIABLE_GET(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE,FIELD_VAR_IND_M_U2,ERR,ERROR,*999)
+      CALL FIELD_VARIABLE_GET(INDEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, FIELD_VAR_IND_M_V, ERR,ERROR,*999)
+      CALL FIELD_VARIABLE_GET(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE, FIELD_VAR_IND_FE,  ERR,ERROR,*999)
+
+      ! helper variables
+      MONODOMAIN_DOMAIN=>GEOMETRIC_FIELD_MONODOMAIN%DECOMPOSITION%DOMAIN(GEOMETRIC_FIELD_MONODOMAIN%DECOMPOSITION% &
+       & MESH_COMPONENT_NUMBER)%PTR              ! DOMAIN_TYPE    
+      MONODOMAIN_MAPPINGS=>MONODOMAIN_DOMAIN%MAPPINGS
+      M_ELEMENTS_MAPPING=>MONODOMAIN_MAPPINGS%ELEMENTS
+      M_NODES_MAPPING=>MONODOMAIN_MAPPINGS%NODES
+
+      M_DOMAIN_TOPOLOGY=>MONODOMAIN_DOMAIN%TOPOLOGY     ! TYPE DOMAIN_TOPOLOGY_TYPE
+      M_DOMAIN_TOPOLOGY_ELEMENTS=>M_DOMAIN_TOPOLOGY%ELEMENTS  ! TYPE DOMAIN_ELEMENTS_TYPE
+              
+      M_ELEMENTS_TOPOLOGY=>GEOMETRIC_FIELD_MONODOMAIN%DECOMPOSITION%TOPOLOGY%ELEMENTS
+      FE_ELEMENTS_TOPOLOGY=>GEOMETRIC_FIELD_ELASTICITY%DECOMPOSITION%TOPOLOGY%ELEMENTS
+              
+      ComputationalNodeNumber = COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
+            
+      IF (SIZE(M_ELEMENTS_MAPPING%DOMAIN_LIST) >= M_ELEMENTS_MAPPING%GHOST_START) THEN
+        LastBioelectricElementLocalNumber = M_ELEMENTS_MAPPING%DOMAIN_LIST(M_ELEMENTS_MAPPING%GHOST_START)
+      ELSE
+        LastBioelectricElementLocalNumber = M_ELEMENTS_MAPPING%DOMAIN_LIST(M_ELEMENTS_MAPPING%GHOST_START-1)+1
+      ENDIF
+      
+      ! indices
+      CurrentBioelectricNodeIsLeftNode = .TRUE.
+      PreviousNodeHadNoLeftNeighbour = .FALSE.
+      
+      PreviousFibreNumber = 0
+      BioelectricNodeInFEElementNumber = 1
+      LastFEElementGlobalNumber = 0
+      LastLeftNeighbourBioelectricNodeLocalNumber = -1 ! this may not be initialized to 0, because then PreviousNodeHadNoLeftNeighbour would be .TRUE. in the first call to this function
+      
+      !BioelectricElementIdx = M_ELEMENTS_MAPPING%INTERNAL_START
+      ! directly initialize local element number to 1
+      BioelectricElementLocalNumber = 1
+      
+      NumberGlobalYElements = GEOMETRIC_FIELD_ELASTICITY%DECOMPOSITION%MESH%GENERATED_MESH%REGULAR_MESH%NUMBER_OF_ELEMENTS_XI(2)
+    
+    ELSE
+      IF (CurrentBioelectricNodeIsLeftNode) THEN
+        ! if the last node was the left node of its element now use the right node of this element
+        CurrentBioelectricNodeIsLeftNode = .FALSE.
+        IF (DEBUGGING) PRINT *," at el. ", BioelectricElementLocalNumber,", going from left node to right node of element"
+      ELSE
+        ! advance to next element
+        !BioelectricElementIdx = BioelectricElementIdx + 1
+        BioelectricElementLocalNumber = BioelectricElementLocalNumber + 1
+        IF (DEBUGGING) PRINT *," going to el. ", BioelectricElementLocalNumber
+        
+        BioelectricElementInFEElementNumber = BioelectricElementInFEElementNumber + 1
+        
+        IF (BioelectricElementLocalNumber >= LastBioelectricElementLocalNumber) THEN
+          IF (DEBUGGING) PRINT "(2(A,I3))", " el ",BioelectricElementLocalNumber," has reached finish ", &
+            & LastBioelectricElementLocalNumber
+          IsFinished = .TRUE.
+          RETURN
+        ENDIF
+      ENDIF
+      
+      ! also increment the counter of bioelectric node in the current FE element
+      BioelectricNodeInFEElementNumber = BioelectricNodeInFEElementNumber + 1
+      
+    ENDIF ! Initialize            
+    
+    ! get the local number of bioelectric element from the mapping index
+    !BioelectricElementLocalNumber = M_ELEMENTS_MAPPING%DOMAIN_LIST(BioelectricElementIdx)
+    !IF (DEBUGGING) PRINT *, " el idx. ", BioelectricElementIdx," is el no ", BioelectricElementLocalNumber
+    
+    IF (DEBUGGING) THEN
+      PRINT "(A,I3,A,I3,A)", " element ", BioelectricElementLocalNumber, " has", &
+        & SIZE(M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(BioelectricElementLocalNumber)%ELEMENT_NODES), &
+        & " nodes: "
+      DO I = 1,SIZE(M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(BioelectricElementLocalNumber)%ELEMENT_NODES)
+        PRINT "(A,I3,2(A,I3))", "I=",I, &
+          & ": local ",M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(BioelectricElementLocalNumber)%ELEMENT_NODES(I), &
+          & ", global ",M_NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(BioelectricElementLocalNumber)% &
+            & ELEMENT_NODES(I))
+      ENDDO
+    ENDIF
+    
+    ! save the previous bioelectric node number as left neighbour node
+    LeftNeighbourBioelectricNodeLocalNumber = BioelectricNodeLocalNumber
+    LeftNeighbourIsGhost = .FALSE.
+    
+    DO I = 1,2
+      ! get the current bioelectric node (local number) from the current local element (local number)
+      IF (CurrentBioelectricNodeIsLeftNode) THEN
+        BioelectricNodeLocalNumber = M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(BioelectricElementLocalNumber)%ELEMENT_NODES(1)
+        IF (DEBUGGING) PRINT *, " take left node, local",BioelectricNodeLocalNumber
+      ELSE
+        IF (SIZE(M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(BioelectricElementLocalNumber)%ELEMENT_NODES) == 2) THEN
+          BioelectricNodeLocalNumber = M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(BioelectricElementLocalNumber)%ELEMENT_NODES(2)
+          IF (DEBUGGING) PRINT *, " take right node, local",BioelectricNodeLocalNumber
+        ELSE        
+          ! if the element only contains one node, take this (should not happen)
+          BioelectricNodeLocalNumber = M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(BioelectricElementLocalNumber)%ELEMENT_NODES(1)
+          IF (DEBUGGING) PRINT *, " take right and only node, local",BioelectricNodeLocalNumber
+        ENDIF
+      ENDIF
+      
+      ! get global bioelectric node number from local bioelectric node number
+      BioelectricNodeGlobalNumber = M_NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(BioelectricNodeLocalNumber)
+      
+      ! determine if this node is on the local domain (it may not, despite the element is)
+      CALL DECOMPOSITION_NODE_DOMAIN_GET(GEOMETRIC_FIELD_MONODOMAIN%DECOMPOSITION,BioelectricNodeGlobalNumber,1,NodeDomain, &
+        & ERR,ERROR,*999)
+      IF (DEBUGGING) PRINT "(2(A,I3))", " Node global", BioelectricNodeGlobalNumber, " is on domain ", NodeDomain
+      
+      ! if node is not on local domain, iterate to next node
+      IF (NodeDomain /= ComputationalNodeNumber) THEN
+        IF (DEBUGGING) PRINT *," Node is not on local domain, go to next node"
+        LeftNeighbourIsGhost = .TRUE.
+        
+        IF (CurrentBioelectricNodeIsLeftNode) THEN
+          ! if the last node was the left node of its element, now use the right node of this element
+          CurrentBioelectricNodeIsLeftNode = .FALSE.
+          IF (DEBUGGING) PRINT *," at element local", BioelectricElementLocalNumber, &
+            & ", going from left node to right node of element"
+            
+          LeftNeighbourBioelectricNodeLocalNumber = BioelectricNodeLocalNumber
+        ELSE
+          ! advance to next element
+          !BioelectricElementIdx = BioelectricElementIdx + 1
+          BioelectricElementLocalNumber = BioelectricElementLocalNumber + 1
+          IF (DEBUGGING) PRINT *," going to element local", BioelectricElementLocalNumber
+                  
+          IF (BioelectricElementLocalNumber >= LastBioelectricElementLocalNumber) THEN
+            IF (DEBUGGING) PRINT "(2(A,I3))", " element local",BioelectricElementLocalNumber," has reached finish ", &
+              & LastBioelectricElementLocalNumber
+            IsFinished = .TRUE.
+            RETURN
+          ENDIF
+          
+          CurrentBioelectricNodeIsLeftNode = .TRUE.
+        ENDIF
+        
+        ! get the current bioelectric node (local number) from the current local element (local number)
+        IF (SIZE(M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(BioelectricElementLocalNumber)%ELEMENT_NODES) == 2) THEN
+          BioelectricNodeLocalNumber = M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(BioelectricElementLocalNumber)%ELEMENT_NODES(2)
+          IF (DEBUGGING) PRINT *, " take right node local",BioelectricNodeLocalNumber
+        ELSE        
+          ! if the element only contains one node, take this (should not happen)
+          BioelectricNodeLocalNumber = M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(BioelectricElementLocalNumber)%ELEMENT_NODES(1)
+          IF (DEBUGGING) PRINT *, " take right and only node local",BioelectricNodeLocalNumber
+        ENDIF
+        
+        ! get global bioelectric node number from local bioelectric node number
+        BioelectricNodeGlobalNumber = M_NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(BioelectricNodeLocalNumber)
+
+        ! if something in the current endif branch fails, try to use a recursive call like the following instead (tested and works)
+        !CALL BioelectricFiniteElasticity_IterateNextMonodomainNode(SOLVER_MAPPING_MONODOMAIN, FE_ELEMENTS_TOPOLOGY, .FALSE., &
+        ! & GEOMETRIC_FIELD_MONODOMAIN, DEPENDENT_FIELD_MONODOMAIN, INDEPENDENT_FIELD_MONODOMAIN, &
+        ! & FIELD_VAR_DEP_M, FIELD_VAR_GEO_M, FIELD_VAR_IND_M_U1, FIELD_VAR_IND_M_U2, FIELD_VAR_IND_M_V, &
+        ! & IsFinished, FEElementGlobalNumber, FEElementLocalNumber, BioelectricNodeGlobalNumber, BioelectricNodeLocalNumber, &
+        ! & BioelectricNodeInFibreNumber, LeftNeighbourBioelectricNodeLocalNumber, FibreNumber, XI, IsFirstBioelectricNodeOfFibre, &
+        ! & ERR, ERROR, *999)
+        !RETURN
+      ENDIF ! node not on local domain
+      
+      ! get fibre number
+      DofIdx=FIELD_VAR_IND_M_V%COMPONENTS(3)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+        & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
+        & FIELD_VALUES_SET_TYPE,DofIdx,FibreNumber,ERR,ERROR,*999)
+
+      IF (DEBUGGING) PRINT "(2(A,I3))", " Node ", BioelectricNodeLocalNumber, " is of fibre ", FibreNumber
+        
+      ! determine if this is a new fibre
+      IF (FibreNumber /= PreviousFibreNumber) THEN
+        PreviousFibreNumber = FibreNumber
+        
+        !IF (PreviousFibreNumber /= 0) THEN
+        IF (DEBUGGING) PRINT *, " new fibre"
+
+        ! because this is the first element of the fibre in the local domain, update the node to be the left node of the element (not the right one as usual), this is done in the next iteration of the I loop
+        CurrentBioelectricNodeIsLeftNode = .TRUE.
+        
+      ELSE    ! this is the same fibre as the last node, so the obtained right node of the current element is correct
+        EXIT
+      ENDIF
+    ENDDO
+    
+    ! increment the counter of bioelectric nodes in the current FE element
+    !!BioelectricNodeInFEElementNumber = BioelectricNodeInFEElementNumber + 1
+        
+    ! set the left neighbour node
+    IF (CurrentBioelectricNodeIsLeftNode) THEN
+      ! if there is no left neighbour element that would contain the neighbour node
+      IF (M_ELEMENTS_TOPOLOGY%ELEMENTS(BioelectricElementLocalNumber)%ADJACENT_ELEMENTS(-1)%NUMBER_OF_ADJACENT_ELEMENTS == 0) THEN
+        LeftNeighbourBioelectricNodeLocalNumber = 0
+        LeftNeighbourIsGhost = .FALSE.
+        IF (DEBUGGING) PRINT *, "no previous node"
+      ELSE    ! there is a left neighbour element
+        PreviousBioelectricElementLocalNumber = M_ELEMENTS_TOPOLOGY%ELEMENTS(BioelectricElementLocalNumber)% &
+         & ADJACENT_ELEMENTS(-1)%ADJACENT_ELEMENTS(1)
+        ! take left node of element
+        LeftNeighbourBioelectricNodeLocalNumber = M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(PreviousBioelectricElementLocalNumber)% &
+          & ELEMENT_NODES(1)
+        LeftNeighbourIsGhost = .TRUE.
+        IF (DEBUGGING) &
+          &  PRINT *, "previous node is of ElementM loc.", PreviousBioelectricElementLocalNumber, " node loc.", &
+          & LeftNeighbourBioelectricNodeLocalNumber
+      ENDIF
+    ENDIF
+        
+    ! determine if this is the first node of a fibre or if the fibre already started more left on a different processors domain
+    IsFirstBioelectricNodeOfFibre = .FALSE.
+    IF (CurrentBioelectricNodeIsLeftNode) THEN    ! if this is another fibre than the previous element
+      
+      ! if the current node has no left neighbour
+      IF (LeftNeighbourBioelectricNodeLocalNumber == 0) THEN  ! if there is no left neighbour, it is the first node of the 1D mesh and therefore the first node of a fibre
+        IsFirstBioelectricNodeOfFibre = .TRUE.
+      ELSE
+        ! this does not work because there is no communication that sets fibre numbers in ghost nodes
+        ! but it is not required when there are no in-series fibres, so no problem here
+#if 0        
+        ! get the fibre number of the left node, maybe it is from a different in series fibre
+        DofIdx=FIELD_VAR_IND_M_V%COMPONENTS(3)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+          & NODES(LeftNeighbourBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
+          & FIELD_VALUES_SET_TYPE,DofIdx,LeftNodeFibreNumber,ERR,ERROR,*999)
+
+        IF (DEBUGGING) PRINT *, "LeftNodeFibreNumber: ", LeftNodeFibreNumber,", current FibreNumber", FibreNumber
+        IF (LeftNodeFibreNumber /= FibreNumber) THEN
+          IsFirstBioelectricNodeOfFibre = .TRUE.
+        ENDIF
+#endif        
+      ENDIF
+    ENDIF
+      
+    ! get corresponding finite elasticity element (local element number)
+    DofIdx=FIELD_VAR_IND_M_V%COMPONENTS(5)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+      & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+    CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
+      & FIELD_VALUES_SET_TYPE,DofIdx,FEElementLocalNumber,ERR,ERROR,*999)
+  
+    IF (DEBUGGING) PRINT *, "bioelectric node local", BioelectricNodeLocalNumber, " is in FEElement: local", FEElementLocalNumber
+  
+    ! get global number of FE element
+    LastFEElementGlobalNumber = FEElementGlobalNumber
+    FEElementGlobalNumber = FE_ELEMENTS_TOPOLOGY%ELEMENTS(FEElementLocalNumber)%GLOBAL_NUMBER
+
+    ! if new FE element is reached, reset BioelectricElementInFEElementNumber counter
+    IF (CurrentBioelectricNodeIsLeftNode) THEN    ! new element is reached and left node is considered
+      IF (IsFirstBioelectricNodeOfFibre) THEN     ! the fibre starts here, so the current node is on the left boundary of the domain and the first node of the element
+        BioelectricNodeInFEElementNumber = 1
+      ELSE      ! the fibre started ealier, so the current node is owned by the left FE element and the last node of that element
+        BioelectricNodeInFEElementNumber = NumberOfBioelectricElementsPerElementFE+1
+      ENDIF
+    ELSEIF (LastFEElementGlobalNumber /= FEElementGlobalNumber) THEN ! new element is reached
+      BioelectricNodeInFEElementNumber = 2
+    ENDIF
+    
+    IF (DEBUGGING) PRINT *, "CurrentBioelectricNodeIsLeftNode: ", CurrentBioelectricNodeIsLeftNode, &
+      & ", IsFirstBioelectricNodeOfFibre: ", IsFirstBioelectricNodeOfFibre, &
+      & ", BioelectricNodeInFEElementNumber: ", BioelectricNodeInFEElementNumber
+      
+    ! set flag if last node had no previous neighbour
+    PreviousNodeHadNoLeftNeighbour = (LastLeftNeighbourBioelectricNodeLocalNumber == 0)
+    LastLeftNeighbourBioelectricNodeLocalNumber = LeftNeighbourBioelectricNodeLocalNumber
+    
+    IF (Initialize) THEN
+      ! determine number of bioelectric elements per FE element
+      DofIdx=FIELD_VAR_IND_FE%COMPONENTS(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(FEElementLocalNumber)
+      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
+        & DofIdx,NumberOfBioelectricElementsPerElementFE,ERR,ERROR,*999)
+      
+      DofIdx=FIELD_VAR_IND_FE%COMPONENTS(2)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(FEElementLocalNumber)
+      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
+        & DofIdx,NumberOfNodesInXi2PerElementFE,ERR,ERROR,*999)
+      
+      DofIdx=FIELD_VAR_IND_FE%COMPONENTS(3)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(FEElementLocalNumber)
+      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
+        & DofIdx,NumberOfNodesInXi3PerElementFE,ERR,ERROR,*999)
+        
+      ! compute the increment for XI(1) between nodes
+      DELTA_XI1 = 1.0 / NumberOfBioelectricElementsPerElementFE
+      
+      IF (DEBUGGING) THEN 
+        PRINT *, "NumberOfBioelectricElementsPerElementFE: ", NumberOfBioelectricElementsPerElementFE
+        PRINT *, "NumberOfNodesInXi2PerElementFE: ", NumberOfNodesInXi2PerElementFE
+        PRINT *, "NumberOfNodesInXi3PerElementFE: ", NumberOfNodesInXi3PerElementFE
+        PRINT *, "NumberGlobalYElements: ", NumberGlobalYElements
+      ENDIF
+    ENDIF
+    
+    ! compute value of XI
+    ! XI is the position inside the containing FE element, in a coordinate frame [0,1]^3
+    XI(1) = FLOAT(BioelectricNodeInFEElementNumber-1) / NumberOfBioelectricElementsPerElementFE     ! in direction of fibre
+    XI(2) = (MOD(FibreNumber-1, NumberOfNodesInXi2PerElementFE)+0.5) / NumberOfNodesInXi2PerElementFE  ! in y-direction
+    XI(3) = (MOD(INT((FibreNumber-1) / (NumberOfNodesInXi2PerElementFE * NumberGlobalYElements)), &    ! in z-direction
+      & NumberOfNodesInXi3PerElementFE)+0.5) / NumberOfNodesInXi3PerElementFE
+      
+    IF (DEBUGGING) PRINT "(I1, A, I5, A, I5)", ComputationalNodeNumber, ": global ",BioelectricNodeGlobalNumber, &
+       & ", BioelectricNodeInFEElementNumber=",BioelectricNodeInFEElementNumber
+      
+    EXITS("BioelectricFiniteElasticity_IterateNextMonodomainNode")
+    RETURN
+999 ERRORS("BioelectricFiniteElasticity_IterateNextMonodomainNode",ERR,ERROR)
+    EXITS("BioelectricFiniteElasticity_IterateNextMonodomainNode")
+    RETURN 1
+  END SUBROUTINE BioelectricFiniteElasticity_IterateNextMonodomainNode
+  
+  !
+  !================================================================================================================================
+  !
+  !> Make all processes wait until one sets the variable gdb_resume to 1 via a debugger (e.g. gdb)
   SUBROUTINE gdbParallelDebuggingBarrier()
     INTEGER(Intg) :: Gdb_Resume
     INTEGER(Intg) :: MPI_IERROR, MPI_COMM_WORLD
@@ -1704,14 +2198,459 @@ CONTAINS
   !
   !================================================================================================================================
   !
+  !> Make a consistent state such that also in bioelectric node ghost elements the GeometricFieldM FIELD_U_VARIABLE_TYPE GeometryM 
+  !> field has the correct values. This is done by exchanging node distances over adjacent domains.
+  !> This method can be considered a helper method for BioelectricFiniteElasticity_UpdateGeometricField.
+  SUBROUTINE BioelectricFiniteElasticity_GhostElements(INDEPENDENT_FIELD_MONODOMAIN,GEOMETRIC_FIELD_MONODOMAIN,&
+    & M_NODES_MAPPING,M_ELEMENTS_MAPPING,M_DOMAIN_TOPOLOGY_ELEMENTS,FIELD_VAR_GEO_M,FIELD_VAR_IND_M_U2,M_ELEMENTS_TOPOLOGY,&
+    & ERR,ERROR,*)
+    TYPE(FIELD_TYPE), POINTER, INTENT(IN) :: INDEPENDENT_FIELD_MONODOMAIN
+    TYPE(FIELD_TYPE), POINTER, INTENT(IN) :: GEOMETRIC_FIELD_MONODOMAIN
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER, INTENT(IN) :: M_NODES_MAPPING
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER, INTENT(IN) :: M_ELEMENTS_MAPPING
+    TYPE(DOMAIN_ELEMENTS_TYPE), POINTER, INTENT(IN) :: M_DOMAIN_TOPOLOGY_ELEMENTS
+    TYPE(FIELD_VARIABLE_TYPE), POINTER, INTENT(IN) :: FIELD_VAR_GEO_M
+    TYPE(FIELD_VARIABLE_TYPE), POINTER, INTENT(IN) :: FIELD_VAR_IND_M_U2
+    TYPE(DECOMPOSITION_ELEMENTS_TYPE), POINTER, INTENT(IN) :: M_ELEMENTS_TOPOLOGY
+    
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    
+    INTEGER(INTG) :: BioelectricElementIdx, BioelectricElementLocalNumber, BioelectricElementGlobalNumber
+    INTEGER(INTG) :: BioelectricNodeIdx, BioelectricNodeLocalNumber, BioelectricNodeGlobalNumber
+    INTEGER(INTG) :: LeftBioelectricNodeLocalNumber, RightBioelectricNodeLocalNumber
+    INTEGER(INTG) :: LeftBioelectricNodeGlobalNumber, RightBioelectricNodeGlobalNumber
+    REAL(DP) :: Position1DLeftNode, Position1DRightNode, DistanceLeftNode, DistanceRightNode, DistanceNodes
+    INTEGER(INTG) :: DofIdx, I
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
+    TYPE(DISTRIBUTED_VECTOR_TYPE), POINTER :: DISTRIBUTED_VECTOR
+    INTEGER(INTG) :: DOMAIN_IDX, RecvIndex, SendIndex
+    !LOGICAL, PARAMETER :: DEBUGGING = .TRUE.   ! enable debugging output with this parameter
+    LOGICAL :: DEBUGGING = .FALSE.   ! enable debugging output with this parameter
+
+    TYPE(LIST_TYPE), POINTER :: List
+    
+    ENTERS("BioelectricFiniteElasticity_GhostElements",ERR,ERROR,*999)
+
+    ! test case for LIST_REMOVE_DUPLICATES_WITHOUT_SORTING
+#if 0
+    NULLIFY(List)
+    CALL LIST_CREATE_START(List,ERR,ERROR,*999)
+    CALL LIST_DATA_TYPE_SET(List,LIST_INTG_TYPE,ERR,ERROR,*999)
+    CALL LIST_INITIAL_SIZE_SET(List,2,ERR,ERROR,*999)
+    CALL LIST_CREATE_FINISH(List,ERR,ERROR,*999)
+    
+    CALL LIST_ITEM_ADD(List,5,ERR,ERROR,*999)
+    CALL LIST_ITEM_ADD(List,5,ERR,ERROR,*999)
+    CALL LIST_ITEM_ADD(List,5,ERR,ERROR,*999)
+    CALL LIST_ITEM_ADD(List,5,ERR,ERROR,*999)
+    CALL LIST_ITEM_ADD(List,5,ERR,ERROR,*999)
+    !CALL LIST_ITEM_ADD(List,3,ERR,ERROR,*999)
+    !CALL LIST_ITEM_ADD(List,7,ERR,ERROR,*999)
+    !CALL LIST_ITEM_ADD(List,5,ERR,ERROR,*999)
+    !CALL LIST_ITEM_ADD(List,7,ERR,ERROR,*999)
+    !CALL LIST_ITEM_ADD(List,7,ERR,ERROR,*999)
+    !CALL LIST_ITEM_ADD(List,8,ERR,ERROR,*999)
+    !CALL LIST_ITEM_ADD(List,8,ERR,ERROR,*999)
+    !CALL LIST_ITEM_ADD(List,1,ERR,ERROR,*999)
+    !CALL LIST_ITEM_ADD(List,2,ERR,ERROR,*999)
+    !CALL LIST_ITEM_ADD(List,3,ERR,ERROR,*999)
+    
+    PRINT *, "list"
+    DO I=1,List%NUMBER_IN_LIST
+      PRINT *, List%LIST_INTG(I)
+    ENDDO
+    
+    CALL LIST_REMOVE_DUPLICATES_WITHOUT_SORTING(List, ERR,ERROR,*999)
+    !CALL LIST_REMOVE_DUPLICATES(List, ERR,ERROR,*999)
+    
+    PRINT *, "list w/o duplicates"
+    DO I=1,List%NUMBER_IN_LIST
+      PRINT *, List%LIST_INTG(I)
+    ENDDO
+    
+    PRINT *, "stop in bioelectric_finite_elasticity_routines.f90:2244"
+    STOP
+#endif
+    
+#if 0    
+    DEBUGGING = .FALSE.
+    IF (COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR) == 1) DEBUGGING = .TRUE.
+#endif    
+    
+    IF (DEBUGGING) THEN
+      ! output all values
+      PRINT *, "process ",COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), " in BioelectricFiniteElasticity_GhostElements, " // &
+        & "before communication"
+      PRINT *, "    process       node, dof no.(r),        distance (r),              distance (l)"
+      PRINT *, "internal"
+      DO BioelectricNodeIdx = M_NODES_MAPPING%INTERNAL_START, M_NODES_MAPPING%INTERNAL_FINISH
+        BioelectricNodeLocalNumber = M_NODES_MAPPING%DOMAIN_LIST(BioelectricNodeIdx)
+        BioelectricNodeGlobalNumber = M_NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(BioelectricNodeLocalNumber)
+        
+        ! store global number in U(1)
+        !CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+        !  & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,DBLE(BioelectricNodeGlobalNumber),ERR,ERROR,*999)
+        
+        DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(7)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+          & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceLeftNode,ERR,ERROR,*999)
+          
+        DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+          & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceRightNode,ERR,ERROR,*999)
+        
+        
+        PRINT *, COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), BioelectricNodeGlobalNumber, DofIdx, DistanceRightNode, DistanceLeftNode
+      ENDDO
+      PRINT *, "boundary"
+      DO BioelectricNodeIdx = M_NODES_MAPPING%BOUNDARY_START, M_NODES_MAPPING%BOUNDARY_FINISH
+        BioelectricNodeLocalNumber = M_NODES_MAPPING%DOMAIN_LIST(BioelectricNodeIdx)
+        BioelectricNodeGlobalNumber = M_NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(BioelectricNodeLocalNumber)
+        
+        ! store global number in U(1)
+        !CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+        !  & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,DBLE(BioelectricNodeGlobalNumber),ERR,ERROR,*999)
+        
+        
+        DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(7)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+          & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceLeftNode,ERR,ERROR,*999)
+          
+        DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+          & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceRightNode,ERR,ERROR,*999)
+        
+        
+        PRINT *, COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), BioelectricNodeGlobalNumber, DofIdx, DistanceRightNode, DistanceLeftNode
+      ENDDO
+      PRINT *, "ghost"
+      DO BioelectricNodeIdx = M_NODES_MAPPING%GHOST_START, M_NODES_MAPPING%GHOST_FINISH
+        BioelectricNodeLocalNumber = M_NODES_MAPPING%DOMAIN_LIST(BioelectricNodeIdx)
+        BioelectricNodeGlobalNumber = M_NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(BioelectricNodeLocalNumber)
+        
+        ! store global number in U(1)
+        !CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+        !  & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,DBLE(BioelectricNodeGlobalNumber),ERR,ERROR,*999)
+        
+        DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(7)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+          & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceLeftNode,ERR,ERROR,*999)
+          
+        DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+          & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceRightNode,ERR,ERROR,*999)
+        
+        PRINT *, COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), BioelectricNodeGlobalNumber, DofIdx, DistanceRightNode, DistanceLeftNode
+      ENDDO
+    ENDIF
+      
+    IF (DEBUGGING.AND..FALSE.) THEN
+      DISTRIBUTED_VECTOR=>INDEPENDENT_FIELD_MONODOMAIN%VARIABLE_TYPE_MAP(FIELD_U2_VARIABLE_TYPE)%PTR%PARAMETER_SETS% &
+        & SET_TYPE(FIELD_VALUES_SET_TYPE)%PTR%PARAMETERS
+      
+      DO domain_idx = 1,DISTRIBUTED_VECTOR%DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
+        DO i = 1,DISTRIBUTED_VECTOR%DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%NUMBER_OF_RECEIVE_GHOSTS
+          RecvIndex = DISTRIBUTED_VECTOR%DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)% &
+            & LOCAL_GHOST_RECEIVE_INDICES(i)
+          SendIndex = DISTRIBUTED_VECTOR%DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)% &
+            & LOCAL_GHOST_SEND_INDICES(i)
+          PRINT "(I1,(A,I3),4(A,I4))", COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), &
+            & ": Domain ", domain_idx, ", RecvIndex ", RecvIndex, " <- ", I, ", SendIndex ", SendIndex," -> ",I
+        ENDDO
+      ENDDO
+      
+    ENDIF
+    
+    ! bioelectric elements: transfer "distance between nodes" to ghost elements
+    CALL FIELD_PARAMETER_SET_UPDATE_START(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
+      & ERR,ERROR,*999)
+    CALL FIELD_PARAMETER_SET_UPDATE_FINISH(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, & 
+      & ERR,ERROR,*999)
+    
+    
+    IF (DEBUGGING) THEN
+      ! output all values
+      PRINT *, "process ",COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), " after communication"
+      PRINT *, "    process       node, dof no.(r),        distance (r),              distance (l)"
+      PRINT *, "internal"
+      DO BioelectricNodeIdx = M_NODES_MAPPING%INTERNAL_START, M_NODES_MAPPING%INTERNAL_FINISH
+        BioelectricNodeLocalNumber = M_NODES_MAPPING%DOMAIN_LIST(BioelectricNodeIdx)
+        BioelectricNodeGlobalNumber = M_NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(BioelectricNodeLocalNumber)
+        
+        
+        DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(7)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+          & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceLeftNode,ERR,ERROR,*999)
+        
+        DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+          & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceRightNode,ERR,ERROR,*999)
+        
+        PRINT *, COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR),BioelectricNodeGlobalNumber, DofIdx, DistanceRightNode, DistanceLeftNode
+      ENDDO
+      PRINT *, "boundary"
+      DO BioelectricNodeIdx = M_NODES_MAPPING%BOUNDARY_START, M_NODES_MAPPING%BOUNDARY_FINISH
+        BioelectricNodeLocalNumber = M_NODES_MAPPING%DOMAIN_LIST(BioelectricNodeIdx)
+        BioelectricNodeGlobalNumber = M_NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(BioelectricNodeLocalNumber)
+        
+        DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(7)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+          & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceLeftNode,ERR,ERROR,*999)
+        
+        DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+          & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceRightNode,ERR,ERROR,*999)
+        
+        
+        PRINT *, COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR),BioelectricNodeGlobalNumber, DofIdx, DistanceRightNode, DistanceLeftNode
+      ENDDO
+      PRINT *, "ghost"
+      DO BioelectricNodeIdx = M_NODES_MAPPING%GHOST_START, M_NODES_MAPPING%GHOST_FINISH
+        BioelectricNodeLocalNumber = M_NODES_MAPPING%DOMAIN_LIST(BioelectricNodeIdx)
+        BioelectricNodeGlobalNumber = M_NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(BioelectricNodeLocalNumber)
+        
+        DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(7)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+          & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceLeftNode,ERR,ERROR,*999)
+        
+        DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+          & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceRightNode,ERR,ERROR,*999)
+        
+        
+        PRINT *, COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR),BioelectricNodeGlobalNumber, DofIdx, DistanceRightNode, DistanceLeftNode
+      ENDDO
+    ENDIF
+    
+    !PRINT *, "stop in bioelectric_finite_elasticity_routines.f90:2426"
+    !STOP
+    
+    ! transfer geometric field of biolectric nodes 
+    !CALL FIELD_PARAMETER_SET_UPDATE_START(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
+    !  & ERR,ERROR,*999)
+    !CALL FIELD_PARAMETER_SET_UPDATE_FINISH(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, & 
+    !  & ERR,ERROR,*999)
+     
+    
+    ! check on which side of fibre part ghost element is located
+    DO BioelectricElementIdx = M_ELEMENTS_MAPPING%GHOST_START, M_ELEMENTS_MAPPING%GHOST_FINISH
+      BioelectricElementLocalNumber = M_ELEMENTS_MAPPING%DOMAIN_LIST(BioelectricElementIdx)
+      BioelectricElementGlobalNumber = M_ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(BioelectricElementLocalNumber)
+      
+      IF (SIZE(M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(BioelectricElementLocalNumber)%ELEMENT_NODES) /= 2) THEN
+        LOCAL_ERROR="Bioelectric Element with global number"//TRIM(NUMBER_TO_VSTRING(BioelectricElementGlobalNumber,"*",ERR, &
+          & ERROR))//" does not have 2 nodes!"
+        CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+      ENDIF
+      
+      ! get local numbers of 2 adjacent nodes
+      LeftBioelectricNodeLocalNumber = M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(BioelectricElementLocalNumber)%ELEMENT_NODES(1)
+      RightBioelectricNodeLocalNumber = M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(BioelectricElementLocalNumber)%ELEMENT_NODES(2)
+      
+      LeftBioelectricNodeGlobalNumber = M_NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(LeftBioelectricNodeLocalNumber)
+      RightBioelectricNodeGlobalNumber = M_NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(RightBioelectricNodeLocalNumber)
+    
+      ! if fibre continues on left side, update value of right node
+      IF (M_ELEMENTS_TOPOLOGY%ELEMENTS(BioelectricElementLocalNumber)%ADJACENT_ELEMENTS(-1)%NUMBER_OF_ADJACENT_ELEMENTS == 1) THEN
+        
+        ! get 1D position of left node (should already been computed by the local process)
+        DofIdx=FIELD_VAR_GEO_M%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+          & NODES(LeftBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+          & FIELD_VALUES_SET_TYPE,DofIdx,Position1DLeftNode,ERR,ERROR,*999)
+    
+        ! get distance between nodes, which is stored at the right node
+        DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+          & NODES(RightBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceNodes,ERR,ERROR,*999)
+        
+        ! compute position of right node
+        Position1DRightNode = Position1DLeftNode + DistanceNodes
+        
+        ! store the new position of the right node to ghost node
+        CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+          & FIELD_VALUES_SET_TYPE,1,1,RightBioelectricNodeLocalNumber,1,Position1DRightNode,ERR,ERROR,*999)
+
+        IF (DEBUGGING) PRINT "(I2,3(A,F8.3),A,I3,A)", COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), &
+          & ": fibre continues left, r=l+d(at r) ", Position1DRightNode,"=",&
+          & Position1DLeftNode,"+",DistanceNodes,"(node global ",RightBioelectricNodeGlobalNumber,")"
+          
+      ELSE        
+        ! get 1D position of right node (should already been computed by the local process)
+        DofIdx=FIELD_VAR_GEO_M%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+          & NODES(RightBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+          & FIELD_VALUES_SET_TYPE,DofIdx,Position1DRightNode,ERR,ERROR,*999)
+    
+    
+        IF (DEBUGGING) PRINT *, "position 1D right node: ", Position1DRightNode
+    
+        ! get distance between nodes, which is stored at the right node
+        DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+          & NODES(RightBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceNodes,ERR,ERROR,*999)
+        
+        IF (ABS(DistanceNodes) > 1e-5) THEN
+        
+          ! compute position of left node
+          Position1DLeftNode = Position1DRightNode - DistanceNodes
+          
+          IF (DEBUGGING) PRINT "(I2,3(A,F8.3),A,I3,A)", COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), &
+            & ": fibre continues right, l=r-d(at r) ", Position1DLeftNode, "=",&
+            & Position1DRightNode,"-",DistanceNodes,"(node global ",RightBioelectricNodeGlobalNumber,")"
+        ELSE
+          
+          ! get distance between nodes, which is stored at the left node
+          DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(7)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+            & NODES(LeftBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+          CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+            & FIELD_VALUES_SET_TYPE,DofIdx,DistanceNodes,ERR,ERROR,*999)
+            
+          ! compute position of left node
+          Position1DLeftNode = Position1DRightNode - DistanceNodes
+          
+          IF (DEBUGGING) PRINT "(I2,3(A,F8.3),A,I3,A)", COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), &
+            & ": fibre continues right, d(at r)=0, l=r-d(at l) ",Position1DLeftNode, "=",& 
+            & Position1DRightNode,"-",DistanceNodes,"(node global ",LeftBioelectricNodeGlobalNumber,")"
+       ENDIF
+          
+        ! store the new position of the left node to ghost node
+        CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+          & FIELD_VALUES_SET_TYPE,1,1,LeftBioelectricNodeLocalNumber,1,Position1DLeftNode,ERR,ERROR,*999)
+
+      ENDIF
+    ENDDO
+    
+    IF (DEBUGGING) THEN
+      PRINT "(I1,A)", COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), ": Updated values at ghost elements"
+        
+      ! show distance between nodes on ghost nodes
+      DO BioelectricElementIdx = M_ELEMENTS_MAPPING%GHOST_START, M_ELEMENTS_MAPPING%GHOST_FINISH
+        BioelectricElementLocalNumber = M_ELEMENTS_MAPPING%DOMAIN_LIST(BioelectricElementIdx)
+        BioelectricElementGlobalNumber = M_ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(BioelectricElementLocalNumber)
+        
+        PRINT *, "   Bioelectric element local", BioelectricElementLocalNumber, "global", BioelectricElementGlobalNumber
+        
+        IF (SIZE(M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(BioelectricElementLocalNumber)%ELEMENT_NODES) == 2) THEN
+          LeftBioelectricNodeLocalNumber = M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(BioelectricElementLocalNumber)%ELEMENT_NODES(1)
+          RightBioelectricNodeLocalNumber = M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(BioelectricElementLocalNumber)%ELEMENT_NODES(2)
+          
+          LeftBioelectricNodeGlobalNumber = M_NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(LeftBioelectricNodeLocalNumber)
+          RightBioelectricNodeGlobalNumber = M_NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(RightBioelectricNodeLocalNumber)
+
+          PRINT *, "     left node, local",LeftBioelectricNodeLocalNumber, "global", LeftBioelectricNodeGlobalNumber
+          PRINT *, "     right node, local",RightBioelectricNodeLocalNumber, "global", RightBioelectricNodeGlobalNumber
+          
+          ! get the position in 1D
+          DofIdx=FIELD_VAR_GEO_M%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+            & NODES(LeftBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+          CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+            & FIELD_VALUES_SET_TYPE,DofIdx,Position1DLeftNode,ERR,ERROR,*999)                              
+      
+          ! get the position in 1D
+          DofIdx=FIELD_VAR_GEO_M%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+            & NODES(RightBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+          CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+            & FIELD_VALUES_SET_TYPE,DofIdx,Position1DRightNode,ERR,ERROR,*999)    
+      
+          ! get the distance to the left node
+          DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+            & NODES(LeftBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+          CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+            & FIELD_VALUES_SET_TYPE,DofIdx,DistanceLeftNode,ERR,ERROR,*999)                              
+      
+          ! get the distance to the left node
+          DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+            & NODES(RightBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+          CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+            & FIELD_VALUES_SET_TYPE,DofIdx,DistanceRightNode,ERR,ERROR,*999)                           
+      
+          PRINT *, "      Position1DLeftNode:", Position1DLeftNode
+          PRINT *, "      Position1DRightNode:", Position1DRightNode                             
+          PRINT *, "      DistanceLeftNode:", DistanceLeftNode                             
+          PRINT *, "      DistanceRightNode:", DistanceRightNode                             
+      
+          
+        ELSE        
+          ! if the element only contains one node, take this (should not happen)
+          LeftBioelectricNodeLocalNumber = M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(BioelectricElementLocalNumber)%ELEMENT_NODES(1)
+          PRINT *, "      only 1 node, local",LeftBioelectricNodeLocalNumber
+        ENDIF
+      ENDDO
+      
+    ENDIF
+    
+    EXITS("BioelectricFiniteElasticity_GhostElements")
+    RETURN
+999 ERRORS("BioelectricFiniteElasticity_GhostElements",ERR,ERROR)
+    EXITS("BioelectricFiniteElasticity_GhostElements")
+    RETURN 1
+    
+  END SUBROUTINE BioelectricFiniteElasticity_GhostElements
+  
+  !
+  !================================================================================================================================
+  !
+  
+  !> Check if value is NAN. This is not used so far.
+  FUNCTION IS_NAN(Value)
+    REAL(DP), INTENT(IN) :: Value
+    LOGICAL :: IS_NAN
+    CHARACTER(LEN=3) :: STR
+    
+    ! normally it should work like this, but is does not! (tested with GCC 5.4)
+    IF (Value /= Value) THEN
+      PRINT *, "Is nan (by comparison)!"
+      IS_NAN = .TRUE.
+      RETURN
+    ENDIF
+    ! this is a GCC extension, but does not work either
+    IF (ISNAN(Value)) THEN
+      PRINT *, "Is nan (by gcc)!"
+      IS_NAN = .TRUE.
+      RETURN
+    ENDIF
+    
+    ! this works (but not with the flags "-ffpe-trap=invalid,zero" that make floating point exceptions fatal, which is good in debug mode)
+    Write(Str, "(F3.5)") Value
+    !Print*, "STR=[", TRIM(STR), "]"
+    IF (Str == "NaN") THEN
+      PRINT *, "Is nan (by string comparison)"
+      IS_NAN = .TRUE.
+      RETURN
+    ENDIF
+    IS_NAN = .FALSE.
+    
+  END FUNCTION IS_NAN
+  
+  !
+  !================================================================================================================================
+  !
 
   !>Update the bioelectric equation geometric field from the finite elasticity dependent field (deformed geometry)
-  !>NOTE: this is only temporary - will be replaced once embedded meshes are available
+  !>NOTE: this is only temporary - will be replaced once embedded meshes are available (if ever)
+  !>This methods gets called FortranExample before the simulation starts with CALC_CLOSEST_GAUSS_POINT=.TRUE.
+  !> Then it gets called in BioelectricFiniteElasticity_ControlLoopPostLoop and again after the while loop converged with CALC_CLOSEST_GAUSS_POINT=.FALSE.
   SUBROUTINE BioelectricFiniteElasticity_UpdateGeometricField(CONTROL_LOOP,CALC_CLOSEST_GAUSS_POINT,ERR,ERROR,*)
 
     !Argument variables
     TYPE(CONTROL_LOOP_TYPE), POINTER :: CONTROL_LOOP !<A pointer to the control loop to solve.
-    LOGICAL, INTENT(IN) :: CALC_CLOSEST_GAUSS_POINT !<If true then the closest finite elasticity Gauss point for each bioelectrics node is calculated
+    LOGICAL, INTENT(IN) :: CALC_CLOSEST_GAUSS_POINT !<If true then the closest finite elasticity Gauss point for each bioelectrics node is calculated. This is to be set .TRUE. only once (in the first call)
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -1722,7 +2661,7 @@ CONTAINS
     TYPE(FIELD_TYPE), POINTER :: INDEPENDENT_FIELD_ELASTICITY,GEOMETRIC_FIELD_MONODOMAIN,GEOMETRIC_FIELD_ELASTICITY
     TYPE(FIELD_TYPE), POINTER :: DEPENDENT_FIELD_MONODOMAIN,INDEPENDENT_FIELD_MONODOMAIN,DEPENDENT_FIELD_ELASTICITY
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
+    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING_ELASTICITY, SOLVER_MAPPING_MONODOMAIN
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     TYPE(FIELD_INTERPOLATED_POINT_TYPE), POINTER :: INTERPOLATED_POINT
@@ -1733,48 +2672,56 @@ CONTAINS
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VAR_DEP_M,FIELD_VAR_GEO_M,FIELD_VAR_IND_FE,FIELD_VAR_IND_M_U1,FIELD_VAR_IND_M_U2
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VAR_IND_M_V
     TYPE(DOMAIN_GLOBAL_MAPPING_TYPE),POINTER :: GLOBAL_TO_LOCAL_MAP
-    INTEGER(INTG) :: component_idx,FEElementIndex,ne,FibreStartsInCurrentElement,FEElementWhereFibresEnterLocalDomainLocalNumber
-    INTEGER(INTG) :: tmp,temp
-    INTEGER(INTG) :: FEElementWhereFibresEnterLocalDomainIndex, next_FEElementIndex, i, j, k, ElementGlobalNumber
+    INTEGER(INTG) :: component_idx,FEElementGlobalNumber,FEElementLocalNumber,FibreStartsInCurrentElement
+    INTEGER(INTG) :: FEElementWhereFibresEnterLocalDomainLocalNumber
+    INTEGER(INTG) :: FEElementWhereFibresEnterLocalDomainIndex, next_FEElementGlobalNumber, i, j, k, ElementGlobalNumber
     INTEGER(INTG) :: DEPENDENT_FIELD_INTERPOLATION,GEOMETRIC_FIELD_INTERPOLATION
-    INTEGER(INTG) :: node_idx,GAUSS_POINT,gauss_idx,fibre_idx,DomainIdx
+    INTEGER(INTG) :: node_idx,GAUSS_POINT,gauss_idx,FibreIdx,DomainIdx
     INTEGER(INTG) :: nodes_in_Xi_1,nodes_in_Xi_2,nodes_in_Xi_3,nodes_in_Xi_1_small,NumberInSeriesFibres
-    INTEGER(INTG) :: n3,n2,n1,dof_idx,my_FEElementIndex
+    INTEGER(INTG) :: n3,n2,n1,DofIdx,my_FEElementGlobalNumber
     INTEGER(INTG) :: NumberBioelectricNodesPerFibre
     INTEGER(INTG) :: BioelectricNodeEndOfPreviousFibreIdx
-    REAL(DP) :: VALUE,Position1DPreviousNode
-    REAL(DP) :: DISTANCE,VELOCITY,VELOCITY_MAX
+    REAL(DP) :: VALUE
+    REAL(DP) :: DISTANCE,ContractionVelocity,MaximumAllowedShorteningVelocity
     REAL(DP) :: OLD_DIST,OLD_DIST_2,OLD_DIST_3,OLD_DIST_4
     REAL(DP) :: HalfSarcomereLength
+    REAL(DP) :: DELTA_XI1
     REAL(DP) :: XI(3),XI_DEBUG(3),PREVIOUS_NODE(3),InitialNodeMDistance,HalfSarcomereInitialLength,TIME_STEP,DIST
+    REAL(DP) :: Position3DCurrentNode(3), Position3DLeftNode(3), Position3DRightNode(3)
+    REAL(DP) :: RelativeContractionVelocity
+    REAL(DP) :: Position1DCurrentNode, Position1DLeftNode
     LOGICAL :: MappingHasBoundaryNode
     REAL(DP), POINTER :: GAUSS_POSITIONS(:,:)
-    LOGICAL :: ElementMayContainFirstPartOfSubdividedFibre
+    LOGICAL :: ElementMayContainFirstPartOfSubdividedFibre, IsFinished, IsFirstBioelectricNodeOfFibre
+    LOGICAL :: LeftNeighbourIsGhost, PreviousNodeHadNoLeftNeighbour
     INTEGER(INTG) :: BioelectricNodeLocalNumber, BioelectricNodeGlobalNumber, BioelectricNodeIdx
     TYPE(DOMAIN_TYPE), POINTER :: MONODOMAIN_DOMAIN
     TYPE(DOMAIN_MAPPINGS_TYPE), POINTER :: MONODOMAIN_MAPPINGS
     INTEGER(INTG) :: NumberNodesInCurrentFEElement
-    REAL(DP) :: RegionWidth, FibrePhysicalLength, BioelectricNodeInFibreNumber
-    TYPE(DECOMPOSITION_ELEMENT_TYPE) :: ELEMENT_DECOMPOSITION
+    REAL(DP) :: RegionWidth, FibrePhysicalLength
+    INTEGER(INTG) :: BioelectricNodeInFibreNumber
     TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: M_DOMAIN_TOPOLOGY
     TYPE(DOMAIN_NODES_TYPE), POINTER :: M_DOMAIN_TOPOLOGY_NODES
     TYPE(DOMAIN_ELEMENTS_TYPE), POINTER :: M_DOMAIN_TOPOLOGY_ELEMENTS
     INTEGER(INTG) :: BioelectricLeftElementLocalNumber, BioelectricRightElementLocalNumber
-    
-    LOGICAL :: DEBUGGING = .TRUE.   ! enable debugging output with this parameter
-    INTEGER(Intg) :: MPI_IERROR, PreviousBioelectricNodeLocalNumber
+
+    !LOGICAL, PARAMETER :: DEBUGGING = .TRUE.   ! enable debugging output with this parameter
+    LOGICAL :: DEBUGGING = .FALSE.   ! enable debugging output with this parameter
+    INTEGER(Intg) :: MPI_IERROR, LeftNeighbourBioelectricNodeLocalNumber
     INTEGER(Intg) :: ComputationalNodeNumber, NumberOfComputationalNodes
 
     ENTERS("BioelectricFiniteElasticity_UpdateGeometricField",ERR,ERROR,*999)
 
-    CALL MPI_COMM_RANK(MPI_COMM_WORLD,ComputationalNodeNumber,MPI_IERROR)
-    CALL MPI_COMM_SIZE(MPI_COMM_WORLD,NumberOfComputationalNodes,MPI_IERROR)
+    !CALL MPI_COMM_RANK(MPI_COMM_WORLD,ComputationalNodeNumber,MPI_IERROR)
+    !CALL MPI_COMM_SIZE(MPI_COMM_WORLD,NumberOfComputationalNodes,MPI_IERROR)
 
+#if 0
+    ! turn on debugging depending on computational node number
     IF (NumberOfComputationalNodes == 2 .AND. ComputationalNodeNumber == 1) THEN
-      DEBUGGING = .TRUE.
+      DEBUGGING = .TRUE.      ! note when line searching for 'debugging = .true.': this line is eventually commented out
       PRINT*, "ComputationalNodeNumber=",ComputationalNodeNumber,"of",NumberOfComputationalNodes
     ENDIF
-    DEBUGGING = .FALSE.
+#endif    
     
     NULLIFY(CONTROL_LOOP_ROOT)
     NULLIFY(CONTROL_LOOP_PARENT)
@@ -1788,7 +2735,8 @@ CONTAINS
     NULLIFY(INDEPENDENT_FIELD_MONODOMAIN)
     NULLIFY(DEPENDENT_FIELD_ELASTICITY)
     NULLIFY(SOLVER_EQUATIONS)
-    NULLIFY(SOLVER_MAPPING)
+    NULLIFY(SOLVER_MAPPING_MONODOMAIN)
+    NULLIFY(SOLVER_MAPPING_ELASTICITY)
     NULLIFY(EQUATIONS_SET)
     NULLIFY(GEOMETRIC_FIELD_MONODOMAIN)
     NULLIFY(GEOMETRIC_FIELD_ELASTICITY)
@@ -1833,9 +2781,9 @@ CONTAINS
               CALL SOLVERS_SOLVER_GET(SOLVERS,2,SOLVER,ERR,ERROR,*999)
               SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
               IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
-                SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
-                IF(ASSOCIATED(SOLVER_MAPPING)) THEN
-                  EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(1)%PTR
+                SOLVER_MAPPING_MONODOMAIN=>SOLVER_EQUATIONS%SOLVER_MAPPING
+                IF(ASSOCIATED(SOLVER_MAPPING_MONODOMAIN)) THEN
+                  EQUATIONS_SET=>SOLVER_MAPPING_MONODOMAIN%EQUATIONS_SETS(1)%PTR
                   IF(ASSOCIATED(EQUATIONS_SET)) THEN
                     GEOMETRIC_FIELD_MONODOMAIN=>EQUATIONS_SET%GEOMETRY%GEOMETRIC_FIELD
                     IF(.NOT.ASSOCIATED(GEOMETRIC_FIELD_MONODOMAIN)) THEN
@@ -1852,7 +2800,7 @@ CONTAINS
               ENDIF
               NULLIFY(SOLVERS)
               NULLIFY(SOLVER)
-              NULLIFY(SOLVER_MAPPING)
+              NULLIFY(SOLVER_MAPPING_ELASTICITY)
               NULLIFY(EQUATIONS_SET)
               NULLIFY(SOLVER_EQUATIONS)
               !get the finite elasticity sub loop, solvers, solver, and finally the dependent field
@@ -1861,9 +2809,9 @@ CONTAINS
               CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,ERR,ERROR,*999)
               SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
               IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
-                SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
-                IF(ASSOCIATED(SOLVER_MAPPING)) THEN
-                  EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(1)%PTR
+                SOLVER_MAPPING_ELASTICITY=>SOLVER_EQUATIONS%SOLVER_MAPPING
+                IF(ASSOCIATED(SOLVER_MAPPING_ELASTICITY)) THEN
+                  EQUATIONS_SET=>SOLVER_MAPPING_ELASTICITY%EQUATIONS_SETS(1)%PTR
                   IF(ASSOCIATED(EQUATIONS_SET)) THEN
                     DEPENDENT_FIELD_ELASTICITY=>EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD
                     IF(.NOT.ASSOCIATED(DEPENDENT_FIELD_ELASTICITY)) THEN
@@ -1897,7 +2845,8 @@ CONTAINS
               ENDDO
 
             CASE(PROBLEM_GUDUNOV_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE,PROBLEM_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE, &
-              & PROBLEM_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE)
+              & PROBLEM_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE, PROBLEM_MONODOMAIN_ELASTICITY_VELOCITY_SUBTYPE)
+              
               ! this case
               CONTROL_LOOP_ROOT=>PROBLEM%CONTROL_LOOP
               CALL CONTROL_LOOP_GET(CONTROL_LOOP_ROOT,CONTROL_LOOP_NODE,CONTROL_LOOP_PARENT,ERR,ERROR,*999)
@@ -1907,9 +2856,14 @@ CONTAINS
               CALL SOLVERS_SOLVER_GET(SOLVERS,2,SOLVER,ERR,ERROR,*999)
               SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
               IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
-                SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
-                IF(ASSOCIATED(SOLVER_MAPPING)) THEN
-                  EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(1)%PTR
+                SOLVER_MAPPING_MONODOMAIN=>SOLVER_EQUATIONS%SOLVER_MAPPING
+                
+                IF (DEBUGGING) THEN
+                  PRINT *, "SolverMapping has ", SOLVER_MAPPING_MONODOMAIN%NUMBER_OF_EQUATIONS_SETS, "equation sets"
+                ENDIF
+                
+                IF(ASSOCIATED(SOLVER_MAPPING_MONODOMAIN)) THEN
+                  EQUATIONS_SET=>SOLVER_MAPPING_MONODOMAIN%EQUATIONS_SETS(1)%PTR
                   IF(ASSOCIATED(EQUATIONS_SET)) THEN
                     GEOMETRIC_FIELD_MONODOMAIN=>EQUATIONS_SET%GEOMETRY%GEOMETRIC_FIELD
                     IF(.NOT.ASSOCIATED(GEOMETRIC_FIELD_MONODOMAIN)) THEN
@@ -1936,7 +2890,7 @@ CONTAINS
               
               NULLIFY(SOLVERS)
               NULLIFY(SOLVER)
-              NULLIFY(SOLVER_MAPPING)
+              NULLIFY(SOLVER_MAPPING_ELASTICITY)
               NULLIFY(EQUATIONS_SET)
               NULLIFY(SOLVER_EQUATIONS)
               
@@ -1946,9 +2900,9 @@ CONTAINS
               CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,ERR,ERROR,*999)
               SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
               IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
-                SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
-                IF(ASSOCIATED(SOLVER_MAPPING)) THEN
-                  EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(1)%PTR
+                SOLVER_MAPPING_ELASTICITY=>SOLVER_EQUATIONS%SOLVER_MAPPING
+                IF(ASSOCIATED(SOLVER_MAPPING_ELASTICITY)) THEN
+                  EQUATIONS_SET=>SOLVER_MAPPING_ELASTICITY%EQUATIONS_SETS(1)%PTR
                   IF(ASSOCIATED(EQUATIONS_SET)) THEN
                     INDEPENDENT_FIELD_ELASTICITY=>EQUATIONS_SET%INDEPENDENT%INDEPENDENT_FIELD
                     IF(.NOT.ASSOCIATED(INDEPENDENT_FIELD_ELASTICITY)) THEN
@@ -1969,13 +2923,12 @@ CONTAINS
               ENDIF
 
               ! get field variables
-              CALL FIELD_VARIABLE_GET(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE,FIELD_VAR_DEP_M,ERR,ERROR,*999)
-              CALL FIELD_VARIABLE_GET(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE,FIELD_VAR_GEO_M,ERR,ERROR,*999)
-              CALL FIELD_VARIABLE_GET(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VAR_IND_FE,ERR,ERROR,*999)
+              CALL FIELD_VARIABLE_GET(GEOMETRIC_FIELD_MONODOMAIN,  FIELD_U_VARIABLE_TYPE, FIELD_VAR_GEO_M,   ERR,ERROR,*999)
+              CALL FIELD_VARIABLE_GET(DEPENDENT_FIELD_MONODOMAIN,  FIELD_V_VARIABLE_TYPE, FIELD_VAR_DEP_M,   ERR,ERROR,*999)
               CALL FIELD_VARIABLE_GET(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U1_VARIABLE_TYPE,FIELD_VAR_IND_M_U1,ERR,ERROR,*999)
               CALL FIELD_VARIABLE_GET(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE,FIELD_VAR_IND_M_U2,ERR,ERROR,*999)
-              CALL FIELD_VARIABLE_GET(INDEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE,FIELD_VAR_IND_M_V,ERR,ERROR,*999)
-
+              CALL FIELD_VARIABLE_GET(INDEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, FIELD_VAR_IND_M_V, ERR,ERROR,*999)
+              CALL FIELD_VARIABLE_GET(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE, FIELD_VAR_IND_FE,  ERR,ERROR,*999)
 
               MONODOMAIN_DOMAIN=>GEOMETRIC_FIELD_MONODOMAIN%DECOMPOSITION%DOMAIN(GEOMETRIC_FIELD_MONODOMAIN%DECOMPOSITION% &
                 & MESH_COMPONENT_NUMBER)%PTR              ! DOMAIN_TYPE    
@@ -1993,19 +2946,19 @@ CONTAINS
               
               ! --------- get constants --------------------
               ! get number of in series fibres
-              dof_idx=FIELD_VAR_IND_FE%COMPONENTS(5)%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP
+              DofIdx=FIELD_VAR_IND_FE%COMPONENTS(5)%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP
               CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                & dof_idx,NumberInSeriesFibres,ERR,ERROR,*999)
+                & DofIdx,NumberInSeriesFibres,ERR,ERROR,*999)
   
               !get the initial sarcomere half length
-              dof_idx=FIELD_VAR_IND_M_U1%COMPONENTS(2)%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP                          
+              DofIdx=FIELD_VAR_IND_M_U1%COMPONENTS(2)%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP                          
               CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U1_VARIABLE_TYPE, &
-                & FIELD_VALUES_SET_TYPE,dof_idx,HalfSarcomereInitialLength,ERR,ERROR,*999)
+                & FIELD_VALUES_SET_TYPE,DofIdx,HalfSarcomereInitialLength,ERR,ERROR,*999)
               
               !get initial node distance
-              dof_idx=FIELD_VAR_IND_M_U1%COMPONENTS(3)%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP                         
+              DofIdx=FIELD_VAR_IND_M_U1%COMPONENTS(3)%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP                         
               CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U1_VARIABLE_TYPE, &
-                & FIELD_VALUES_SET_TYPE,dof_idx,InitialNodeMDistance,ERR,ERROR,*999)
+                & FIELD_VALUES_SET_TYPE,DofIdx,InitialNodeMDistance,ERR,ERROR,*999)
                         
               ! get physical length of fibre
               RegionWidth = FIELD_VAR_IND_FE%REGION%GENERATED_MESHES%GENERATED_MESHES(1)%PTR%&
@@ -2017,11 +2970,11 @@ CONTAINS
               ENDIF
               
               !get the maximum contraction velocity 
-              dof_idx=FIELD_VAR_IND_M_U2%COMPONENTS(2)%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP
+              DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(2)%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP
               CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                & FIELD_VALUES_SET_TYPE,dof_idx,VELOCITY_MAX,ERR,ERROR,*999)
-              !NOTE: VELOCITY_MAX is the max shortening velocity, and hence negative!!!
-              !The max lengthening velocity is assumed to be   abs(VELOCITY_MAX)/2.0
+                & FIELD_VALUES_SET_TYPE,DofIdx,MaximumAllowedShorteningVelocity,ERR,ERROR,*999)
+              !NOTE: MaximumAllowedShorteningVelocity is the max shortening velocity, and hence negative!!!
+              !The max lengthening velocity is assumed to be   abs(MaximumAllowedShorteningVelocity)/2.0
               
               !get the time step of the elasticity problem
               TIME_STEP=CONTROL_LOOP_PARENT%TIME_LOOP%TIME_INCREMENT
@@ -2031,7 +2984,7 @@ CONTAINS
               nodes_in_Xi_1_small = 0
                 
               ! debugging output
-              IF (DEBUGGING.OR..TRUE.) THEN
+              IF (DEBUGGING) THEN
                 PRINT*, "========== fibre beginning output, Process ",ComputationalNodeNumber," =========="
                   
                 DO i = 1, FE_ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS
@@ -2040,6 +2993,7 @@ CONTAINS
                   GLOBAL_TO_LOCAL_MAP=>FE_ELEMENTS_TOPOLOGY%DECOMPOSITION%DOMAIN(GEOMETRIC_FIELD_ELASTICITY%DECOMPOSITION% &
                     & MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%ELEMENTS%GLOBAL_TO_LOCAL_MAP(i)
                   
+                  DomainIdx = 0
                   DO j = 1, GLOBAL_TO_LOCAL_MAP%NUMBER_OF_DOMAINS
                     IF (GLOBAL_TO_LOCAL_MAP%DOMAIN_NUMBER(j) == ComputationalNodeNumber) THEN
                       DomainIdx = j
@@ -2047,22 +3001,25 @@ CONTAINS
                     ENDIF
                   ENDDO
                   
-                  ne = GLOBAL_TO_LOCAL_MAP%LOCAL_NUMBER(DomainIdx)
-                  ElementGlobalNumber = FE_ELEMENTS_TOPOLOGY%ELEMENTS(ne)%GLOBAL_NUMBER
+                  IF (DomainIdx == 0) CYCLE
+                  
+                  FEElementLocalNumber = GLOBAL_TO_LOCAL_MAP%LOCAL_NUMBER(DomainIdx)
+                  ElementGlobalNumber = FE_ELEMENTS_TOPOLOGY%ELEMENTS(FEElementLocalNumber)%GLOBAL_NUMBER
                     
                   !cycle if element is not on local domain
                   IF (FE_ELEMENTS_TOPOLOGY%DECOMPOSITION%ELEMENT_DOMAIN(ElementGlobalNumber) /= ComputationalNodeNumber) THEN
                     IF (DEBUGGING) THEN
-                      PRINT*, "Element idx ",i," local number ",ne," is not on local domain of computational node, skip"
+                      PRINT*, "Element idx ",i," local number ",FEElementLocalNumber, & 
+                       & " is not on local domain of computational node, skip"
                     ENDIF
                     CYCLE
                   ENDIF
                 
-                  dof_idx=FIELD_VAR_IND_FE%COMPONENTS(4)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
+                  DofIdx=FIELD_VAR_IND_FE%COMPONENTS(4)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(FEElementLocalNumber)
                   CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                    & dof_idx,FibreStartsInCurrentElement,ERR,ERROR,*999)
+                    & DofIdx,FibreStartsInCurrentElement,ERR,ERROR,*999)
                   
-                  PRINT*, "Element idx ", i, " local number ",ne, &
+                    PRINT*, "Element idx ", i, " local number ",FEElementLocalNumber, &
                     & "contains fibre beginning: ",FibreStartsInCurrentElement
                 ENDDO
                 PRINT*, "==========================================================="                  
@@ -2072,942 +3029,329 @@ CONTAINS
                 PRINT*, "topology statistics: NUMBER_OF_ELEMENTS: ",FE_ELEMENTS_TOPOLOGY%NUMBER_OF_ELEMENTS, &
                   & ", TOTAL_NUMBER_OF_ELEMENTS:",FE_ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS, &
                   & ", NUMBER_OF_GLOBAL_ELEMENTS", FE_ELEMENTS_TOPOLOGY%NUMBER_OF_GLOBAL_ELEMENTS               
-                PRINT*, "loop over ",FE_ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS," 3D finite elasticity elements"
+                PRINT*, "loop over ",FE_ELEMENTS_TOPOLOGY%NUMBER_OF_ELEMENTS," 3D finite elasticity elements"
                 !CALL Print_DECOMPOSITION_ELEMENTS(FE_ELEMENTS_TOPOLOGY, 2, 10)
               ENDIF
               
-              ! loop FEElementIndex loop over elements where fibres start
-              ! inner loop n3,n2 loops over fibre lines
+              !EQUATIONS_SET_MONODOMAIN%geometry%geometric_field%decomposition%domain(1)%ptr%mappings%nodes
+              ! Initialize Monodomain iteration routine
+              CALL BioelectricFiniteElasticity_IterateNextMonodomainNode(SOLVER_MAPPING_MONODOMAIN, GEOMETRIC_FIELD_ELASTICITY, &
+                 & INDEPENDENT_FIELD_ELASTICITY, .TRUE., &
+                 & GEOMETRIC_FIELD_MONODOMAIN, DEPENDENT_FIELD_MONODOMAIN, INDEPENDENT_FIELD_MONODOMAIN, &
+                 & FIELD_VAR_DEP_M, FIELD_VAR_GEO_M, FIELD_VAR_IND_M_U1, FIELD_VAR_IND_M_U2, FIELD_VAR_IND_M_V, &
+                 & IsFinished, FEElementGlobalNumber, FEElementLocalNumber, BioelectricNodeGlobalNumber, &
+                 & BioelectricNodeLocalNumber, BioelectricNodeInFibreNumber, LeftNeighbourBioelectricNodeLocalNumber, FibreIdx, &
+                 & XI, DELTA_XI1, IsFirstBioelectricNodeOfFibre, LeftNeighbourIsGhost, PreviousNodeHadNoLeftNeighbour, &
+                 & ERR, ERROR, *999)
 
-              !the first finite elasticity element that is in the domain of the own computational node always has to contain the beginning of the considered part of a fibre
-              ElementMayContainFirstPartOfSubdividedFibre = .TRUE.
-              
-              FEElementIndex = 1
-              DomainIdx = ComputationalNodeNumber
-              
-              !loop over the elements of the finite elasticity (=FE) mesh (internal and boundary elements)
-              DO i = 1, FE_ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS
-                
-                ! get local element number from global element number
-                GLOBAL_TO_LOCAL_MAP=>FE_ELEMENTS_TOPOLOGY%DECOMPOSITION%DOMAIN(GEOMETRIC_FIELD_ELASTICITY%DECOMPOSITION% &
-                  & MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%ELEMENTS%GLOBAL_TO_LOCAL_MAP(FEElementIndex)
-                
-                DO j = 1, GLOBAL_TO_LOCAL_MAP%NUMBER_OF_DOMAINS
-                  IF (GLOBAL_TO_LOCAL_MAP%DOMAIN_NUMBER(j) == ComputationalNodeNumber) THEN
-                    DomainIdx = j
-                    EXIT
-                  ENDIF
-                ENDDO
-                
-                ne = GLOBAL_TO_LOCAL_MAP%LOCAL_NUMBER(DomainIdx)
-                
-                ! for testing get global element number back from local element number
-                ElementGlobalNumber = FE_ELEMENTS_TOPOLOGY%ELEMENTS(ne)%GLOBAL_NUMBER
-                
-                ! note: local number /= user number in general
-                ! index for user number: FEElementIndex
-                ! index for local number: ne
-                ! The user number is the number in which order the elements are generated and therefore
-                ! the elements of a single processor are contiguous in their user number.
-                ! The local number is what is needed as index for FE_ELEMENTS_TOPOLOGY%ELEMENTS
-                
-                ! I assume that the global number is the user number
-                IF (ElementGlobalNumber /= FEElementIndex) THEN
-                  CALL FlagError("Global number is not user number", Err, Error, *999)
-                ENDIF
-                
-                IF (DEBUGGING) PRINT *, "  Iteration",i,", element (user FEElementIndex=", FEElementIndex, ", local ne=", ne,")"
-                
-                !cycle if element is not on local domain
-                IF (FE_ELEMENTS_TOPOLOGY%DECOMPOSITION%ELEMENT_DOMAIN(ElementGlobalNumber) /= ComputationalNodeNumber) THEN
-                  IF (DEBUGGING) PRINT*, "  Element is not on local domain of computational node, skip"
-                  FEElementIndex = FEElementIndex + 1
-                  ElementMayContainFirstPartOfSubdividedFibre = .TRUE.
-                  CYCLE
-                ENDIF
-                  
-                ! get number of bioelectric nodes within one finite elasticity element in Xi directions
-                dof_idx=FIELD_VAR_IND_FE%COMPONENTS(2)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
-                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                  & dof_idx,nodes_in_Xi_2,ERR,ERROR,*999)
-                dof_idx=FIELD_VAR_IND_FE%COMPONENTS(3)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
-                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                  & dof_idx,nodes_in_Xi_3,ERR,ERROR,*999)
-                NumberBioelectricNodesPerFibre = &
-                  & M_NODES_MAPPING%NUMBER_OF_GLOBAL / (nodes_in_Xi_3*nodes_in_Xi_2*NumberInSeriesFibres)
-
+              ! synchronously iterate over monodomain elements and 3D finite elasticity elements (only internal and boundary elements, not ghost elements)
+              DO
+                ! debugging output
                 IF (DEBUGGING) THEN
-                  PRINT*, "    Compute NumberBioelectricNodesPerFibre: ", M_NODES_MAPPING%NUMBER_OF_GLOBAL, &
-                      & " / (",nodes_in_Xi_3,"*",nodes_in_Xi_2,"*",NumberInSeriesFibres,") = ", NumberBioelectricNodesPerFibre
-                ENDIF
-                
-                !the Field_V_Variable_Type of the FE independent field contains the number of nodes in each Xi-direction of the bioelectrics grid
-                dof_idx=FIELD_VAR_IND_FE%COMPONENTS(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
-                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                  & dof_idx,nodes_in_Xi_1,ERR,ERROR,*999)
-                dof_idx=FIELD_VAR_IND_FE%COMPONENTS(2)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
-                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                  & dof_idx,nodes_in_Xi_2,ERR,ERROR,*999)
-                dof_idx=FIELD_VAR_IND_FE%COMPONENTS(3)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
-                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                  & dof_idx,nodes_in_Xi_3,ERR,ERROR,*999)
-                  
-                ! There are two values for nodes_in_Xi_1: nodes_in_Xi_1_small and (nodes_in_Xi_1+1)
-                ! Needed for spacing in xi coordinate system is always the smaller value. 
-                ! Therefore it is extracted here and stored in nodes_in_Xi_1_small
-                ! TODO: remove, as it is probably not needed anymore, then also adjust value in FortranExample.f90
-                IF (nodes_in_Xi_1_small == 0 .OR. nodes_in_Xi_1 < nodes_in_Xi_1_small) THEN
-                  nodes_in_Xi_1_small = nodes_in_Xi_1
-                ENDIF
-                
-                !beginning of a fibre in this element: 1=yes, 0=no
-                dof_idx=FIELD_VAR_IND_FE%COMPONENTS(4)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
-                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                  & dof_idx,FibreStartsInCurrentElement,ERR,ERROR,*999)
-
-                IF(DEBUGGING) THEN
-                  PRINT*, "  global FEElementIndex=",FEElementIndex,", local element no. ne=",ne
-                  PRINT*, "  nodes_in_Xi_1=",nodes_in_Xi_1,", nodes_in_Xi_2=",nodes_in_Xi_2,", nodes_in_Xi_3=", &
-                    & nodes_in_Xi_3, ", NumberInSeriesFibres=",NumberInSeriesFibres
-                  PRINT*, "  FibreStartsInCurrentElement=", FibreStartsInCurrentElement, &
-                    & ", ElementMayContainFirstPartOfSubdividedFibre=",ElementMayContainFirstPartOfSubdividedFibre
-                ENDIF
-                
-                !if there is no bioelectrics grid in this finite elasticity element, or the fibres don't begin in this element, jump to the next element
-                IF( (nodes_in_Xi_1==0) .OR. (nodes_in_Xi_2==0) .OR. (nodes_in_Xi_3==0) &
-                  & .OR. (FibreStartsInCurrentElement==0 .AND..NOT. ElementMayContainFirstPartOfSubdividedFibre)) THEN
-                  FEElementIndex = FEElementIndex + 1
-                  IF(DEBUGGING) PRINT*, "  skip"
-                  CYCLE
-                ENDIF
-                
-                FEElementWhereFibresEnterLocalDomainLocalNumber = ne
-                FEElementWhereFibresEnterLocalDomainIndex = FEElementIndex
-                ! this does not have to be the element where the fibres really begin, 
-                ! as this could also be on a different processor, then this variable holds the first element 
-                ! in local domain that contains a part of the fibre
-                                
-                MappingHasBoundaryNode = .FALSE.
-                MappingHasBoundaryNode = (M_NODES_MAPPING%BOUNDARY_FINISH - M_NODES_MAPPING%BOUNDARY_START) > 0
-                
-                IF (DEBUGGING) PRINT *,"  MappingHasBoundaryNode:",MappingHasBoundaryNode
-                
-                !assume Xi(1) to be normal to the seed surface, i.e. the seed points have Xi(1)=0
-                
-                !position of the bioelectrics node in the finite elasticity coordinate system ([0,1]^3)
-                !XI=[0.0_DP,1.0_DP/(REAL(2*nodes_in_Xi_2)),1.0_DP/(REAL(2*nodes_in_Xi_3))]    ! by tomo (why?)
-                XI=[0.0_DP,1.0_DP/(REAL(1+nodes_in_Xi_2)),1.0_DP/(REAL(1+nodes_in_Xi_3))]     ! by maierbn
-                
-                IF(DEBUGGING) PRINT*, "  Loop over bioelectrics nodes, nodes_in_Xi_2=",nodes_in_Xi_2, &
-                  & ", nodes_in_Xi_3=",nodes_in_Xi_3
-                
-                !assume that the bioelectrics node numbers are increased in order Xi(1), Xi(2), Xi(3) 
-                !loop over fibres in the 3D element
-                DO n3 = 1,nodes_in_Xi_3
-                  DO n2 = 1,nodes_in_Xi_2
-                    fibre_idx = fibre_idx + 1
-                    
-                    IF(DEBUGGING) THEN
-                      PRINT *, "    Node in FE element n3=",n3,", n2=",n2, ", XI=",XI
-                      PRINT *, "    fibre_idx=",fibre_idx
-                      ENDIF
-                           
-                    !loop over the FE elements that contain nodes of the current fibres
-                    DO
-                      !get the finite elasticity dependent field interpolation parameters of this element
-                      INTERPOLATION_PARAMETERS=>EQUATIONS_SET%EQUATIONS%INTERPOLATION%DEPENDENT_INTERP_PARAMETERS &
-                        & (FIELD_U_VARIABLE_TYPE)%PTR
-                      CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,ne,INTERPOLATION_PARAMETERS, &
-                        & ERR,ERROR,*999)
-                      INTERPOLATED_POINT=>EQUATIONS_SET%EQUATIONS%INTERPOLATION%DEPENDENT_INTERP_POINT(FIELD_U_VARIABLE_TYPE)%PTR
-
-                      !get the positions of the Gauss points of the Finite Elasticity element, GAUSS_POSITIONS(components,number_of_Gauss_points)
-                      GAUSS_POSITIONS=>GEOMETRIC_FIELD_ELASTICITY%DECOMPOSITION%DOMAIN(GEOMETRIC_FIELD_ELASTICITY%DECOMPOSITION% &
-                        & MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(ne)%BASIS%QUADRATURE%QUADRATURE_SCHEME_MAP( &
-                        & BASIS_DEFAULT_QUADRATURE_SCHEME)%PTR%GAUSS_POSITIONS
-                                      
-                      ! if fibre starts in current element
-                      IF (FibreStartsInCurrentElement == 1) THEN
-                        IF (DEBUGGING) PRINT *, "      Fibre starts in current element, set number of nodes to ",nodes_in_Xi_1,"+1"
-                        NumberNodesInCurrentFEElement = nodes_in_Xi_1+1   ! the first element contains one node more (at left boundary)
-                        XI(1) = 0.0_DP
-                      ELSE
-                        NumberNodesInCurrentFEElement = nodes_in_Xi_1
-                        IF (DEBUGGING) PRINT *, "      Fibre does not start in current element, set number of nodes to ", &
-                          & nodes_in_Xi_1
-                        XI(1) = 1.0_DP / nodes_in_Xi_1
-                      ENDIF
-                      
-                      IF (DEBUGGING) THEN
-                        PRINT *, "      Loop over bioelectrics nodes in Xi1 direction, total: ",NumberNodesInCurrentFEElement
-                      ENDIF
-                      
-                      ! loop over the bioelectric nodes of the fibre in the current finite elasticity element
-                      ! compute global position of node, contraction velocity, half-sarcomere length
-                      
-                      
-                      ! All M nodes (internal + boundary) are from M_NODES_MAPPING%INTERNAL_START to M_NODES_MAPPING%BOUNDARY_FINISH
-                      ! The number per FE element may be different from nodes_in_Xi_1 because of whether the first/last nodes
-                      ! are still included. The next fibre can be identified if there is a jump in the global element number
-                      DO n1 = 1, NumberNodesInCurrentFEElement
-                        IF (BioelectricNodeIdx > M_NODES_MAPPING%BOUNDARY_FINISH) THEN
-                          PRINT*, "Error: index is too high! this is a bug that has to be fixed, however the computation may " // &
-                          & "still work but give wrong results at edges of fibres"
-                          CYCLE
-                        ENDIF
-                      
-                        ! look up global number
-                        BioelectricNodeLocalNumber = M_NODES_MAPPING%DOMAIN_LIST(BioelectricNodeIdx)
-                        BioelectricNodeGlobalNumber = M_NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(BioelectricNodeLocalNumber)
-                        
-                        IF (DEBUGGING) THEN
-                          PRINT *, "        bioelectric node", &
-                            & ", iteration index: ",n1, &
-                            & ", node index:",BioelectricNodeIdx, &
-                            & ", local number:",BioelectricNodeLocalNumber, &
-                            & ", global number:",BioelectricNodeGlobalNumber
-                            
-                          !PRINT*, "global total number:",M_NODES_MAPPING%NUMBER_OF_GLOBAL, ", per fibre: ", &
-                          !  & NumberBioelectricNodesPerFibre
-                        ENDIF
-                        
-                        !store the fibre number this bioelectrics node belongs to.
-                        !this is already done in FortranExample
-                        !CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
-                        !  & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,3,fibre_idx,ERR,ERROR,*999) 
-
-                        !INDEPENDENT_FIELD_MONODOMAIN, 
-                        !   CMFE_FIELD_V_VARIABLE_TYPE 1) motor unit number   2) fibre type   3) fibre number   4) nearest Gauss point   5) in element number (LOCAL NODE NUMBERING!!!) 6) in-node number
-  
-                        IF (.FALSE.) THEN   ! todo: remove
-                          IF (DEBUGGING) THEN
-                            PRINT*, "check how field interpolate_xi works"
-                            DO K=1,10
-                              XI_DEBUG = [0.0_DP, 0.0_DP + K/10.0_DP, 0.0_DP]
-                              CALL FIELD_INTERPOLATE_XI(NO_PART_DERIV,XI_DEBUG,INTERPOLATED_POINT,ERR,ERROR,*999)
-                              PRINT*, "K=",K,", XI=",XI_DEBUG,"interpolated point:"
-                              CALL Print_FIELD_INTERPOLATED_POINT(INTERPOLATED_POINT, 3, 10)
-                            ENDDO
-                          ENDIF
-                        ENDIF
-                        
-                        ! compute a the contiguous number of the node starting with 1 for the first node of the fibre
-                        BioelectricNodeInFibreNumber = MOD(BioelectricNodeGlobalNumber, NumberBioelectricNodesPerFibre)
-                        !XI(1) = REAL(BioelectricNodeInFibreNumber-1) / (NumberBioelectricNodesPerFibre-1)
-                        !XI(1) = REAL(BioelectricNodeGlobalNumber)
-                        !XI(1) = REAL(n1-1) / (nodes_in_Xi_1+1)
-  
-                        !find the interpolated position of the bioelectric grid node from the finite elasticity FE dependent field
-                        !TODO: check in which coordinate system XI lives, in [0,1] or [-1,1]? spanning only one FE element or complete fibre?
-                        !XI goes from 0 to 1 per FE element
-                        CALL FIELD_INTERPOLATE_XI(NO_PART_DERIV,XI,INTERPOLATED_POINT,ERR,ERROR,*999)
-                        
-                        IF(DEBUGGING) THEN
-                          !PRINT*, "        ------- Node BioelectricNodeLocalNumber=",BioelectricNodeLocalNumber,"------------"
-                          !PRINT*, "        XI=",XI,", INTERPOLATED_POINT=",INTERPOLATED_POINT%VALUES(1:3,1)
-                          !PRINT*, "        Compute XI(1)=",(BioelectricNodeInFibreNumber-1),"/",(NumberBioelectricNodesPerFibre-1)
-                          PRINT*, "        XI = ",XI
-                        ENDIF
-  
-                        !DEPENDENT_FIELD_MONODOMAIN: 
-                        !   FIELD_U_VARIABLE_TYPE: 1) Vm
-                        !   FIELD_DELUDELN_VARIABLE_TYPE: 1) dVm/dn
-                        !   FIELD_V_VARIABLE_TYPE: 1),2),3) GeometryM3D, 3D-position of geometry
-                        
-                        !update the bioelectrics dependent field Field_V_Variable_Type
-                        !the Field_V_Variable_Type of the monodomain dependent field contains the nodal positions in 3D
-                        CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
-                          & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,INTERPOLATED_POINT%VALUES(1,1),ERR,ERROR,*999)
-                        CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
-                          & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,2,INTERPOLATED_POINT%VALUES(2,1),ERR,ERROR,*999)
-                        CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
-                          & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,3,INTERPOLATED_POINT%VALUES(3,1),ERR,ERROR,*999)
-
-                        IF (DEBUGGING) THEN
-                          IF (n1 == 1 .AND. ne == FEElementWhereFibresEnterLocalDomainLocalNumber) THEN
-                            PRINT*, "        (first node of this fibre) FibreStartsInCurrentElement=", &
-                              & FibreStartsInCurrentElement
-                          ENDIF
-                        ENDIF
-                        
-                        ! get local element number of left and right element that contain the current node
-                        IF (M_DOMAIN_TOPOLOGY_NODES%NODES(BioelectricNodeLocalNumber)%NUMBER_OF_SURROUNDING_ELEMENTS == 2) THEN
-                          BioelectricLeftElementLocalNumber &
-                            & = M_DOMAIN_TOPOLOGY_NODES%NODES(BioelectricNodeLocalNumber)%SURROUNDING_ELEMENTS(1)
-                          BioelectricRightElementLocalNumber &
-                            & = M_DOMAIN_TOPOLOGY_NODES%NODES(BioelectricNodeLocalNumber)%SURROUNDING_ELEMENTS(2)
-                        ELSEIF (M_DOMAIN_TOPOLOGY_NODES%NODES(BioelectricNodeLocalNumber)%NUMBER_OF_SURROUNDING_ELEMENTS == 1) THEN
-                          BioelectricLeftElementLocalNumber &
-                            & = M_DOMAIN_TOPOLOGY_NODES%NODES(BioelectricNodeLocalNumber)%SURROUNDING_ELEMENTS(1)
-                          BioelectricRightElementLocalNumber = BioelectricLeftElementLocalNumber
-                        ELSE
-                          BioelectricLeftElementLocalNumber = 1
-                          BioelectricRightElementLocalNumber = 1
-                        ENDIF
-                        
-                        ! if a new line of bioelectrics grid nodes begins  
-                        IF (n1 == 1 .AND. ne == FEElementWhereFibresEnterLocalDomainLocalNumber &
-                          & .AND. FibreStartsInCurrentElement == 1) THEN    ! n1=M-element idx., ne=Fe-element no., ! skip first node
-                        
-                          !GEOMETRIC_FIELD_MONODOMAIN
-                          !   CMFE_FIELD_U_VARIABLE_TYPE: 1) GeometryM
-                          
-                          ! set geometric 1D position of node to 0.0
-                          CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,0.0_DP,ERR,ERROR,*999)
-                        ELSE
-                          IF (n1 == 1) THEN
-                            ! here FibreStartsInCurrentElement=0 i.e. fibre begins in a more left FE element which resides on a different processor                            
-
-                            ! get previous node
-                            IF (DEBUGGING) THEN
-                              PRINT*, "        get previous node via left element (el. no", BioelectricLeftElementLocalNumber, &
-                                & "), element has the nodes: "
-                              DO k=1,SIZE(M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(BioelectricLeftElementLocalNumber)%ELEMENT_NODES)
-                                PRINT*, M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(BioelectricLeftElementLocalNumber)%ELEMENT_NODES(k)
-                              ENDDO
-                            ENDIF
-                            
-                            IF (SIZE(M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(BioelectricLeftElementLocalNumber)%ELEMENT_NODES) == 2) &
-                              & THEN
-                              PreviousBioelectricNodeLocalNumber &
-                                & = M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(BioelectricLeftElementLocalNumber)%ELEMENT_NODES(1)
-                            ENDIF
-                          ENDIF
-                          
-                          !get the position in 3D of the previous node
-                          dof_idx=FIELD_VAR_DEP_M%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
-                            & NODES(PreviousBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
-                          CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,dof_idx,PREVIOUS_NODE(1),ERR,ERROR,*999)
-                          
-                          dof_idx=FIELD_VAR_DEP_M%COMPONENTS(2)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
-                            & NODES(PreviousBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
-                          CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,dof_idx,PREVIOUS_NODE(2),ERR,ERROR,*999)
-                          
-                          dof_idx=FIELD_VAR_DEP_M%COMPONENTS(3)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
-                            & NODES(PreviousBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
-                          CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,dof_idx,PREVIOUS_NODE(3),ERR,ERROR,*999)
-
-                          !compute the distance between the previous node and the current node
-                          DIST=SQRT( &
-                            & (INTERPOLATED_POINT%VALUES(1,1)-PREVIOUS_NODE(1))*(INTERPOLATED_POINT%VALUES(1,1)-PREVIOUS_NODE(1))+ &
-                            & (INTERPOLATED_POINT%VALUES(2,1)-PREVIOUS_NODE(2))*(INTERPOLATED_POINT%VALUES(2,1)-PREVIOUS_NODE(2))+ &
-                            & (INTERPOLATED_POINT%VALUES(3,1)-PREVIOUS_NODE(3))*(INTERPOLATED_POINT%VALUES(3,1)-PREVIOUS_NODE(3)))
-
-                          IF (PREVIOUS_NODE(1) == 0.0_DP .AND. PREVIOUS_NODE(2) == 0.0_DP .AND. PREVIOUS_NODE(3) == 0.0_DP) THEN
-                            DIST = FibrePhysicalLength / NumberBioelectricNodesPerFibre
-                            !DIST = 1.0_DP / NumberBioelectricNodesPerFibre
-                            IF (DEBUGGING) THEN
-                              PRINT*, "         Previous node is zero / not set! Set distance to previous node to ", DIST
-                              ! TODO: ensure that ghost element gets updated (somehow automatically?)
-                            ENDIF
-                          ENDIF
-                          
-                          IF(DEBUGGING) THEN
-                            PRINT*, "        (not first node) INTERPOLATED_POINT=",INTERPOLATED_POINT%VALUES(1,1),",",&
-                              & INTERPOLATED_POINT%VALUES(2,1),",",INTERPOLATED_POINT%VALUES(3,1)
-                            PRINT*, "                              PREVIOUS_NODE=",PREVIOUS_NODE,", DIST=",DIST
-                            PRINT*, "                 previous node local number: ", PreviousBioelectricNodeLocalNumber
-                          ENDIF
-
-                          !CONTRACTION VELOCITY CALCULATION
-                          !get the distance between the two nodes in the previous time step
-                          dof_idx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
-                            & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
-                          CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,dof_idx,OLD_DIST,ERR,ERROR,*999)
-
-                          !get the distance between the two nodes before 2 time steps
-                          dof_idx=FIELD_VAR_IND_M_U2%COMPONENTS(4)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
-                            & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
-                          CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,dof_idx,OLD_DIST_2,ERR,ERROR,*999)
-			    
-                          !get the distance between the two nodes before 3 time steps
-                          dof_idx=FIELD_VAR_IND_M_U2%COMPONENTS(5)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
-                            & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
-                          CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,dof_idx,OLD_DIST_3,ERR,ERROR,*999)
-			  
-                          !get the distance between the two nodes before 4 time steps
-                          dof_idx=FIELD_VAR_IND_M_U2%COMPONENTS(6)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
-                            & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
-                          CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,dof_idx,OLD_DIST_4,ERR,ERROR,*999)
-                          
-                          !compute the new contraction velocity
-                          !VELOCITY=(DIST-OLD_DIST)/TIME_STEP
-                          ! v = 1/4 * [(dist-dist1)/dt + (dist-dist2)/(2dt) + (dist-dist3)/(3dt) + (dist-dist4)/(4dt)]
-                          
-                          VELOCITY=0.25_DP*((DIST-OLD_DIST)/TIME_STEP+(DIST-OLD_DIST_2)/(2.0_DP*TIME_STEP)+ &
-                            & (DIST-OLD_DIST_3)/(3.0_DP*TIME_STEP)+(DIST-OLD_DIST_4)/(4.0_DP*TIME_STEP))
-                          
-                          IF(.NOT. CALC_CLOSEST_GAUSS_POINT) THEN
-                            !NOTE: VELOCITY_MAX is the max shortening velocity, and hence negative!!!
-                            IF(VELOCITY<VELOCITY_MAX) THEN
-                              CALL FLAG_WARNING('Exceeded maximum contraction velocity (shortening).',ERR,ERROR,*999)
-                              VELOCITY=VELOCITY_MAX
-                            !The max lengthening velocity is assumed to be VELOCITY_MAX/2.0
-                            ELSEIF(VELOCITY>(ABS(VELOCITY_MAX)/2.0_DP)) THEN
-                              ! warning disabled
-                              !CALL FLAG_WARNING('Exceeded maximum contraction velocity (lengthening).',ERR,ERROR,*999)
-                              VELOCITY=-VELOCITY_MAX/2.0_DP
-                            ENDIF
-                          ENDIF
-                          
-                          !store the relative contraction velocity in component 3 of the U2 variable of the monodomain independent field
-                          CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,3,VELOCITY/ABS(VELOCITY_MAX),ERR,ERROR,*999)
-
-                          !update distances for old timesteps
-                          !store the node distance for contraction velocity calculation
-                          CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,DIST,ERR,ERROR,*999)
-
-                          !store the node distance for contraction velocity calculation
-                          CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,4,OLD_DIST,ERR,ERROR,*999)
-			    
-                          !store the node distance for contraction velocity calculation
-                          CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,5,OLD_DIST_2,ERR,ERROR,*999)
-			    
-                          !store the node distance for contraction velocity calculation
-                          CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,6,OLD_DIST_3,ERR,ERROR,*999)
-
-                          !get the position in 1D of the previous node
-                          IF (n1 == 1 .AND. ne == FEElementWhereFibresEnterLocalDomainLocalNumber) THEN                          
-                            ! compute an approximation for the position in 1D of the previous node
-                          
-                            ! fibre starts on a different processor to the left of the current node
-                            ! For now compute the approximate position of the previous node.
-                            ! This cannot be exact, because it depends on how the previous nodes of the fibre have deformed.
-                            ! Later, Position1DPreviousNode should be set to 0 and everything should get shifted after
-                            ! this whole procedure.
-                            Position1DPreviousNode = REAL(MOD(BioelectricNodeGlobalNumber-1,NumberBioelectricNodesPerFibre)-1) &
-                              & / (NumberBioelectricNodesPerFibre-1) &
-                              & * FibrePhysicalLength
-                            
-                            ! set extrapolated position of left node. If it exists it is a ghost node
-                            CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-                              & FIELD_VALUES_SET_TYPE,1,1,PreviousBioelectricNodeLocalNumber,1,Position1DPreviousNode,&
-                              & ERR,ERROR,*999)
-
-                            IF (DEBUGGING) THEN
-                              PRINT*, "        store extrapolated position of previous node ",PreviousBioelectricNodeLocalNumber, &
-                                & ": ", Position1DPreviousNode
-                            ENDIF
-                          ELSE
-                            ! directly read the position in 1D of the previous node
-                            dof_idx=FIELD_VAR_GEO_M%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
-                              & NODES(PreviousBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
-                            CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-                              & FIELD_VALUES_SET_TYPE,dof_idx,Position1DPreviousNode,ERR,ERROR,*999)                              
-                          ENDIF
-                          
-                          !update the current 1D node position
-                          CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,Position1DPreviousNode+DIST,ERR,ERROR,*999)
-
-                          IF (DEBUGGING) THEN
-                            PRINT*, "        Set geometric field of local node",BioelectricNodeLocalNumber, &
-                              & "to ",Position1DPreviousNode,"+",DIST,"=",Position1DPreviousNode+DIST
-                          ENDIF
-
-                          !update the current sarcomere half length
-                          HalfSarcomereLength = HalfSarcomereInitialLength * DIST / InitialNodeMDistance
-                          
-                          CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U1_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,HalfSarcomereLength,ERR,ERROR,*999)
-
-                          !update the first node to the same value as the second node (no better information available)
-                          IF (n1 == 2 .AND. ne == FEElementWhereFibresEnterLocalDomainLocalNumber &
-                            & .AND. FibreStartsInCurrentElement == 1) THEN
-                            !current sarcomere half length
-                            CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U1_VARIABLE_TYPE, &
-                              & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber-1,1,HalfSarcomereLength,ERR,ERROR,*999)                            
-                            !old node distance
-                            CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                              & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber-1,1,DIST,ERR,ERROR,*999)
-                            !relative contraction velocity
-                            CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                              & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber-1,3,VELOCITY/ABS(VELOCITY_MAX),ERR,ERROR,*999)
-                          ENDIF
-
-                        ENDIF ! n1==1 and fibre starts in current element
-                          
-                        IF(CALC_CLOSEST_GAUSS_POINT) THEN
-                          !calculate the closest finite elasticity Gauss point of each bioelectrics node
-                          DISTANCE = 1000000.0_DP ! huge value
-                          GAUSS_POINT = 0
-                          IF (DEBUGGING) THEN
-                            PRINT*, "        perform search for nearest gauss point in list of ",SIZE(GAUSS_POSITIONS,2),"points"
-                          ENDIF
-                          DO gauss_idx = 1,SIZE(GAUSS_POSITIONS,2)
-                            !compute the squared distance between the bioelectrics node and the Gauss point
-                            VALUE = ( &
-                              & (Xi(1)-GAUSS_POSITIONS(1,gauss_idx))*(Xi(1)-GAUSS_POSITIONS(1,gauss_idx))+ &
-                              & (Xi(2)-GAUSS_POSITIONS(2,gauss_idx))*(Xi(2)-GAUSS_POSITIONS(2,gauss_idx))+ &
-                              & (Xi(3)-GAUSS_POSITIONS(3,gauss_idx))*(Xi(3)-GAUSS_POSITIONS(3,gauss_idx)))
-                            
-                            IF (VALUE < DISTANCE) THEN
-                              DISTANCE = VALUE
-                              GAUSS_POINT = gauss_idx
-                            ENDIF
-                          ENDDO !gauss_idx
-                          IF (GAUSS_POINT == 0) CALL FLAG_WARNING("Closest Gauss Point not found",ERR,ERROR,*999)
-                          
-                          !store the nearest Gauss Point info and the inElement info (local element number)
-                          CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,4,GAUSS_POINT,ERR,ERROR,*999)
-                          CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,5,ne,ERR,ERROR,*999)
-                        ENDIF !CALC_CLOSEST_GAUSS_POINT
-                        
-                        ! update xi value
-                        XI(1) = XI(1) + 1.0_DP/nodes_in_Xi_1
-                        
-                        PreviousBioelectricNodeLocalNumber = BioelectricNodeLocalNumber;
-                        ! advance to next bioelectric node               
-                        
-                        ! if at last node of fibre
-                        IF (n1 == NumberNodesInCurrentFEElement-1 .AND. MappingHasBoundaryNode) THEN
-                          ! use the one boundary node of the fibre at the right
-                          
-                          ! store the current value to be resumed from at the start of the next fibre
-                          BioelectricNodeEndOfPreviousFibreIdx = BioelectricNodeIdx
-                          
-                          ! the next node is one of the boundary nodes for which the index is not contiguous to the previous index
-                          BioelectricNodeIdx = M_NODES_MAPPING%BOUNDARY_START - 1 + n2 * n3;
-                          
-                          IF (DEBUGGING) THEN
-                            PRINT*, "       advance to next node (boundary):", BioelectricNodeIdx
-                          ENDIF
-                        ELSE IF (n1 == NumberNodesInCurrentFEElement .AND. MappingHasBoundaryNode) THEN
-                          ! restore node index from the contiguous range if there was a boundary node in between
-                          BioelectricNodeIdx = BioelectricNodeEndOfPreviousFibreIdx
-                          
-                          ! advance to next node which is the first of the next fibre
-                          BioelectricNodeIdx = BioelectricNodeIdx + 1
-                        ELSE
-                          ! use the next contiguous index
-                          BioelectricNodeIdx = BioelectricNodeIdx + 1
-                          
-                          IF (DEBUGGING) THEN
-                            PRINT*, "       advance to next node:", BioelectricNodeIdx
-                          ENDIF
-                        ENDIF
-                      ENDDO !loop over bioelectric nodes of one fibre in current FE element
-
-                      IF (DEBUGGING) THEN
-                        PRINT*, "      element",FEElementIndex,"local ne=",ne
-                        PRINT*, "      3D element in -Xi1: ",&
-                          & FE_ELEMENTS_TOPOLOGY%ELEMENTS(ne)%ADJACENT_ELEMENTS(-1)%NUMBER_OF_ADJACENT_ELEMENTS
-                        IF(FE_ELEMENTS_TOPOLOGY%ELEMENTS(ne)%ADJACENT_ELEMENTS(-1)%NUMBER_OF_ADJACENT_ELEMENTS/=0) THEN
-                          PRINT*, "      (element",&
-                            & FE_ELEMENTS_TOPOLOGY%ELEMENTS(ne)%ADJACENT_ELEMENTS(-1)%ADJACENT_ELEMENTS(1),")"
-                        ENDIF
-                        PRINT*, "      3D element in +Xi1: ",&
-                          & FE_ELEMENTS_TOPOLOGY%ELEMENTS(ne)%ADJACENT_ELEMENTS(1)%NUMBER_OF_ADJACENT_ELEMENTS
-                        IF(FE_ELEMENTS_TOPOLOGY%ELEMENTS(ne)%ADJACENT_ELEMENTS(1)%NUMBER_OF_ADJACENT_ELEMENTS/=0) THEN
-                          PRINT*, "      (element",&
-                            & FE_ELEMENTS_TOPOLOGY%ELEMENTS(ne)%ADJACENT_ELEMENTS(1)%ADJACENT_ELEMENTS(1),")"
-                        ENDIF
-                      ENDIF
-                      
-                      !if there is not an adjacent finite elasticity element in positive XI_1 direction, go to the next FE element
-                      IF(FE_ELEMENTS_TOPOLOGY%ELEMENTS(ne)%ADJACENT_ELEMENTS(1)%NUMBER_OF_ADJACENT_ELEMENTS==0) THEN
-                        IF (DEBUGGING) PRINT*, "      no adjacent 3D element in +Xi1 direction"
-                        EXIT
-                      ENDIF
-                      
-                      !consider the adjacent element in positive XI_1 direction
-                      ne=FE_ELEMENTS_TOPOLOGY%ELEMENTS(ne)%ADJACENT_ELEMENTS(1)%ADJACENT_ELEMENTS(1)
-
-                      IF (DEBUGGING) PRINT*, "      adjacent 3D element in +Xi1 direction: ne=",ne
-
-                      !if a fibre starts in the next element, go to the next FE elem
-                      dof_idx=FIELD_VAR_IND_FE%COMPONENTS(4)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
-                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE, &
-                        & FIELD_VALUES_SET_TYPE,dof_idx,FibreStartsInCurrentElement,ERR,ERROR,*999)
-                      
-                      !beginning of a fibre in this element: 1=yes, 0=no
-                      IF (FibreStartsInCurrentElement==1) THEN
-                        ne=FE_ELEMENTS_TOPOLOGY%ELEMENTS(ne)%LOCAL_NUMBER
-                        IF (DEBUGGING) PRINT*, "      adjacent 3D element in +Xi1 direction has beginning of new fibre. "
-                        IF (DEBUGGING) PRINT*, "      Roll back to first element with ne=",ne
-                        EXIT
-                      ENDIF
-                      
-                      ! Look up element
-                      next_FEElementIndex = GEOMETRIC_FIELD_ELASTICITY%DECOMPOSITION% &
-                        & DOMAIN(GEOMETRIC_FIELD_ELASTICITY%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR% &
-                        & MAPPINGS%ELEMENTS%LOCAL_TO_GLOBAL_MAP(ne)
-                      
-                      IF (DEBUGGING) THEN
-                        PRINT*, "      next element idx: ",next_FEElementIndex
-                      ENDIF
-                      
-                      ! Find element via expensive O(n) search (by tomo)
-                      IF (.FALSE.) THEN
-                        DO k=1,FE_ELEMENTS_TOPOLOGY%NUMBER_OF_ELEMENTS 
-                          IF (DEBUGGING) PRINT*, "      -> i", k, " el no. ", &
-                            & FE_ELEMENTS_TOPOLOGY%ELEMENTS(i)%ADJACENT_ELEMENTS(0)%ADJACENT_ELEMENTS(1), &
-                            & " = ", FE_ELEMENTS_TOPOLOGY%ELEMENTS(k)%LOCAL_NUMBER
-                            
-                          !IF(ne==FE_ELEMENTS_TOPOLOGY%ELEMENTS(i)%ADJACENT_ELEMENTS(0)%ADJACENT_ELEMENTS(1)) THEN   ! tomo
-                          IF(ne==FE_ELEMENTS_TOPOLOGY%ELEMENTS(k)%LOCAL_NUMBER) THEN
-                            next_FEElementIndex = k
-                            EXIT
-                          ENDIF
-                        ENDDO
-                      ENDIF
-                      
-                      ! set element idx invalid (=0) if element is not on local domain
-                      IF (FE_ELEMENTS_TOPOLOGY%DECOMPOSITION%ELEMENT_DOMAIN(next_FEElementIndex) /= ComputationalNodeNumber) THEN
-                        next_FEElementIndex = 0
-                        IF (DEBUGGING) PRINT*, "      Element is not on local domain of computational node"
-                      ENDIF
-                      
-                      !IF(next_FEElementIndex==0) CALL FlagError("next_FEElementIndex not found.",ERR,ERROR,*999)                      
-                      IF (next_FEElementIndex == 0) THEN
-                        ! Element with number ne was not found. This can happen if it is not on local domain
-                        IF (DEBUGGING) PRINT*, "      Element with number ne=",ne," does not exist on local domain. "
-                        EXIT
-                      ENDIF
-                      FEElementIndex = next_FEElementIndex
-
-                      dof_idx=FIELD_VAR_IND_FE%COMPONENTS(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
-                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE, &
-                        & FIELD_VALUES_SET_TYPE,dof_idx,nodes_in_Xi_1,ERR,ERROR,*999)
-                      
-                      FibreStartsInCurrentElement=0 !fibres don't start in this element
-                      
-                      !XI(1)=1.0_DP/(REAL(nodes_in_Xi_1_small))
-                      XI(1) = 0.0_DP
-
-                      IF (DEBUGGING) THEN
-                        PRINT*, "      adjacent 3D element FEElementIndex=",FEElementIndex, &
-                          & ", nodes_in_Xi_1=",nodes_in_Xi_1
-                      ENDIF
-
-                    ENDDO !
-                    
-                    !for the beginning of the next fibre, go back to the element in which the last fibre started
-                    ElementMayContainFirstPartOfSubdividedFibre = .TRUE.
-
-                    dof_idx=FIELD_VAR_IND_FE%COMPONENTS(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
-                    CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE, &
-                      & FIELD_VALUES_SET_TYPE,dof_idx,nodes_in_Xi_1,ERR,ERROR,*999)
-                    
-                    ne = FEElementWhereFibresEnterLocalDomainLocalNumber
-                    FEElementIndex = FEElementWhereFibresEnterLocalDomainIndex
-                    
-                    !beginning of a fibre in this element: 1=yes, 0=no
-                    dof_idx=FIELD_VAR_IND_FE%COMPONENTS(4)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
-                    CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE, & 
-                      & FIELD_VALUES_SET_TYPE,dof_idx,FibreStartsInCurrentElement,ERR,ERROR,*999)
-                    
-                    XI(1) = 0.0_DP
-                    XI(2) = XI(2) + 1.0_DP/(REAL(nodes_in_Xi_2))
-                    
-                    IF(DEBUGGING) PRINT *, "    Roll back to 3D FE element where fibre started. "
-                    IF(DEBUGGING) PRINT *, "    FEElementIndex=",FEElementIndex,", ne=",ne," local coordinate XI=",XI
-                  ENDDO !n2
-                  
-                  XI(1) = 0.0_DP
-                  XI(2) = XI(2)+1.0_DP/(REAL(1+nodes_in_Xi_2))  ! by maierbn
-                  XI(3) = Xi(3)+1.0_DP/(REAL(nodes_in_Xi_3))    ! by maierbn  
-                  !XI(2)=1.0_DP/(REAL(2*nodes_in_Xi_2))     ! by tomo but I (maierbn) don't understand it
-                  !XI(3)=Xi(3)+1.0_DP/(REAL(nodes_in_Xi_3)) ! by tomo but I don't understand it
-                ENDDO !n3
-
-                ElementMayContainFirstPartOfSubdividedFibre = .FALSE. ! the next element may not contain the beginning of a new fibre 
-                ! or the beginnning of the part of a fibre that is local to the current computational node
-                
-                FEElementIndex = FEElementIndex+1
-              ENDDO !i
-              
-            CASE(PROBLEM_MONODOMAIN_ELASTICITY_VELOCITY_SUBTYPE)
-
-              CONTROL_LOOP_ROOT=>PROBLEM%CONTROL_LOOP
-              CALL CONTROL_LOOP_GET(CONTROL_LOOP_ROOT,CONTROL_LOOP_NODE,CONTROL_LOOP_PARENT,ERR,ERROR,*999)
-              !get the monodomain sub loop, solvers, solver, and finally geometric field and dependent field
-              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP_PARENT,1,CONTROL_LOOP_MONODOMAIN,ERR,ERROR,*999)
-              CALL CONTROL_LOOP_SOLVERS_GET(CONTROL_LOOP_MONODOMAIN,SOLVERS,ERR,ERROR,*999)
-              CALL SOLVERS_SOLVER_GET(SOLVERS,2,SOLVER,ERR,ERROR,*999)
-              SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
-              IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
-                SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
-                IF(ASSOCIATED(SOLVER_MAPPING)) THEN
-                  EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(1)%PTR
-                  IF(ASSOCIATED(EQUATIONS_SET)) THEN
-                    GEOMETRIC_FIELD_MONODOMAIN=>EQUATIONS_SET%GEOMETRY%GEOMETRIC_FIELD
-                    IF(.NOT.ASSOCIATED(GEOMETRIC_FIELD_MONODOMAIN)) THEN
-                      CALL FlagError("Geometric field is not associated.",ERR,ERROR,*999)
-                    ENDIF
-                    ! the Field_V_Variable_Type contains the 3D nodal positions
-                    DEPENDENT_FIELD_MONODOMAIN=>EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD
-                    IF(.NOT.ASSOCIATED(DEPENDENT_FIELD_MONODOMAIN)) THEN
-                      CALL FlagError("Dependent field is not associated.",ERR,ERROR,*999)
-                    ENDIF
-                    INDEPENDENT_FIELD_MONODOMAIN=>EQUATIONS_SET%INDEPENDENT%INDEPENDENT_FIELD
-                    IF(.NOT.ASSOCIATED(INDEPENDENT_FIELD_MONODOMAIN)) THEN
-                      CALL FlagError("Independent field is not associated.",ERR,ERROR,*999)
-                    ENDIF
-                  ELSE
-                    CALL FlagError("Equations set is not associated.",ERR,ERROR,*999)
+                  PRINT *, ""
+                  PRINT "(I1,6(A,I4))", ComputationalNodeNumber, ": FE element, global:", FEElementGlobalNumber, &
+                   & ", local: ", FEElementLocalNumber, &
+                   & ", Bioelectric node, global: ", BioelectricNodeGlobalNumber, ", local: ", BioelectricNodeLocalNumber, &
+                   & ", previous: ", LeftNeighbourBioelectricNodeLocalNumber, &
+                   & ", Fibre index: ", FibreIdx
+                  PRINT "(3(A,F10.5),A)", "    Xi: (", XI(1), ",", XI(2), ",", XI(3), ")"
+                  !PRINT *, "       previous bioelectric node, local: ",LeftNeighbourBioelectricNodeLocalNumber 
+                  IF (IsFirstBioelectricNodeOfFibre) THEN
+                    PRINT *, "(first bioelectric node of fibre)"
                   ENDIF
-                ELSE
-                  CALL FlagError("Solver mapping is not associated.",ERR,ERROR,*999)
                 ENDIF
-              ELSE
-                CALL FlagError("Solver equations is not associated.",ERR,ERROR,*999)
-              ENDIF
-              NULLIFY(SOLVERS)
-              NULLIFY(SOLVER)
-              NULLIFY(SOLVER_MAPPING)
-              NULLIFY(EQUATIONS_SET)
-              NULLIFY(SOLVER_EQUATIONS)
-              !get the finite elasticity sub loop, solvers, solver, and finally the dependent and independent fields
-              CALL CONTROL_LOOP_SUB_LOOP_GET(CONTROL_LOOP_PARENT,2,CONTROL_LOOP_ELASTICITY,ERR,ERROR,*999)
-              CALL CONTROL_LOOP_SOLVERS_GET(CONTROL_LOOP_ELASTICITY,SOLVERS,ERR,ERROR,*999)
-              CALL SOLVERS_SOLVER_GET(SOLVERS,1,SOLVER,ERR,ERROR,*999)
-              SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
-              IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
-                SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
-                IF(ASSOCIATED(SOLVER_MAPPING)) THEN
-                  EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(1)%PTR
-                  IF(ASSOCIATED(EQUATIONS_SET)) THEN
-                    INDEPENDENT_FIELD_ELASTICITY=>EQUATIONS_SET%INDEPENDENT%INDEPENDENT_FIELD
-                    IF(.NOT.ASSOCIATED(INDEPENDENT_FIELD_ELASTICITY)) THEN
-                      CALL FlagError("Independent field is not associated.",ERR,ERROR,*999)
-                    ENDIF
-                    GEOMETRIC_FIELD_ELASTICITY=>EQUATIONS_SET%GEOMETRY%GEOMETRIC_FIELD
-                    IF(.NOT.ASSOCIATED(GEOMETRIC_FIELD_ELASTICITY)) THEN
-                      CALL FlagError("Dependent field is not associated.",ERR,ERROR,*999)
-                    ENDIF
-                  ELSE
-                    CALL FlagError("Equations set is not associated.",ERR,ERROR,*999)
-                  ENDIF
-                ELSE
-                  CALL FlagError("Solver mapping is not associated.",ERR,ERROR,*999)
-                ENDIF
-              ELSE
-                CALL FlagError("Solver equations is not associated.",ERR,ERROR,*999)
-              ENDIF
+          
+                ! --------------------- determine 1D and 3D position of current node ------------------
+                ! get the finite elasticity dependent field interpolation parameters of this element
+                INTERPOLATION_PARAMETERS=>EQUATIONS_SET%EQUATIONS%INTERPOLATION%DEPENDENT_INTERP_PARAMETERS &
+                  & (FIELD_U_VARIABLE_TYPE)%PTR
+                CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,FEElementLocalNumber, &
+                  & INTERPOLATION_PARAMETERS, ERR,ERROR,*999)
+                INTERPOLATED_POINT=>EQUATIONS_SET%EQUATIONS%INTERPOLATION%DEPENDENT_INTERP_POINT(FIELD_U_VARIABLE_TYPE)%PTR
 
-
-              node_idx=0
-              fibre_idx = 0
-              CALL FIELD_VARIABLE_GET(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE,FIELD_VAR_DEP_M,ERR,ERROR,*999)
-              CALL FIELD_VARIABLE_GET(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE,FIELD_VAR_GEO_M,ERR,ERROR,*999)
-              CALL FIELD_VARIABLE_GET(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VAR_IND_FE,ERR,ERROR,*999)
-
-              M_NODES_MAPPING=>GEOMETRIC_FIELD_MONODOMAIN%DECOMPOSITION%DOMAIN(GEOMETRIC_FIELD_MONODOMAIN%DECOMPOSITION% &
-                & MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%NODES
+                ! find the interpolated position of the bioelectric grid node from the finite elasticity FE dependent field
+                ! XI goes from 0 to 1 per FE element
+                CALL FIELD_INTERPOLATE_XI(NO_PART_DERIV,XI,INTERPOLATED_POINT,ERR,ERROR,*999)
+                Position3DCurrentNode(:) = INTERPOLATED_POINT%VALUES(1:3,1)
+                                    
+                ! store the spatial position of the bioelectric node to DEPENDENT_FIELD_MONODOMAIN, V ("GeometryM3D")
+                ! it is used for visualization only
+                CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,Position3DCurrentNode(1),ERR,ERROR,*999)
+                CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,2,Position3DCurrentNode(2),ERR,ERROR,*999)
+                CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,3,Position3DCurrentNode(3),ERR,ERROR,*999)
+       
+                IF (DEBUGGING) PRINT *, "LeftNeighbourBioelectricNodeLocalNumber: ", LeftNeighbourBioelectricNodeLocalNumber, &
+                  & "LeftNeighbourIsGhost: ", LeftNeighbourIsGhost, "DELTA_XI1:", DELTA_XI1, " XI(1)-DELTA_XI1=", (XI(1)-DELTA_XI1)
+                  
+                ! if a previous node is available, that was processed earlier
+                IF (LeftNeighbourBioelectricNodeLocalNumber /= 0 .AND..NOT. LeftNeighbourIsGhost) THEN
+                 
+                  IF(DEBUGGING) PRINT *, "   Get stored position of left node"
+                 
+                  ! get the stored position in 3D of the previous node
+                  DofIdx=FIELD_VAR_DEP_M%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
+                    & NODES(LeftNeighbourBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+                  CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
+                    & FIELD_VALUES_SET_TYPE,DofIdx,Position3DLeftNode(1),ERR,ERROR,*999)
+                  
+                  DofIdx=FIELD_VAR_DEP_M%COMPONENTS(2)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
+                    & NODES(LeftNeighbourBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+                  CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
+                    & FIELD_VALUES_SET_TYPE,DofIdx,Position3DLeftNode(2),ERR,ERROR,*999)
+                  
+                  DofIdx=FIELD_VAR_DEP_M%COMPONENTS(3)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
+                    & NODES(LeftNeighbourBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+                  CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
+                    & FIELD_VALUES_SET_TYPE,DofIdx,Position3DLeftNode(3),ERR,ERROR,*999)
+                  
+                  ! get the stored position in 1D of the previous node
+                  DofIdx=FIELD_VAR_GEO_M%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+                    & NODES(LeftNeighbourBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+                  CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+                    & FIELD_VALUES_SET_TYPE,DofIdx,Position1DLeftNode,ERR,ERROR,*999)                              
               
-              FE_ELEMENTS_TOPOLOGY=>GEOMETRIC_FIELD_ELASTICITY%DECOMPOSITION%TOPOLOGY%ELEMENTS
-
-              !loop over the elements of the finite elasticity mesh (internal and boundary elements)
-              !no need to consider ghost elements here since only bioelectrical fields are changed
-              DO FEElementIndex=1,FE_ELEMENTS_TOPOLOGY%NUMBER_OF_ELEMENTS
-                ne=FE_ELEMENTS_TOPOLOGY%ELEMENTS(FEElementIndex)%LOCAL_NUMBER
-                my_FEElementIndex=FEElementIndex
-
-                !the Field_V_Variable_Type of the FE independent field contains the number of nodes in each Xi-direction of the bioelectrics grid
-                dof_idx=FIELD_VAR_IND_FE%COMPONENTS(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
-                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                  & dof_idx,nodes_in_Xi_1,ERR,ERROR,*999)
-                dof_idx=FIELD_VAR_IND_FE%COMPONENTS(2)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
-                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                  & dof_idx,nodes_in_Xi_2,ERR,ERROR,*999)
-                dof_idx=FIELD_VAR_IND_FE%COMPONENTS(3)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
-                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                  & dof_idx,nodes_in_Xi_3,ERR,ERROR,*999)
-                !beginning of a fibre in this element: 1=yes, 0=no
-                dof_idx=FIELD_VAR_IND_FE%COMPONENTS(4)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
-                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                  & dof_idx,FibreStartsInCurrentElement,ERR,ERROR,*999)
-
-                !if there is no bioelectrics grid in this finite elasticity element, or the fibres don't begin in this element, jump to the next element
-                IF((nodes_in_Xi_1==0).OR.(nodes_in_Xi_2==0).OR.(nodes_in_Xi_3==0).OR.(FibreStartsInCurrentElement==0)) CYCLE
+                ! if the left neighbour node is still positioned inside the current FE element (but yet on another domain)
+                ELSEIF (XI(1)-DELTA_XI1 >= -1.0E-15_DP) THEN
+                  
+                  IF(DEBUGGING) PRINT *, "   Compute position of left node"
+                  
+                  ! also compute the position of that node
+                  XI(1) = XI(1)-DELTA_XI1
+                  
+                  ! find the interpolated position of the left neighbour bioelectric grid node from the finite elasticity FE dependent field
+                  ! XI goes from 0 to 1 per FE element
+                  CALL FIELD_INTERPOLATE_XI(NO_PART_DERIV,XI,INTERPOLATED_POINT,ERR,ERROR,*999)
+                  Position3DLeftNode(:) = INTERPOLATED_POINT%VALUES(1:3,1)
+                  
+                  ! set the 1D position of the left node to 0
+                  Position1DLeftNode = 0.0_DP
                 
-                FEElementWhereFibresEnterLocalDomainLocalNumber=ne
-                FEElementWhereFibresEnterLocalDomainIndex=my_FEElementIndex
+                ! if the left neighbour node really is on a different domain, set its position to the current position
+                ELSE  
                 
-                !assume Xi(1) to be normal to the seed surface, i.e. the seed points have Xi(1)=0
-                XI=[0.0_DP,1.0_DP/(REAL(2*nodes_in_Xi_2)),1.0_DP/(REAL(2*nodes_in_Xi_3))]
+                  IF(DEBUGGING) PRINT *, "   Set position of left node to current position"
                 
-                !assume that the bioelectrics node numbers are increased in order Xi(1), Xi(2), Xi(3) 
-                DO n3=1,nodes_in_Xi_3
-                  DO n2=1,nodes_in_Xi_2
+                  Position3DLeftNode(:) = Position3DCurrentNode(:)
+                  Position1DLeftNode = 0.0_DP
+                ENDIF
                     
-                    !loop over the FE elements that contain nodes of the very same fibres
-                    DO
-                      !get the finite elasticity dependent field interpolation parameters of this element
-                      INTERPOLATION_PARAMETERS=>EQUATIONS_SET%EQUATIONS%INTERPOLATION%DEPENDENT_INTERP_PARAMETERS &
-                        & (FIELD_U_VARIABLE_TYPE)%PTR
-                      CALL FIELD_INTERPOLATION_PARAMETERS_ELEMENT_GET(FIELD_VALUES_SET_TYPE,ne,INTERPOLATION_PARAMETERS, &
-                        & ERR,ERROR,*999)
-                      INTERPOLATED_POINT=>EQUATIONS_SET%EQUATIONS%INTERPOLATION%DEPENDENT_INTERP_POINT(FIELD_U_VARIABLE_TYPE)%PTR
+                IF (DEBUGGING) THEN
+                  PRINT *, "Position3DCurrentNode :", Position3DCurrentNode
+                  PRINT *, "Position3DLeftNode:    ", Position3DLeftNode
+                ENDIF
+  
+                  
+                ! compute the distance between the previous node and the current node
+                DIST=SQRT( &
+                  & (Position3DCurrentNode(1)-Position3DLeftNode(1)) * (Position3DCurrentNode(1)-Position3DLeftNode(1))+ &
+                  & (Position3DCurrentNode(2)-Position3DLeftNode(2)) * (Position3DCurrentNode(2)-Position3DLeftNode(2))+ &
+                  & (Position3DCurrentNode(3)-Position3DLeftNode(3)) * (Position3DCurrentNode(3)-Position3DLeftNode(3)))
+  
+                ! update the current sarcomere half length
+                HalfSarcomereLength = HalfSarcomereInitialLength * DIST / InitialNodeMDistance
+                
+                CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U1_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,HalfSarcomereLength,ERR,ERROR,*999)
 
-                      !get the positions of the Gauss points of the Finite Elasticity element, GAUSS_POSITIONS(components,number_of_Gauss_points)
-                      GAUSS_POSITIONS=>GEOMETRIC_FIELD_ELASTICITY%DECOMPOSITION%DOMAIN(GEOMETRIC_FIELD_ELASTICITY%DECOMPOSITION% &
-                        & MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(ne)%BASIS%QUADRATURE%QUADRATURE_SCHEME_MAP( &
-                        & BASIS_DEFAULT_QUADRATURE_SCHEME)%PTR%GAUSS_POSITIONS
+                  
+                ! problem class with predefined force-velocity relation does not need to compute contraction velocity
+                IF (PROBLEM%SPECIFICATION(3) /= PROBLEM_MONODOMAIN_ELASTICITY_VELOCITY_SUBTYPE) THEN            
+                  
+                  ! ---------------- compute contraction velocity -----------------
+                  !get the distance between current and left node in the previous time step
+                  DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
+                    & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+                  CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                    & FIELD_VALUES_SET_TYPE,DofIdx,OLD_DIST,ERR,ERROR,*999)
+
+                  !get the distance between current and left node nodes before 2 time steps
+                  DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(4)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
+                    & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+                  CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                    & FIELD_VALUES_SET_TYPE,DofIdx,OLD_DIST_2,ERR,ERROR,*999)
+
+                  !get the distance between current and left node nodes before 3 time steps
+                  DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(5)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
+                    & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+                  CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                    & FIELD_VALUES_SET_TYPE,DofIdx,OLD_DIST_3,ERR,ERROR,*999)
+
+                  !get the distance between current and left node nodes before 4 time steps
+                  DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(6)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
+                    & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+                  CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                    & FIELD_VALUES_SET_TYPE,DofIdx,OLD_DIST_4,ERR,ERROR,*999)
+    
+                  IF (DEBUGGING) PRINT "(5(A, F6.3))", "Previous node distances: ", DIST, ", ", OLD_DIST, ", ", OLD_DIST_2, ", ", &
+                    & OLD_DIST_3, ", ", OLD_DIST_4
+    
+                  ! compute the new contraction velocity
+                  ! ContractionVelocity=(DIST-OLD_DIST)/TIME_STEP
+                  ! v = 1/4 * [(dist-dist1)/dt + (dist-dist2)/(2dt) + (dist-dist3)/(3dt) + (dist-dist4)/(4dt)]
+                  ContractionVelocity=0.25_DP*((DIST-OLD_DIST)/TIME_STEP+(DIST-OLD_DIST_2)/(2.0_DP*TIME_STEP)+ &
+                    & (DIST-OLD_DIST_3)/(3.0_DP*TIME_STEP)+(DIST-OLD_DIST_4)/(4.0_DP*TIME_STEP))
+          
+                  ! CALC_CLOSEST_GAUSS_POINT is only the first time .TRUE. and subsequent times .FALSE.
+                  IF (.NOT. CALC_CLOSEST_GAUSS_POINT) THEN
+                  
+                    ! MaximumAllowedShorteningVelocity is the maximum shortening velocity and hence negative
+                    IF (ContractionVelocity<MaximumAllowedShorteningVelocity) THEN
+                      !CALL FLAG_WARNING('Exceeded maximum contraction velocity (shortening).',ERR,ERROR,*999)
+                      !CALL FLAG_WARNING('  ContractionVelocity: '// &
+                      !  TRIM(NUMBER_TO_VSTRING(ContractionVelocity,"*",ERR,ERROR))//", MaximumAllowedShorteningVelocity:"// &
+                      !  TRIM(NUMBER_TO_VSTRING(MaximumAllowedShorteningVelocity,"*",ERR,ERROR)),ERR,ERROR,*999)
+                      ContractionVelocity=MaximumAllowedShorteningVelocity
+                    !The max lengthening velocity is assumed to be MaximumAllowedShorteningVelocity/2.0
+                    ELSEIF(ContractionVelocity>(-MaximumAllowedShorteningVelocity/2.0_DP)) THEN
+                      ! warning disabled
+                      !CALL FLAG_WARNING('Exceeded maximum contraction velocity (lengthening).',ERR,ERROR,*999)
+                      !CALL FLAG_WARNING('Exceeded maximum contraction velocity (lengthening).',ERR,ERROR,*999)
+                      !CALL FLAG_WARNING('  ContractionVelocity: '// &
+                      !  TRIM(NUMBER_TO_VSTRING(ContractionVelocity,"*",ERR,ERROR))//", MaximumAllowedLengtheningVelocity:"// &
+                      !  TRIM(NUMBER_TO_VSTRING(-MaximumAllowedShorteningVelocity/2.0_DP,"*",ERR,ERROR)),ERR,ERROR,*999)
+                      ContractionVelocity=-MaximumAllowedShorteningVelocity/2.0_DP
+                    ENDIF
+                  ENDIF
+      
+                  RelativeContractionVelocity = ContractionVelocity/ABS(MaximumAllowedShorteningVelocity)
+      
+                  ! store the relative contraction velocity in component 3 of the U2 variable of the monodomain independent field
+                  CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                    & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,3,RelativeContractionVelocity,ERR,ERROR,*999)
+
+                  ! update distances for old timesteps
+                  ! store node distance to previous node
+                  CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                    & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,DIST,ERR,ERROR,*999)
+
+                  ! store node distance to previous node before 1 time step
+                  CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                    & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,4,OLD_DIST,ERR,ERROR,*999)
+
+                  ! store node distance to previous node before 2 time step
+                  CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                    & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,5,OLD_DIST_2,ERR,ERROR,*999)
+
+                  ! store node distance to previous node before 3 time step
+                  CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                    & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,6,OLD_DIST_3,ERR,ERROR,*999)
+
+                  ! update the current 1D node position
+                  Position1DCurrentNode = Position1DLeftNode+DIST
+                  CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+                    & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,Position1DCurrentNode,ERR,ERROR,*999)
+
+                  IF (DEBUGGING) THEN
+                    PRINT "(I1,2(A,F8.5))", ComputationalNodeNumber, ": prev node has pos ", Position1DLeftNode, ", DIST=", DIST
+                    PRINT "(I1,A,I4,3(A,F8.5))", ComputationalNodeNumber, ": node global ", BioelectricNodeGlobalNumber, " pos: ", &
+                      & Position1DCurrentNode, " dist", DIST, " |xi(1)+delta_xi1-1|=",ABS(XI(1) + DELTA_XI1 - 1.0)
+                  ENDIF
+                    
+                  ! if we are currently at the second node where left previous node had no neighbour, also store the current quantities to the left node
+                  IF (PreviousNodeHadNoLeftNeighbour) THEN
+                    ! current sarcomere half length
+                    CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U1_VARIABLE_TYPE, &
+                      & FIELD_VALUES_SET_TYPE,1,1,LeftNeighbourBioelectricNodeLocalNumber,1,HalfSarcomereLength,ERR,ERROR,*999)                            
+                    ! old node distance
+                    CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                      & FIELD_VALUES_SET_TYPE,1,1,LeftNeighbourBioelectricNodeLocalNumber,1,DIST,ERR,ERROR,*999)
+                    ! relative contraction velocity
+                    CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                      & FIELD_VALUES_SET_TYPE,1,1,LeftNeighbourBioelectricNodeLocalNumber,3,RelativeContractionVelocity, &
+                      & ERR,ERROR,*999)
+                  ENDIF
+                  
+                  ! if we are currently at the last node on the right of the domain where the next node lies on the element boundary, store distance to right node
+                  IF (ABS(XI(1) + DELTA_XI1 - 1.0) < 1e-5) THEN
+                    ! compute distance to right node
+                    
+                    XI(1) = 1.0
+                    
+                    ! find the interpolated position of the right neighbour bioelectric grid node from the finite elasticity FE dependent field
+                    ! XI goes from 0 to 1 per FE element
+                    CALL FIELD_INTERPOLATE_XI(NO_PART_DERIV,XI,INTERPOLATED_POINT,ERR,ERROR,*999)
+                    Position3DRightNode(:) = INTERPOLATED_POINT%VALUES(1:3,1)
                       
-                      DO n1=1,nodes_in_Xi_1
-                        node_idx=node_idx+1
-                        
-                        !store the fibre number this bioelectrics node belongs to.
-                        CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
-                          & FIELD_VALUES_SET_TYPE,1,1,node_idx,3,fibre_idx,ERR,ERROR,*999) 
+                    ! compute the distance between the current node and the right node
+                    DIST=SQRT( &
+                      & (Position3DCurrentNode(1)-Position3DRightNode(1)) * (Position3DCurrentNode(1)-Position3DRightNode(1))+ &
+                      & (Position3DCurrentNode(2)-Position3DRightNode(2)) * (Position3DCurrentNode(2)-Position3DRightNode(2))+ &
+                      & (Position3DCurrentNode(3)-Position3DRightNode(3)) * (Position3DCurrentNode(3)-Position3DRightNode(3)))
+      
+                    ! store node distance
+                    CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                      & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,7,DIST,ERR,ERROR,*999)
 
-                        !find the interpolated position of the bioelectric grid node from the FE dependent field
-                        CALL FIELD_INTERPOLATE_XI(NO_PART_DERIV,XI,INTERPOLATED_POINT,ERR,ERROR,*999)
-                        !update the bioelectrics dependent field Field_V_Variable_Type
-                        !the Field_V_Variable_Type of the monodomain dependent field contains the nodal positions in 3D
-                        CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
-                          & FIELD_VALUES_SET_TYPE,1,1,node_idx,1,INTERPOLATED_POINT%VALUES(1,1),ERR,ERROR,*999)
-                        CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
-                          & FIELD_VALUES_SET_TYPE,1,1,node_idx,2,INTERPOLATED_POINT%VALUES(2,1),ERR,ERROR,*999)
-                        CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
-                          & FIELD_VALUES_SET_TYPE,1,1,node_idx,3,INTERPOLATED_POINT%VALUES(3,1),ERR,ERROR,*999)
+                    IF (DEBUGGING) PRINT "(I1,A,I4,A,F8.5)", ComputationalNodeNumber, ": node global ", &
+                      & BioelectricNodeGlobalNumber, &
+                      & " distance to right node: ", &
+                      & DIST   
+                  ENDIF
+                
+                ENDIF
+                  
+                ! ------------- for the bioelectric element store the position of the nearest FE element Gauss point ------------------
+                IF(CALC_CLOSEST_GAUSS_POINT) THEN       ! only in the first call to this function
+                
+                  ! get the positions of the Gauss points of the Finite Elasticity element, GAUSS_POSITIONS(components,number_of_Gauss_points)
+                  GAUSS_POSITIONS=>GEOMETRIC_FIELD_ELASTICITY%DECOMPOSITION%DOMAIN(GEOMETRIC_FIELD_ELASTICITY%DECOMPOSITION% &
+                    & MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(FEElementLocalNumber)%BASIS%QUADRATURE% & 
+                    & QUADRATURE_SCHEME_MAP(BASIS_DEFAULT_QUADRATURE_SCHEME)%PTR%GAUSS_POSITIONS
+                  
+                  ! calculate the closest finite elasticity Gauss point of each bioelectrics node
+                  DISTANCE = 1000000.0_DP ! huge value
+                  GAUSS_POINT = 0
+                  IF (DEBUGGING) THEN
+                    PRINT*, "        perform search for nearest gauss point in list of ",SIZE(GAUSS_POSITIONS,2),"points"
+                  ENDIF
+                  DO gauss_idx = 1,SIZE(GAUSS_POSITIONS,2)
+                    ! compute the squared distance between the bioelectrics node and the Gauss point
+                    VALUE = ( &
+                      & (Xi(1)-GAUSS_POSITIONS(1,gauss_idx))*(Xi(1)-GAUSS_POSITIONS(1,gauss_idx))+ &
+                      & (Xi(2)-GAUSS_POSITIONS(2,gauss_idx))*(Xi(2)-GAUSS_POSITIONS(2,gauss_idx))+ &
+                      & (Xi(3)-GAUSS_POSITIONS(3,gauss_idx))*(Xi(3)-GAUSS_POSITIONS(3,gauss_idx)))
+                    
+                    IF (VALUE < DISTANCE) THEN
+                      DISTANCE = VALUE
+                      GAUSS_POINT = gauss_idx
+                    ENDIF
+                  ENDDO !gauss_idx
+                  IF (GAUSS_POINT == 0) CALL FLAG_WARNING("Closest Gauss Point not found",ERR,ERROR,*999)
+                  
+                  !store the number of the nearest Gauss point
+                  CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
+                    & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,4,GAUSS_POINT,ERR,ERROR,*999)
+                ENDIF ! CALC_CLOSEST_GAUSS_POINT
 
-                        IF((n1==1).AND.(ne==FEElementWhereFibresEnterLocalDomainLocalNumber)) THEN
-                          !a new line of bioelectrics grid nodes begins
-                          CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,1,1,node_idx,1,0.0_DP,ERR,ERROR,*999)
-                        ELSE
-                          !get the position in 3D of the previous node
-                          !WARNING! this assumes that node_idx = local node number which is not true for subdivided fibres
-                          dof_idx=FIELD_VAR_DEP_M%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx-1)% &
-                            & DERIVATIVES(1)%VERSIONS(1)
-                          CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,dof_idx,PREVIOUS_NODE(1),ERR,ERROR,*999)
-                          dof_idx=FIELD_VAR_DEP_M%COMPONENTS(2)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx-1)% &
-                            & DERIVATIVES(1)%VERSIONS(1)
-                          CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,dof_idx,PREVIOUS_NODE(2),ERR,ERROR,*999)
-                          dof_idx=FIELD_VAR_DEP_M%COMPONENTS(3)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx-1)% &
-                            & DERIVATIVES(1)%VERSIONS(1)
-                          CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(DEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,dof_idx,PREVIOUS_NODE(3),ERR,ERROR,*999)
-
-                          !compute the distance between the previous node and the actual node
-                          DIST=SQRT( &
-                            & (INTERPOLATED_POINT%VALUES(1,1)-PREVIOUS_NODE(1))*(INTERPOLATED_POINT%VALUES(1,1)-PREVIOUS_NODE(1))+ &
-                            & (INTERPOLATED_POINT%VALUES(2,1)-PREVIOUS_NODE(2))*(INTERPOLATED_POINT%VALUES(2,1)-PREVIOUS_NODE(2))+ &
-                            & (INTERPOLATED_POINT%VALUES(3,1)-PREVIOUS_NODE(3))*(INTERPOLATED_POINT%VALUES(3,1)-PREVIOUS_NODE(3)))
-
-                          !get the position in 1D of the previous node
-                          dof_idx=FIELD_VAR_GEO_M%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx-1)% &
-                            & DERIVATIVES(1)%VERSIONS(1)
-                          CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,dof_idx,Position1DPreviousNode,ERR,ERROR,*999)
-                          !update the current 1D node position
-                          CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,1,1,node_idx,1,Position1DPreviousNode+DIST,ERR,ERROR,*999)
-
-                        ENDIF !((n1==1).AND.(ne==FEElementWhereFibresEnterLocalDomainLocalNumber))
-                          
-                        IF(CALC_CLOSEST_GAUSS_POINT) THEN
-                          !calculate the closest finite elasticity Gauss point of each bioelectrics node
-                          DISTANCE=1000000.0_DP
-                          GAUSS_POINT=0
-                          DO gauss_idx=1,SIZE(GAUSS_POSITIONS,2)
-                            !compute the distance between the bioelectrics node and the Gauss point
-                            VALUE=SQRT( &
-                              & (Xi(1)-GAUSS_POSITIONS(1,gauss_idx))*(Xi(1)-GAUSS_POSITIONS(1,gauss_idx))+ &
-                              & (Xi(2)-GAUSS_POSITIONS(2,gauss_idx))*(Xi(2)-GAUSS_POSITIONS(2,gauss_idx))+ &
-                              & (Xi(3)-GAUSS_POSITIONS(3,gauss_idx))*(Xi(3)-GAUSS_POSITIONS(3,gauss_idx)))
-                            IF(VALUE<DISTANCE) THEN
-                              DISTANCE=VALUE
-                              GAUSS_POINT=gauss_idx
-                            ENDIF
-                          ENDDO !gauss_idx
-                          IF(GAUSS_POINT==0) CALL FLAG_WARNING("Closest Gauss Point not found",ERR,ERROR,*999)
-                          !store the nearest Gauss Point info and the inElement info (local element number!!!)
-                          CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,1,1,node_idx,4,GAUSS_POINT,ERR,ERROR,*999)
-                          CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE, &
-                            & FIELD_VALUES_SET_TYPE,1,1,node_idx,5,ne,ERR,ERROR,*999)
-                        ENDIF !CALC_CLOSEST_GAUSS_POINT
-                        
-                        IF(FibreStartsInCurrentElement==1) THEN
-                          !fibres start in this element
-                          XI(1)=XI(1)+1.0_DP/(REAL(nodes_in_Xi_1-1))
-                        ELSEIF(FibreStartsInCurrentElement==0) THEN
-                          !fibres don't start in this element
-                          XI(1)=XI(1)+1.0_DP/(REAL(nodes_in_Xi_1))
-                        ELSE
-                          LOCAL_ERROR="The start element index is incorrect. The index is "// &
-                            & TRIM(NUMBER_TO_VSTRING(FibreStartsInCurrentElement,"*",ERR,ERROR))// &
-                            & " and should be zero or one." 
-                          CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
-                        ENDIF
-                        
-                      ENDDO !n1
-
-                      !if there is not an adjacent element in positive XI_1 direction, go to the next FE element
-                      IF(FE_ELEMENTS_TOPOLOGY%ELEMENTS(ne)%ADJACENT_ELEMENTS(1)%NUMBER_OF_ADJACENT_ELEMENTS==0) EXIT
-                      
-                      !consider the adjacent element in positive XI_1 direction
-                      ne=FE_ELEMENTS_TOPOLOGY%ELEMENTS(ne)%ADJACENT_ELEMENTS(1)%ADJACENT_ELEMENTS(1)
-
-                      !if a fibre starts in the next element, go to the next FE elem
-                      dof_idx=FIELD_VAR_IND_FE%COMPONENTS(4)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
-                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE, &
-                        & FIELD_VALUES_SET_TYPE,dof_idx,FibreStartsInCurrentElement,ERR,ERROR,*999)
-                      !beginning of a fibre in this element: 1=yes, 0=no
-                      IF (FibreStartsInCurrentElement==1) THEN
-                        ne=FE_ELEMENTS_TOPOLOGY%ELEMENTS(FEElementIndex)%LOCAL_NUMBER
-                        EXIT
-                      ENDIF
-                      
-                      !find the FEElementIndex that corresponds to ne
-                      my_FEElementIndex=0
-                      DO k=1,FE_ELEMENTS_TOPOLOGY%NUMBER_OF_ELEMENTS
-                        IF(ne==FE_ELEMENTS_TOPOLOGY%ELEMENTS(k)%ADJACENT_ELEMENTS(0)%ADJACENT_ELEMENTS(1)) THEN
-                          my_FEElementIndex=k
-                          EXIT
-                        ENDIF
-                      ENDDO
-                      IF(my_FEElementIndex==0) CALL FlagError("my_FEElementIndex not found.",ERR,ERROR,*999)                      
-
-                      dof_idx=FIELD_VAR_IND_FE%COMPONENTS(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
-                      CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE, &
-                        & FIELD_VALUES_SET_TYPE,dof_idx,nodes_in_Xi_1,ERR,ERROR,*999)
-                      
-                      FibreStartsInCurrentElement=0 !fibres don't start in this element
-                      
-                      XI(1)=1.0_DP/(REAL(nodes_in_Xi_1))
-
-                    ENDDO !
-                    !for the beginning of the next fibre, go back to the element in which the last fibre started
-                    ne=FEElementWhereFibresEnterLocalDomainLocalNumber
-
-                    dof_idx=FIELD_VAR_IND_FE%COMPONENTS(1)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP%ELEMENTS(ne)
-                    CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE, &
-                      & FIELD_VALUES_SET_TYPE,dof_idx,nodes_in_Xi_1,ERR,ERROR,*999)
-
-                    my_FEElementIndex=FEElementWhereFibresEnterLocalDomainIndex
-                    FibreStartsInCurrentElement=1 !fibres start in this element
-                    XI(1)=0.0_DP
-                    XI(2)=XI(2)+1.0_DP/(REAL(nodes_in_Xi_2))
-                  ENDDO !n2
-                  XI(1)=0.0_DP
-                  XI(2)=1.0_DP/(REAL(2*nodes_in_Xi_2))
-                  XI(3)=Xi(3)+1.0_DP/(REAL(nodes_in_Xi_3))
-                ENDDO !n3
-
-              ENDDO !FEElementIndex
-
+                ! go to next monodomain node
+                CALL BioelectricFiniteElasticity_IterateNextMonodomainNode(SOLVER_MAPPING_MONODOMAIN, GEOMETRIC_FIELD_ELASTICITY, &
+                  & INDEPENDENT_FIELD_ELASTICITY, .FALSE., &
+                  & GEOMETRIC_FIELD_MONODOMAIN, DEPENDENT_FIELD_MONODOMAIN, INDEPENDENT_FIELD_MONODOMAIN, &
+                  & FIELD_VAR_DEP_M, FIELD_VAR_GEO_M, FIELD_VAR_IND_M_U1, FIELD_VAR_IND_M_U2, FIELD_VAR_IND_M_V, &
+                  & IsFinished, FEElementGlobalNumber, FEElementLocalNumber, BioelectricNodeGlobalNumber, &
+                  & BioelectricNodeLocalNumber, BioelectricNodeInFibreNumber, LeftNeighbourBioelectricNodeLocalNumber, FibreIdx, &
+                  & XI, DELTA_XI1, IsFirstBioelectricNodeOfFibre, LeftNeighbourIsGhost, PreviousNodeHadNoLeftNeighbour, &
+                  & ERR,ERROR,*999)
+    
+                ! exit loop if all the elements were traversed
+                IF (IsFinished) EXIT
+                
+              ENDDO
+              
+                
+              ! handle ghost elements, update geometric information
+              CALL BioelectricFiniteElasticity_GhostElements(INDEPENDENT_FIELD_MONODOMAIN, GEOMETRIC_FIELD_MONODOMAIN, &
+                & M_NODES_MAPPING,M_ELEMENTS_MAPPING,M_DOMAIN_TOPOLOGY_ELEMENTS,FIELD_VAR_GEO_M,FIELD_VAR_IND_M_U2, &
+                & M_ELEMENTS_TOPOLOGY,ERR,ERROR,*999)
+                
+              !IF (CONTROL_LOOP_ELASTICITY%LOAD_INCREMENT_LOOP%ITERATION_NUMBER > 0) THEN
+                !PRINT *, "Exit program in bioelectric_finite_elasticity_routines.f90:3084"
+                !STOP
+              !ENDIF
+              
             CASE DEFAULT
               LOCAL_ERROR="The third problem specification of "// &
                 & TRIM(NUMBER_TO_VSTRING(PROBLEM%specification(2),"*",ERR,ERROR))// &
@@ -3044,6 +3388,7 @@ CONTAINS
 
   !>Interpolates the finite elasticity independent field from the biolectrics independent field.
   !>NOTE: this is only temporary - will be replaced once embedded meshes are available
+  !>TODO: The iteration scheme could be implemented better 
   SUBROUTINE BioelectricFiniteElasticity_IndependentFieldInterpolate(CONTROL_LOOP,ERR,ERROR,*)
 
     !Argument variables
@@ -3062,22 +3407,36 @@ CONTAINS
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: M_ELEMENTS_MAPPING,M_NODES_MAPPING
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VARIABLE_U,FIELD_VARIABLE_V,FIELD_VARIABLE_FE
-    INTEGER(INTG) :: node_idx,FEElementIndex,gauss_idx,ne
-    INTEGER(INTG) :: nearestGP,inElement,dof_idx
+    INTEGER(INTG) :: node_idx,FEElementGlobalNumber,gauss_idx,FEElementLocalNumber
+    INTEGER(INTG) :: nearestGP,inElement,DofIdx
     INTEGER(INTG) :: NUMBER_OF_GAUSS_POINTS
     REAL(DP) :: ACTIVE_STRESS
     REAL(DP) :: TITIN_STRESS_UNBOUND,TITIN_STRESS_BOUND,TITIN_STRESS_CROSS_FIBRE_UNBOUND,TITIN_STRESS_CROSS_FIBRE_BOUND,ACTIVATION
     INTEGER(INTG), PARAMETER :: MAX_NUMBER_OF_GAUSS_POINTS=64
-    INTEGER(INTG) :: NUMBER_OF_NODES(MAX_NUMBER_OF_GAUSS_POINTS)
-    REAL(DP) :: ACTIVE_STRESS_VALUES(MAX_NUMBER_OF_GAUSS_POINTS)
-    REAL(DP) :: TITIN_STRESS_VALUES_UNBOUND(MAX_NUMBER_OF_GAUSS_POINTS),TITIN_STRESS_VALUES_BOUND(MAX_NUMBER_OF_GAUSS_POINTS)
-    REAL(DP) :: TITIN_STRESS_VALUES_CROSS_FIBRE_UNBOUND(MAX_NUMBER_OF_GAUSS_POINTS)
-    REAL(DP) :: TITIN_STRESS_VALUES_CROSS_FIBRE_BOUND(MAX_NUMBER_OF_GAUSS_POINTS)
-    REAL(DP) :: ACTIVATION_VALUES(MAX_NUMBER_OF_GAUSS_POINTS)
+    
     REAL(DP) :: A_1,A_2,x_1,x_2
-    REAL(DP) :: A_1_VALUES(MAX_NUMBER_OF_GAUSS_POINTS),A_2_VALUES(MAX_NUMBER_OF_GAUSS_POINTS), &
-      & x_1_VALUES(MAX_NUMBER_OF_GAUSS_POINTS),x_2_VALUES(MAX_NUMBER_OF_GAUSS_POINTS)
+    INTEGER(INTG) :: NumberOfBioelectricNodesAtGaussPoint
+    
+    INTEGER(INTG), SAVE :: MaximumFEElementLocalNumber
+    INTEGER(INTG), ALLOCATABLE, DIMENSION(:,:), SAVE :: NUMBER_OF_NODES
+    REAL(INTG), ALLOCATABLE, DIMENSION(:,:), SAVE :: ACTIVE_STRESS_VALUES
+    REAL(INTG), ALLOCATABLE, DIMENSION(:,:), SAVE :: TITIN_STRESS_VALUES_UNBOUND, TITIN_STRESS_VALUES_BOUND
+    REAL(INTG), ALLOCATABLE, DIMENSION(:,:), SAVE :: TITIN_STRESS_VALUES_CROSS_FIBRE_UNBOUND
+    REAL(INTG), ALLOCATABLE, DIMENSION(:,:), SAVE :: TITIN_STRESS_VALUES_CROSS_FIBRE_BOUND
+    REAL(INTG), ALLOCATABLE, DIMENSION(:,:), SAVE :: ACTIVATION_VALUES
+    REAL(INTG), ALLOCATABLE, DIMENSION(:,:), SAVE :: A_1_VALUES, A_2_VALUES, x_1_VALUES, x_2_VALUES
+    
+    !LOGICAL :: DEBUGGING = .FALSE.
+    LOGICAL, PARAMETER :: DEBUGGING = .FALSE.
+    
+    ENTERS("BioelectricFiniteElasticity_IndependentFieldInterpolate",ERR,ERROR,*999)
 
+#if 0
+    IF (COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR) == 1) THEN
+      DEBUGGING = .TRUE.
+    ENDIF
+#endif    
+    
     NULLIFY(CONTROL_LOOP_PARENT)
     NULLIFY(CONTROL_LOOP_MONODOMAIN)
     NULLIFY(CONTROL_LOOP_ELASTICITY)
@@ -3087,8 +3446,6 @@ CONTAINS
     NULLIFY(FIELD_VARIABLE_V)
     NULLIFY(FIELD_VARIABLE_FE)
     
-    ENTERS("BioelectricFiniteElasticity_IndependentFieldInterpolate",ERR,ERROR,*999)
-
     IF(ASSOCIATED(CONTROL_LOOP)) THEN
       PROBLEM=>CONTROL_LOOP%PROBLEM
       IF(ASSOCIATED(PROBLEM)) THEN
@@ -3151,8 +3508,8 @@ CONTAINS
             ELSE
               CALL FlagError("Solver equations is not associated.",ERR,ERROR,*999)
             ENDIF
-
-            !--- NOW INTERPOLATE ---
+                    
+            !--- ALLOCATE AND INITIALIZE ---
             M_ELEMENTS_MAPPING=>INDEPENDENT_FIELD_ELASTICITY%DECOMPOSITION%DOMAIN(INDEPENDENT_FIELD_ELASTICITY%DECOMPOSITION% &
               & MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%ELEMENTS
             M_NODES_MAPPING=>INDEPENDENT_FIELD_MONODOMAIN%DECOMPOSITION%DOMAIN(INDEPENDENT_FIELD_MONODOMAIN%DECOMPOSITION% &
@@ -3162,219 +3519,405 @@ CONTAINS
             CALL FIELD_VARIABLE_GET(INDEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE,FIELD_VARIABLE_V,ERR,ERROR,*999)
             CALL FIELD_VARIABLE_GET(INDEPENDENT_FIELD_ELASTICITY,FIELD_U_VARIABLE_TYPE,FIELD_VARIABLE_FE,ERR,ERROR,*999)
 
-            CALL FlagWarning("bioelectric_finite_elasticity_routines.f90:3061: Inefficient O(n^2) algorithm",ERR,ERROR,*999)
+            ! allocate fields at gauss points that are only needed for multiple subtypes
+            IF (.NOT. ALLOCATED(NUMBER_OF_NODES)) THEN
             
-            !loop over the finite elasticity elements
-            !first process the internal and boundary elements
-            DO FEElementIndex=M_ELEMENTS_MAPPING%INTERNAL_START,M_ELEMENTS_MAPPING%BOUNDARY_FINISH
-              ne=M_ELEMENTS_MAPPING%DOMAIN_LIST(FEElementIndex)
+              ! check if number of gauss points is below 64 in every element, also determine the maximum local number of a FE element
+              MaximumFEElementLocalNumber = 0
               
-              NUMBER_OF_GAUSS_POINTS=INDEPENDENT_FIELD_ELASTICITY%DECOMPOSITION%DOMAIN(INDEPENDENT_FIELD_ELASTICITY% &
-                & DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(ne)%BASIS%QUADRATURE%QUADRATURE_SCHEME_MAP &
-                & (BASIS_DEFAULT_QUADRATURE_SCHEME)%PTR%NUMBER_OF_GAUSS
+              IF (DEBUGGING) PRINT *, "FEElementGlobalNumber,FEElementLocalNumber,MaximumFEElementLocalNumber"
+              
+              ! loop over the finite elasticity elements
+              DO FEElementGlobalNumber=M_ELEMENTS_MAPPING%INTERNAL_START,M_ELEMENTS_MAPPING%BOUNDARY_FINISH
+                FEElementLocalNumber=M_ELEMENTS_MAPPING%DOMAIN_LIST(FEElementGlobalNumber)
+                
+                NUMBER_OF_GAUSS_POINTS=INDEPENDENT_FIELD_ELASTICITY%DECOMPOSITION%DOMAIN(INDEPENDENT_FIELD_ELASTICITY% &
+                  & DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(FEElementLocalNumber)%BASIS%QUADRATURE% & 
+                  & QUADRATURE_SCHEME_MAP(BASIS_DEFAULT_QUADRATURE_SCHEME)%PTR%NUMBER_OF_GAUSS
 
-              IF(NUMBER_OF_GAUSS_POINTS>MAX_NUMBER_OF_GAUSS_POINTS) CALL FlagError( & 
-                & "NUMBER_OF_GAUSS_POINTS is greater than MAX_NUMBER_OF_GAUSS_POINTS.",ERR,ERROR,*999)
-              NUMBER_OF_NODES=0
-              ACTIVE_STRESS_VALUES=0.0_DP
-              TITIN_STRESS_VALUES_UNBOUND=0.0_DP
-              TITIN_STRESS_VALUES_BOUND=0.0_DP
-              TITIN_STRESS_VALUES_CROSS_FIBRE_UNBOUND=0.0_DP
-              TITIN_STRESS_VALUES_CROSS_FIBRE_BOUND=0.0_DP
-              ACTIVATION_VALUES=0.0_DP
-              A_1_VALUES=0.0_DP
-              A_2_VALUES=0.0_DP
-              x_1_VALUES=0.0_DP
-              x_2_VALUES=0.0_DP
+                IF(NUMBER_OF_GAUSS_POINTS>MAX_NUMBER_OF_GAUSS_POINTS) CALL FlagError( & 
+                  & "NUMBER_OF_GAUSS_POINTS is greater than MAX_NUMBER_OF_GAUSS_POINTS.",ERR,ERROR,*999)
+                MaximumFEElementLocalNumber = MAX(MaximumFEElementLocalNumber, FEElementLocalNumber)
+                  
+                IF (DEBUGGING) PRINT *, FEElementGlobalNumber,FEElementLocalNumber,MaximumFEElementLocalNumber
+                  
+              ENDDO
               
-              !loop over the bioelectrics nodes
+              ! allocate variable for number of bioelectric nodes for which the gauss point is the nearest
+              ALLOCATE(NUMBER_OF_NODES(MaximumFEElementLocalNumber, MAX_NUMBER_OF_GAUSS_POINTS), Stat=Err)
+              IF(Err /= 0) CALL FlagError("Could not allocate NUMBER_OF_NODES.",err,error,*999)
+              
+            ENDIF
+            
+            SELECT CASE(PROBLEM%SPECIFICATION(3))
+            CASE(PROBLEM_GUDUNOV_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE,PROBLEM_MONODOMAIN_ELASTICITY_VELOCITY_SUBTYPE,&
+              & PROBLEM_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE)
+              
+              IF (.NOT. ALLOCATED(ACTIVE_STRESS_VALUES)) THEN
+                ALLOCATE(ACTIVE_STRESS_VALUES(MaximumFEElementLocalNumber, MAX_NUMBER_OF_GAUSS_POINTS), Stat=Err)
+                IF(Err /= 0) CALL FlagError("Could not allocate ACTIVE_STRESS_VALUES.",err,error,*999)
+                
+                ACTIVE_STRESS_VALUES = 0.0_DP
+              ENDIF
+            END SELECT
+              
+            ! allocate fields at gauss points that are only needed for a single subtype
+            SELECT CASE(PROBLEM%SPECIFICATION(3))
+            CASE(PROBLEM_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE)
+              
+              IF (.NOT. ALLOCATED(TITIN_STRESS_VALUES_UNBOUND)) THEN
+                ALLOCATE(TITIN_STRESS_VALUES_UNBOUND(MaximumFEElementLocalNumber, MAX_NUMBER_OF_GAUSS_POINTS), Stat=Err)
+                IF(Err /= 0) CALL FlagError("Could not allocate TITIN_STRESS_VALUES_UNBOUND.",err,error,*999)
+                
+              ENDIF
+              IF (.NOT. ALLOCATED(TITIN_STRESS_VALUES_BOUND)) THEN
+                ALLOCATE(TITIN_STRESS_VALUES_BOUND(MaximumFEElementLocalNumber, MAX_NUMBER_OF_GAUSS_POINTS), Stat=Err)
+                IF(Err /= 0) CALL FlagError("Could not allocate TITIN_STRESS_VALUES_BOUND.",err,error,*999)
+                
+              ENDIF
+              IF (.NOT. ALLOCATED(TITIN_STRESS_VALUES_CROSS_FIBRE_UNBOUND)) THEN
+                ALLOCATE(TITIN_STRESS_VALUES_CROSS_FIBRE_UNBOUND(MaximumFEElementLocalNumber, MAX_NUMBER_OF_GAUSS_POINTS), Stat=Err)
+                IF(Err /= 0) CALL FlagError("Could not allocate TITIN_STRESS_VALUES_CROSS_FIBRE_UNBOUND.",err,error,*999)
+                
+              ENDIF
+              IF (.NOT. ALLOCATED(TITIN_STRESS_VALUES_CROSS_FIBRE_BOUND)) THEN
+                ALLOCATE(TITIN_STRESS_VALUES_CROSS_FIBRE_BOUND(MaximumFEElementLocalNumber, MAX_NUMBER_OF_GAUSS_POINTS), Stat=Err)
+                IF(Err /= 0) CALL FlagError("Could not allocate TITIN_STRESS_VALUES_CROSS_FIBRE_BOUND.",err,error,*999)
+                
+              ENDIF
+              
+              IF (.NOT. ALLOCATED(ACTIVATION_VALUES)) THEN
+                ALLOCATE(ACTIVATION_VALUES(MaximumFEElementLocalNumber, MAX_NUMBER_OF_GAUSS_POINTS), Stat=Err)
+                IF(Err /= 0) CALL FlagError("Could not allocate ACTIVATION_VALUES.",err,error,*999)
+                
+              ENDIF
+              
+            CASE(PROBLEM_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE)
+              IF (.NOT. ALLOCATED(A_1_VALUES)) THEN
+                ALLOCATE(A_1_VALUES(MaximumFEElementLocalNumber, MAX_NUMBER_OF_GAUSS_POINTS), Stat=Err)
+                IF(Err /= 0) CALL FlagError("Could not allocate A_1_VALUES.",err,error,*999)
+                
+              ENDIF
+              
+              IF (.NOT. ALLOCATED(A_2_VALUES)) THEN
+                ALLOCATE(A_2_VALUES(MaximumFEElementLocalNumber, MAX_NUMBER_OF_GAUSS_POINTS), Stat=Err)
+                IF(Err /= 0) CALL FlagError("Could not allocate A_2_VALUES.",err,error,*999)
+                
+              ENDIF
+              
+              
+              IF (.NOT. ALLOCATED(x_1_VALUES)) THEN
+                ALLOCATE(x_1_VALUES(MaximumFEElementLocalNumber, MAX_NUMBER_OF_GAUSS_POINTS), Stat=Err)
+                IF(Err /= 0) CALL FlagError("Could not allocate x_1_VALUES.",err,error,*999)
+                
+              ENDIF
+              
+              IF (.NOT. ALLOCATED(x_2_VALUES)) THEN
+                ALLOCATE(x_2_VALUES(MaximumFEElementLocalNumber, MAX_NUMBER_OF_GAUSS_POINTS), Stat=Err)
+                IF(Err /= 0) CALL FlagError("Could not allocate x_2_VALUES.",err,error,*999)
+                
+              ENDIF
+              
+            END SELECT
+            
+            ! initialize values to 0
+            SELECT CASE(PROBLEM%SPECIFICATION(3))
+            CASE(PROBLEM_GUDUNOV_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE,PROBLEM_MONODOMAIN_ELASTICITY_VELOCITY_SUBTYPE)
+
+              NUMBER_OF_NODES = 0
+              ACTIVE_STRESS_VALUES = 0.0_DP
+              
+            CASE(PROBLEM_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE)
+            
+              NUMBER_OF_NODES = 0
+              ACTIVE_STRESS_VALUES = 0.0_DP
+              
+              TITIN_STRESS_VALUES_UNBOUND = 0.0_DP
+              TITIN_STRESS_VALUES_BOUND = 0.0_DP
+              TITIN_STRESS_VALUES_CROSS_FIBRE_UNBOUND = 0.0_DP
+              TITIN_STRESS_VALUES_CROSS_FIBRE_BOUND = 0.0_DP
+              ACTIVATION_VALUES = 0.0_DP
+              
+            CASE(PROBLEM_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE)
+
+              NUMBER_OF_NODES = 0
+              A_1_VALUES = 0.0_DP
+              A_2_VALUES = 0.0_DP
+              x_1_VALUES = 0.0_DP
+              x_2_VALUES = 0.0_DP
+              
+            END SELECT
+            
+            IF (DEBUGGING) THEN
+              PRINT *, "FE elements associated with bioelectric nodes:"
               DO node_idx=1,M_NODES_MAPPING%NUMBER_OF_LOCAL
-                dof_idx=FIELD_VARIABLE_V%COMPONENTS(5)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
+                  
+                ! get the local FE element local number
+                DofIdx=FIELD_VARIABLE_V%COMPONENTS(5)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
                   & VERSIONS(1)
                 CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                  & dof_idx,inElement,ERR,ERROR,*999) !component 5 of variable V contains inElem info (LOCAL NUMBERING!!!)
-
-                !check if the bioelectrics node is located within the finite elasticity element
-                IF(inElement==ne) THEN
-                  !component 4 of variable V contains Nearest Gauss Point info
-                  dof_idx=FIELD_VARIABLE_V%COMPONENTS(4)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
-                    & VERSIONS(1)
-                  CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                    & dof_idx,nearestGP,ERR,ERROR,*999)
-                  IF(nearestGP>MAX_NUMBER_OF_GAUSS_POINTS) CALL FlagError( &
-                    & "Nearest Gauss Point is greater than MAX_NUMBER_OF_GAUSS_POINTS.",ERR,ERROR,*999)
-
-                  SELECT CASE(PROBLEM%SPECIFICATION(3))
-                  CASE(PROBLEM_GUDUNOV_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE,PROBLEM_MONODOMAIN_ELASTICITY_VELOCITY_SUBTYPE)
-
-                    !component 1 of variable U contains the active stress
-                    dof_idx=FIELD_VARIABLE_U%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
-                      & VERSIONS(1)
-                    CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-                      & FIELD_VALUES_SET_TYPE,dof_idx,ACTIVE_STRESS,ERR,ERROR,*999)
-                    
-                    !count the number of bioelectrics nodes that are closest to each finite elasticity Gauss point
-                    NUMBER_OF_NODES(nearestGP)=NUMBER_OF_NODES(nearestGP)+1
-                    !add up the active stress value
-                    ACTIVE_STRESS_VALUES(nearestGP)=ACTIVE_STRESS_VALUES(nearestGP)+ACTIVE_STRESS
-                    
-                  CASE(PROBLEM_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE)
-
-                    !component 1 of variable U contains the active stress
-                    dof_idx=FIELD_VARIABLE_U%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
-                      & VERSIONS(1)
-                    CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-                      & FIELD_VALUES_SET_TYPE,dof_idx,ACTIVE_STRESS,ERR,ERROR,*999)
-                    
-                    !count the number of bioelectrics nodes that are closest to each finite elasticity Gauss point
-                    NUMBER_OF_NODES(nearestGP)=NUMBER_OF_NODES(nearestGP)+1
-                    !add up the active stress value
-                    ACTIVE_STRESS_VALUES(nearestGP)=ACTIVE_STRESS_VALUES(nearestGP)+ACTIVE_STRESS
-                    
-                    !component 2 of variable U contains the titin stress unbound
-                    dof_idx=FIELD_VARIABLE_U%COMPONENTS(2)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
-                      & VERSIONS(1)
-                    CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-                      & FIELD_VALUES_SET_TYPE,dof_idx,TITIN_STRESS_UNBOUND,ERR,ERROR,*999)
-                    !component 3 of variable U contains the titin stress bound
-                    dof_idx=FIELD_VARIABLE_U%COMPONENTS(3)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
-                      & VERSIONS(1)
-                    CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-                      & FIELD_VALUES_SET_TYPE,dof_idx,TITIN_STRESS_BOUND,ERR,ERROR,*999)
-                    !component 4 of variable U contains the titin XF-stress (cross-fibre directions) unbound
-                    dof_idx=FIELD_VARIABLE_U%COMPONENTS(4)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
-                      & VERSIONS(1)
-                    CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-                      & FIELD_VALUES_SET_TYPE,dof_idx,TITIN_STRESS_CROSS_FIBRE_UNBOUND,ERR,ERROR,*999)
-                    !component 5 of variable U contains the titin XF-stress (cross-fibre directions) bound
-                    dof_idx=FIELD_VARIABLE_U%COMPONENTS(5)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
-                      & VERSIONS(1)
-                    CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-                      & FIELD_VALUES_SET_TYPE,dof_idx,TITIN_STRESS_CROSS_FIBRE_BOUND,ERR,ERROR,*999)
-                    !component 6 of variable U contains the titin activation
-                    dof_idx=FIELD_VARIABLE_U%COMPONENTS(6)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
-                      & VERSIONS(1)
-                    CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-                      & FIELD_VALUES_SET_TYPE,dof_idx,ACTIVATION,ERR,ERROR,*999)
-
-                    TITIN_STRESS_VALUES_UNBOUND(nearestGP)=TITIN_STRESS_VALUES_UNBOUND(nearestGP)+TITIN_STRESS_UNBOUND
-                    TITIN_STRESS_VALUES_BOUND(nearestGP)=TITIN_STRESS_VALUES_BOUND(nearestGP)+TITIN_STRESS_BOUND
-                    TITIN_STRESS_VALUES_CROSS_FIBRE_UNBOUND(nearestGP)=TITIN_STRESS_VALUES_CROSS_FIBRE_UNBOUND(nearestGP) + &
-                      & TITIN_STRESS_CROSS_FIBRE_UNBOUND
-                    TITIN_STRESS_VALUES_CROSS_FIBRE_BOUND(nearestGP)=TITIN_STRESS_VALUES_CROSS_FIBRE_BOUND(nearestGP) + &
-                      & TITIN_STRESS_CROSS_FIBRE_BOUND
-                    ACTIVATION_VALUES(nearestGP)=ACTIVATION_VALUES(nearestGP)+ACTIVATION
-                    
-                  CASE(PROBLEM_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE)
-
-                    !count the number of bioelectrics nodes that are closest to each finite elasticity Gauss point
-                    NUMBER_OF_NODES(nearestGP)=NUMBER_OF_NODES(nearestGP)+1
-
-                    !component 1 of variable U contains A_1
-                    dof_idx=FIELD_VARIABLE_U%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
-                      & VERSIONS(1)
-                    CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-                      & FIELD_VALUES_SET_TYPE,dof_idx,A_1,ERR,ERROR,*999)
-                    !component 2 of variable U contains A_2
-                    dof_idx=FIELD_VARIABLE_U%COMPONENTS(2)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
-                      & VERSIONS(1)
-                    CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-                      & FIELD_VALUES_SET_TYPE,dof_idx,A_2,ERR,ERROR,*999)
-                    !component 3 of variable U contains x_1
-                    dof_idx=FIELD_VARIABLE_U%COMPONENTS(3)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
-                      & VERSIONS(1)
-                    CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-                      & FIELD_VALUES_SET_TYPE,dof_idx,x_1,ERR,ERROR,*999)
-                    !component 4 of variable U contains x_2
-                    dof_idx=FIELD_VARIABLE_U%COMPONENTS(4)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
-                      & VERSIONS(1)
-                    CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-                      & FIELD_VALUES_SET_TYPE,dof_idx,x_2,ERR,ERROR,*999)
-
-                    A_1_VALUES(nearestGP)=A_1_VALUES(nearestGP)+A_1
-                    A_2_VALUES(nearestGP)=A_2_VALUES(nearestGP)+A_2
-                    x_1_VALUES(nearestGP)=x_1_VALUES(nearestGP)+x_1
-                    x_2_VALUES(nearestGP)=x_2_VALUES(nearestGP)+x_2
-                  END SELECT
-
-                ENDIF
+                  & DofIdx,FEElementLocalNumber,ERR,ERROR,*999) !component 5 of variable V contains inElem info (LOCAL NUMBERING!!!)
+                  
+                PRINT *, "node ", node_idx,", FE element local", FEElementLocalNumber
+                  
               ENDDO
+              
+            ENDIF
+              
+            IF (DEBUGGING) PRINT*, "Interpolate"
+            !--- NOW INTERPOLATE ---
+            ! ------------ accumulate stress values at gauss points ----------------------              
+            !loop over the bioelectrics nodes
+            DO node_idx=1,M_NODES_MAPPING%NUMBER_OF_LOCAL
+              
+              ! get the local FE element local number
+              DofIdx=FIELD_VARIABLE_V%COMPONENTS(5)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
+                & VERSIONS(1)
+              CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
+                & DofIdx,FEElementLocalNumber,ERR,ERROR,*999) !component 5 of variable V contains inElem info (LOCAL NUMBERING!!!)
+                
+              ! do not consider nodes for which the containing FE element is on a different processors subdomain
+              IF (FEElementLocalNumber > MaximumFEElementLocalNumber) CYCLE
+                
+              ! get the number of the nearest Gauss Point
+              !component 4 of variable V contains Nearest Gauss Point info
+              DofIdx=FIELD_VARIABLE_V%COMPONENTS(4)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
+                & VERSIONS(1)
+              CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
+                & DofIdx,nearestGP,ERR,ERROR,*999)
+              IF(nearestGP>MAX_NUMBER_OF_GAUSS_POINTS) CALL FlagError( &
+                & "Nearest Gauss Point is greater than MAX_NUMBER_OF_GAUSS_POINTS.",ERR,ERROR,*999)
 
+              IF (DEBUGGING) THEN
+                WRITE(*,"(3(A, I3))",advance='no') "node ", node_idx, ", FE element: ", FEElementLocalNumber, & 
+                  & ", nearestGP:", nearestGP
+                WRITE(*,"(1(A,I3))",advance='no') ", NUMBER_OF_NODES:", NUMBER_OF_NODES(FEElementLocalNumber, nearestGP)
+                PRINT *, ""
+              ENDIF
+              
+              ! depending on problem subtype accumulate stress values
+              SELECT CASE(PROBLEM%SPECIFICATION(3))
+              CASE(PROBLEM_GUDUNOV_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE,PROBLEM_MONODOMAIN_ELASTICITY_VELOCITY_SUBTYPE)
+
+                !component 1 of variable U contains the active stress
+                DofIdx=FIELD_VARIABLE_U%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
+                  & VERSIONS(1)
+                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,DofIdx,ACTIVE_STRESS,ERR,ERROR,*999)
+                
+                !count the number of bioelectrics nodes that are closest to each finite elasticity Gauss point
+                NUMBER_OF_NODES(FEElementLocalNumber, nearestGP)=NUMBER_OF_NODES(FEElementLocalNumber, nearestGP)+1
+                !add up the active stress value
+                ACTIVE_STRESS_VALUES(FEElementLocalNumber, nearestGP) = &
+                  & ACTIVE_STRESS_VALUES(FEElementLocalNumber, nearestGP)+ACTIVE_STRESS
+                
+              CASE(PROBLEM_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE)
+
+                !component 1 of variable U contains the active stress
+                DofIdx=FIELD_VARIABLE_U%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
+                  & VERSIONS(1)
+                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,DofIdx,ACTIVE_STRESS,ERR,ERROR,*999)
+                
+                !count the number of bioelectrics nodes that are closest to each finite elasticity Gauss point
+                NUMBER_OF_NODES(FEElementLocalNumber, nearestGP)=NUMBER_OF_NODES(FEElementLocalNumber, nearestGP)+1
+                !add up the active stress value
+                ACTIVE_STRESS_VALUES(FEElementLocalNumber, nearestGP) = &
+                  & ACTIVE_STRESS_VALUES(FEElementLocalNumber, nearestGP)+ACTIVE_STRESS
+                
+                ! get stress values from bioelectric nodes
+                !component 2 of variable U contains the titin stress unbound
+                DofIdx=FIELD_VARIABLE_U%COMPONENTS(2)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
+                  & VERSIONS(1)
+                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,DofIdx,TITIN_STRESS_UNBOUND,ERR,ERROR,*999)
+                !component 3 of variable U contains the titin stress bound
+                DofIdx=FIELD_VARIABLE_U%COMPONENTS(3)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
+                  & VERSIONS(1)
+                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,DofIdx,TITIN_STRESS_BOUND,ERR,ERROR,*999)
+                !component 4 of variable U contains the titin XF-stress (cross-fibre directions) unbound
+                DofIdx=FIELD_VARIABLE_U%COMPONENTS(4)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
+                  & VERSIONS(1)
+                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,DofIdx,TITIN_STRESS_CROSS_FIBRE_UNBOUND,ERR,ERROR,*999)
+                !component 5 of variable U contains the titin XF-stress (cross-fibre directions) bound
+                DofIdx=FIELD_VARIABLE_U%COMPONENTS(5)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
+                  & VERSIONS(1)
+                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,DofIdx,TITIN_STRESS_CROSS_FIBRE_BOUND,ERR,ERROR,*999)
+                !component 6 of variable U contains the titin activation
+                DofIdx=FIELD_VARIABLE_U%COMPONENTS(6)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
+                  & VERSIONS(1)
+                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,DofIdx,ACTIVATION,ERR,ERROR,*999)
+
+                TITIN_STRESS_VALUES_UNBOUND(FEElementLocalNumber, nearestGP) = &
+                  & TITIN_STRESS_VALUES_UNBOUND(FEElementLocalNumber, nearestGP)+TITIN_STRESS_UNBOUND
+                TITIN_STRESS_VALUES_BOUND(FEElementLocalNumber, nearestGP) = &
+                  & TITIN_STRESS_VALUES_BOUND(FEElementLocalNumber, nearestGP)+TITIN_STRESS_BOUND
+                TITIN_STRESS_VALUES_CROSS_FIBRE_UNBOUND(FEElementLocalNumber, nearestGP) = &
+                  & TITIN_STRESS_VALUES_CROSS_FIBRE_UNBOUND(FEElementLocalNumber, nearestGP) + TITIN_STRESS_CROSS_FIBRE_UNBOUND
+                TITIN_STRESS_VALUES_CROSS_FIBRE_BOUND(FEElementLocalNumber, nearestGP) = &
+                  & TITIN_STRESS_VALUES_CROSS_FIBRE_BOUND(FEElementLocalNumber, nearestGP) + TITIN_STRESS_CROSS_FIBRE_BOUND
+                ACTIVATION_VALUES(FEElementLocalNumber, nearestGP) = ACTIVATION_VALUES(FEElementLocalNumber, nearestGP)+ACTIVATION
+                
+              CASE(PROBLEM_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE)
+
+                !count the number of bioelectrics nodes that are closest to each finite elasticity Gauss point
+                NUMBER_OF_NODES(FEElementLocalNumber, nearestGP)=NUMBER_OF_NODES(FEElementLocalNumber, nearestGP)+1
+
+                !component 1 of variable U contains A_1
+                DofIdx=FIELD_VARIABLE_U%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
+                  & VERSIONS(1)
+                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,DofIdx,A_1,ERR,ERROR,*999)
+                !component 2 of variable U contains A_2
+                DofIdx=FIELD_VARIABLE_U%COMPONENTS(2)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
+                  & VERSIONS(1)
+                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,DofIdx,A_2,ERR,ERROR,*999)
+                !component 3 of variable U contains x_1
+                DofIdx=FIELD_VARIABLE_U%COMPONENTS(3)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
+                  & VERSIONS(1)
+                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,DofIdx,x_1,ERR,ERROR,*999)
+                !component 4 of variable U contains x_2
+                DofIdx=FIELD_VARIABLE_U%COMPONENTS(4)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
+                  & VERSIONS(1)
+                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,DofIdx,x_2,ERR,ERROR,*999)
+
+                A_1_VALUES(FEElementLocalNumber, nearestGP) = A_1_VALUES(FEElementLocalNumber, nearestGP) + A_1
+                A_2_VALUES(FEElementLocalNumber, nearestGP) = A_2_VALUES(FEElementLocalNumber, nearestGP) + A_2
+                x_1_VALUES(FEElementLocalNumber, nearestGP) = x_1_VALUES(FEElementLocalNumber, nearestGP) + x_1
+                x_2_VALUES(FEElementLocalNumber, nearestGP) = x_2_VALUES(FEElementLocalNumber, nearestGP) + x_2
+              END SELECT
+            ENDDO
+          
+            IF (DEBUGGING) PRINT *, "compute averages"
+          
+            ! ------------ compute average values at gauss points and store them to FE elements --------
+            ! loop over internal and boundary finite elasticity elements
+            DO FEElementGlobalNumber=M_ELEMENTS_MAPPING%INTERNAL_START,M_ELEMENTS_MAPPING%BOUNDARY_FINISH
+              FEElementLocalNumber=M_ELEMENTS_MAPPING%DOMAIN_LIST(FEElementGlobalNumber)
+              
+              NUMBER_OF_GAUSS_POINTS=INDEPENDENT_FIELD_ELASTICITY%DECOMPOSITION%DOMAIN(INDEPENDENT_FIELD_ELASTICITY% &
+                & DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%TOPOLOGY%ELEMENTS%ELEMENTS(FEElementLocalNumber)%BASIS%QUADRATURE% & 
+                & QUADRATURE_SCHEME_MAP(BASIS_DEFAULT_QUADRATURE_SCHEME)%PTR%NUMBER_OF_GAUSS
+
+              IF (DEBUGGING) PRINT *, "FE element local ", FEElementLocalNumber,", NUMBER_OF_GAUSS_POINTS:", NUMBER_OF_GAUSS_POINTS
+                
               !loop over the finite elasticity Gauss points
               DO gauss_idx=1,NUMBER_OF_GAUSS_POINTS
-                !make sure we don't divide by zero
-                IF(NUMBER_OF_NODES(gauss_idx)<=0) THEN
-                  ACTIVE_STRESS=0.0_DP
-                  TITIN_STRESS_UNBOUND=0.0_DP
-                  TITIN_STRESS_BOUND=0.0_DP
-                  TITIN_STRESS_CROSS_FIBRE_UNBOUND=0.0_DP
-                  TITIN_STRESS_CROSS_FIBRE_BOUND=0.0_DP
-                  ACTIVATION=0.0_DP
-                  A_1=0.0_DP
-                  A_2=0.0_DP
-                  x_1=0.0_DP
-                  x_2=0.0_DP
-                ELSE
-                  ACTIVE_STRESS=ACTIVE_STRESS_VALUES(gauss_idx)/NUMBER_OF_NODES(gauss_idx)
-                  TITIN_STRESS_UNBOUND=TITIN_STRESS_VALUES_UNBOUND(gauss_idx)/NUMBER_OF_NODES(gauss_idx)
-                  TITIN_STRESS_BOUND=TITIN_STRESS_VALUES_BOUND(gauss_idx)/NUMBER_OF_NODES(gauss_idx)
-                  TITIN_STRESS_CROSS_FIBRE_UNBOUND=TITIN_STRESS_VALUES_CROSS_FIBRE_UNBOUND(gauss_idx)/NUMBER_OF_NODES(gauss_idx)
-                  TITIN_STRESS_CROSS_FIBRE_BOUND=TITIN_STRESS_VALUES_CROSS_FIBRE_BOUND(gauss_idx)/ &
-                    & NUMBER_OF_NODES(gauss_idx)
-                  ACTIVATION=ACTIVATION_VALUES(gauss_idx)/NUMBER_OF_NODES(gauss_idx)
-                  A_1=A_1_VALUES(gauss_idx)/NUMBER_OF_NODES(gauss_idx)
-                  A_2=A_2_VALUES(gauss_idx)/NUMBER_OF_NODES(gauss_idx)
-                  x_1=x_1_VALUES(gauss_idx)/NUMBER_OF_NODES(gauss_idx)
-                  x_2=x_2_VALUES(gauss_idx)/NUMBER_OF_NODES(gauss_idx)
-                ENDIF
-
+              
+                NumberOfBioelectricNodesAtGaussPoint = NUMBER_OF_NODES(FEElementLocalNumber, gauss_idx)
+                IF (DEBUGGING) PRINT *, "FE element local",FEElementLocalNumber,", Gauss Point",gauss_idx, &
+                  & ", number of nodes: ",NumberOfBioelectricNodesAtGaussPoint
+              
                 SELECT CASE(PROBLEM%SPECIFICATION(3))
                 CASE(PROBLEM_GUDUNOV_MONODOMAIN_1D3D_ELASTICITY_SUBTYPE,PROBLEM_MONODOMAIN_ELASTICITY_VELOCITY_SUBTYPE)
 
-                  dof_idx=FIELD_VARIABLE_FE%COMPONENTS(1)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx,ne)
+                  ! average values at gauss point
+                  IF(NumberOfBioelectricNodesAtGaussPoint == 0) THEN
+                    ACTIVE_STRESS = 0.0_DP
+                  ELSE
+                    ACTIVE_STRESS = ACTIVE_STRESS_VALUES(FEElementLocalNumber, gauss_idx) / NumberOfBioelectricNodesAtGaussPoint
+                  ENDIF
+
+                  ! store values in independent field
+                  DofIdx=FIELD_VARIABLE_FE%COMPONENTS(1)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx, & 
+                   & FEElementLocalNumber)
                   CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_U_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,dof_idx,ACTIVE_STRESS,ERR,ERROR,*999)
+                    & FIELD_VALUES_SET_TYPE,DofIdx,ACTIVE_STRESS,ERR,ERROR,*999)
 
                 CASE(PROBLEM_MONODOMAIN_ELASTICITY_W_TITIN_SUBTYPE)
+                  ! average values at gauss point
+                  IF(NumberOfBioelectricNodesAtGaussPoint == 0) THEN
+                    
+                    ACTIVE_STRESS=0.0_DP
+                    ACTIVATION=0.0_DP
+                    TITIN_STRESS_UNBOUND=0.0_DP
+                    TITIN_STRESS_BOUND=0.0_DP
+                    TITIN_STRESS_CROSS_FIBRE_UNBOUND=0.0_DP
+                    TITIN_STRESS_CROSS_FIBRE_BOUND=0.0_DP
 
-                  dof_idx=FIELD_VARIABLE_FE%COMPONENTS(1)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx,ne)
+                  ELSE
+                    ACTIVE_STRESS = ACTIVE_STRESS_VALUES(FEElementLocalNumber, gauss_idx) / NumberOfBioelectricNodesAtGaussPoint
+                    ACTIVATION = ACTIVATION_VALUES(FEElementLocalNumber, gauss_idx) / NumberOfBioelectricNodesAtGaussPoint
+                    TITIN_STRESS_UNBOUND = TITIN_STRESS_VALUES_UNBOUND(FEElementLocalNumber, gauss_idx) / &
+                      & NumberOfBioelectricNodesAtGaussPoint
+                    TITIN_STRESS_BOUND = TITIN_STRESS_VALUES_BOUND(FEElementLocalNumber, gauss_idx) / &
+                      & NumberOfBioelectricNodesAtGaussPoint
+                    TITIN_STRESS_CROSS_FIBRE_UNBOUND = TITIN_STRESS_VALUES_CROSS_FIBRE_UNBOUND(FEElementLocalNumber, gauss_idx) / &
+                      & NumberOfBioelectricNodesAtGaussPoint
+                    TITIN_STRESS_CROSS_FIBRE_BOUND = TITIN_STRESS_VALUES_CROSS_FIBRE_BOUND(FEElementLocalNumber, gauss_idx) / &
+                      & NumberOfBioelectricNodesAtGaussPoint
+                  ENDIF
+                  
+                  ! store values in independent field
+                  DofIdx=FIELD_VARIABLE_FE%COMPONENTS(1)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx, & 
+                    & FEElementLocalNumber)
                   CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_U_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,dof_idx,ACTIVE_STRESS,ERR,ERROR,*999)
-                  dof_idx=FIELD_VARIABLE_FE%COMPONENTS(2)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx,ne)
+                    & FIELD_VALUES_SET_TYPE,DofIdx,ACTIVE_STRESS,ERR,ERROR,*999)
+                  DofIdx=FIELD_VARIABLE_FE%COMPONENTS(2)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx, & 
+                    & FEElementLocalNumber)
                   CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_U_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,dof_idx,TITIN_STRESS_UNBOUND,ERR,ERROR,*999)
-                  dof_idx=FIELD_VARIABLE_FE%COMPONENTS(3)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx,ne)
+                    & FIELD_VALUES_SET_TYPE,DofIdx,TITIN_STRESS_UNBOUND,ERR,ERROR,*999)
+                  DofIdx=FIELD_VARIABLE_FE%COMPONENTS(3)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx, & 
+                    & FEElementLocalNumber)
                   CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_U_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,dof_idx,TITIN_STRESS_BOUND,ERR,ERROR,*999)
-                  dof_idx=FIELD_VARIABLE_FE%COMPONENTS(4)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx,ne)
+                    & FIELD_VALUES_SET_TYPE,DofIdx,TITIN_STRESS_BOUND,ERR,ERROR,*999)
+                  DofIdx=FIELD_VARIABLE_FE%COMPONENTS(4)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx, & 
+                    & FEElementLocalNumber)
                   CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_U_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,dof_idx,TITIN_STRESS_CROSS_FIBRE_UNBOUND,ERR,ERROR,*999)
-                  dof_idx=FIELD_VARIABLE_FE%COMPONENTS(5)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx,ne)
+                    & FIELD_VALUES_SET_TYPE,DofIdx,TITIN_STRESS_CROSS_FIBRE_UNBOUND,ERR,ERROR,*999)
+                  DofIdx=FIELD_VARIABLE_FE%COMPONENTS(5)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx, & 
+                    & FEElementLocalNumber)
                   CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_U_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,dof_idx,TITIN_STRESS_CROSS_FIBRE_BOUND,ERR,ERROR,*999)
-                  dof_idx=FIELD_VARIABLE_FE%COMPONENTS(6)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx,ne)
+                    & FIELD_VALUES_SET_TYPE,DofIdx,TITIN_STRESS_CROSS_FIBRE_BOUND,ERR,ERROR,*999)
+                  DofIdx=FIELD_VARIABLE_FE%COMPONENTS(6)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx, & 
+                    & FEElementLocalNumber)
                   CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_U_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,dof_idx,ACTIVATION,ERR,ERROR,*999)
+                    & FIELD_VALUES_SET_TYPE,DofIdx,ACTIVATION,ERR,ERROR,*999)
 
                 CASE(PROBLEM_MONODOMAIN_1D3D_ACTIVE_STRAIN_SUBTYPE)
-
-                  dof_idx=FIELD_VARIABLE_FE%COMPONENTS(1)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx,ne)
+                  ! average values at gauss points
+                  IF(NumberOfBioelectricNodesAtGaussPoint == 0) THEN
+                    A_1=0.0_DP
+                    A_2=0.0_DP
+                    x_1=0.0_DP
+                    x_2=0.0_DP
+                  ELSE
+                    A_1 = A_1_VALUES(FEElementLocalNumber, gauss_idx) / NumberOfBioelectricNodesAtGaussPoint
+                    A_2 = A_2_VALUES(FEElementLocalNumber, gauss_idx) / NumberOfBioelectricNodesAtGaussPoint
+                    x_1 = x_1_VALUES(FEElementLocalNumber, gauss_idx) / NumberOfBioelectricNodesAtGaussPoint
+                    x_2 = x_2_VALUES(FEElementLocalNumber, gauss_idx) / NumberOfBioelectricNodesAtGaussPoint
+                  
+                  ENDIF
+                  
+                  ! store values in independent field
+                  DofIdx=FIELD_VARIABLE_FE%COMPONENTS(1)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx, & 
+                    & FEElementLocalNumber)
                   CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_U_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,dof_idx,A_1,ERR,ERROR,*999)
-                  dof_idx=FIELD_VARIABLE_FE%COMPONENTS(2)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx,ne)
+                    & FIELD_VALUES_SET_TYPE,DofIdx,A_1,ERR,ERROR,*999)
+                  DofIdx=FIELD_VARIABLE_FE%COMPONENTS(2)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx, & 
+                    & FEElementLocalNumber)
                   CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_U_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,dof_idx,A_2,ERR,ERROR,*999)
-                  dof_idx=FIELD_VARIABLE_FE%COMPONENTS(3)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx,ne)
+                    & FIELD_VALUES_SET_TYPE,DofIdx,A_2,ERR,ERROR,*999)
+                  DofIdx=FIELD_VARIABLE_FE%COMPONENTS(3)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx, & 
+                    & FEElementLocalNumber)
                   CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_U_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,dof_idx,x_1,ERR,ERROR,*999)
-                  dof_idx=FIELD_VARIABLE_FE%COMPONENTS(4)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx,ne)
+                    & FIELD_VALUES_SET_TYPE,DofIdx,x_1,ERR,ERROR,*999)
+                  DofIdx=FIELD_VARIABLE_FE%COMPONENTS(4)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(gauss_idx, & 
+                    & FEElementLocalNumber)
                   CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_U_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,dof_idx,x_2,ERR,ERROR,*999)
+                    & FIELD_VALUES_SET_TYPE,DofIdx,x_2,ERR,ERROR,*999)
 
                 END SELECT
 
               ENDDO !gauss_idx
-            ENDDO !FEElementIndex
+            ENDDO !FEElementGlobalNumber
 
             !now the ghost elements -- get the relevant info from the other computational nodes
             CALL FIELD_PARAMETER_SET_UPDATE_START(INDEPENDENT_FIELD_ELASTICITY, & 
@@ -3426,7 +3969,7 @@ CONTAINS
     TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: M_NODES_MAPPING
-    INTEGER(INTG) :: node_idx,dof_idx
+    INTEGER(INTG) :: node_idx,DofIdx
     REAL(DP), PARAMETER :: LENGTH_ACTIN=1.04_DP,LENGTH_MBAND=0.0625_DP,LENGTH_MYOSIN=0.7375_DP
     REAL(DP), PARAMETER :: LENGTH_ZERO=0.635_DP,LENGTH_ZDISC=0.05_DP
     REAL(DP) :: F0,FORCE,TITIN_BOUND,TITIN_XF_BOUND,TITIN_UNBOUND,TITIN_XF_UNBOUND
@@ -3561,16 +4104,16 @@ CONTAINS
                   DO node_idx=1,M_NODES_MAPPING%NUMBER_OF_LOCAL
                   
                     !the fourth component of the U1 variable contains the half sarcomere length at activation
-                    dof_idx=FIELD_VAR_IND_M_U1%COMPONENTS(4)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
+                    DofIdx=FIELD_VAR_IND_M_U1%COMPONENTS(4)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
                       & VERSIONS(1)
                     CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U1_VARIABLE_TYPE, &
-                      & FIELD_VALUES_SET_TYPE,dof_idx,SARCO_LENGTH_AT_ACTIVATION,ERR,ERROR,*999)
+                      & FIELD_VALUES_SET_TYPE,DofIdx,SARCO_LENGTH_AT_ACTIVATION,ERR,ERROR,*999)
 
                     !the first component of the U1 variable contains the actual half sarcomere length
-                    dof_idx=FIELD_VAR_IND_M_U1%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
+                    DofIdx=FIELD_VAR_IND_M_U1%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node_idx)%DERIVATIVES(1)% &
                       & VERSIONS(1)
                     CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U1_VARIABLE_TYPE, &
-                      & FIELD_VALUES_SET_TYPE,dof_idx,SARCO_LENGTH,ERR,ERROR,*999)
+                      & FIELD_VALUES_SET_TYPE,DofIdx,SARCO_LENGTH,ERR,ERROR,*999)
                     
                     ELONGATION=SARCO_LENGTH-SARCO_LENGTH_AT_ACTIVATION
                     

@@ -1232,6 +1232,12 @@ MODULE CmissPetsc
       PetscInt ierr
     END SUBROUTINE TSSetTimeStep
     
+    SUBROUTINE TSGetTimeStepNumber(ts,n,ierr)
+      TS ts
+      PetscInt n
+      PetscInt ierr
+    END SUBROUTINE TSGetTimeStepNumber
+    
     SUBROUTINE TSSetType(ts,tstype,ierr)
       TS ts
       TSType tstype
@@ -1710,7 +1716,8 @@ MODULE CmissPetsc
 
   PUBLIC Petsc_TSCreate,Petsc_TSDestroy,Petsc_TSGetSolution,Petsc_TSMonitorSet,Petsc_TSSetDuration,Petsc_TSSetExactFinalTime, &
     & Petsc_TSSetFromOptions,Petsc_TSSetInitialTimeStep,Petsc_TSSetProblemType,Petsc_TSSetRHSFunction,Petsc_TSSetSolution, &
-    & Petsc_TSSetTimeStep,Petsc_TSSetType,Petsc_TSSolve,Petsc_TSStep,Petsc_TSSundialsSetTolerance,Petsc_TSSundialsSetType
+    & Petsc_TSSetTimeStep,Petsc_TSGetTImeStepNumber, Petsc_TSSetType,Petsc_TSSolve,Petsc_TSStep,Petsc_TSSundialsSetTolerance, &
+    & Petsc_TSSundialsSetType
 
   !Vector routines and constants
 
@@ -1893,7 +1900,7 @@ CONTAINS
     RETURN 1
     
   END SUBROUTINE Petsc_ISFinalise
-    
+  
   !
   !================================================================================================================================
   !
@@ -6042,11 +6049,11 @@ CONTAINS
     ENTERS("Petsc_TSSetExactFinalTime",err,error,*999)
 
     IF(exactFinalTime) THEN ! CARE! This sets PetSc's 'eftopt' as the interpolate version! not as the match version! the interface to C language probably does not provide the 'match'
-      CALL TSSetExactFinalTime(ts%ts,PETSC_TRUE,err)
+      CALL TSSetExactFinalTime(ts%ts,PETSC_TRUE,err) ! have to do it anyway, since I found a line in src/ts/impls/implicit/sundials/sundials.c: ...below...
     ELSE
       CALL TSSetExactFinalTime(ts%ts,PETSC_FALSE,err)
     ENDIF
-    
+!..above: if (ts->exact_final_time == TS_EXACTFINALTIME_MATCHSTEP) !S!E!T!E!R!R!Q!(PETSC_COMM_SELF,PETSC_ERR_SUP,"No support for exact final time option 'MATCHSTEP' when using Sundials");
     IF(err/=0) THEN
       IF(petscHandleError) THEN
         CHKERRQ(err)
@@ -6249,6 +6256,38 @@ CONTAINS
     
   END SUBROUTINE Petsc_TSSetTimeStep
   
+  !
+  !================================================================================================================================
+  !
+  
+    ! Aaron needed (needs) this
+  !>Buffer routine to the PETSc TSGetTimeStepNumber routine.
+  SUBROUTINE Petsc_TSGetTimeStepNumber(ts,N,err,error,*)
+
+    !Argument Variables
+    TYPE(PetscTSType), INTENT(INOUT) :: ts !<The TS to get the step number of
+    INTEGER(INTG), INTENT(OUT) :: N !<On exit, the number of time steps
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+
+    ENTERS("Petsc_TSGetTimeStepNumber",err,error,*999)
+
+    CALL  TSGetTimeStepNumber(ts%ts,N,err)
+    IF(err/=0) THEN
+      IF(petscHandleError) THEN
+        CHKERRQ(err)
+      ENDIF
+      CALL FlagError("PETSc error in TSGetTimeStepNumber.",err,error,*999)
+    ENDIF
+        
+    EXITS("Petsc_TSGetTimeStepNumber")
+    RETURN
+999 ERRORSEXITS("Petsc_TSGetTimeStepNumber",err,error)
+    RETURN 1
+    
+  END SUBROUTINE Petsc_TSGetTimeStepNumber
+
+
   !
   !================================================================================================================================
   !

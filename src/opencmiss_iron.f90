@@ -96,6 +96,7 @@ MODULE OpenCMISS_Iron
   USE ISO_VARYING_STRING
   USE KINDS
   USE MESH_ROUTINES
+  USE MPI
   USE NODE_ROUTINES
   USE PRINT_TYPES_ROUTINES
   USE PROBLEM_CONSTANTS
@@ -409,6 +410,7 @@ MODULE OpenCMISS_Iron
   PUBLIC cmfe_SolverEquationsType,cmfe_SolverEquations_Finalise,cmfe_SolverEquations_Initialise
 
   PUBLIC cmfe_OutputInterpolationParameters, cmfe_getFieldSize, cmfe_PrintElementsMapping, cmfe_PrintNodesMapping, &
+    & cmfe_PrintSolverEquationsM, &
     & cmfe_CustomProfilingStart,cmfe_CustomProfilingStop,cmfe_CustomProfilingMemory,cmfe_CustomProfilingGetInfo, &
     & cmfe_CustomProfilingGetDuration,cmfe_CustomProfilingGetMemory,cmfe_CustomProfilingGetSizePerElement, &
     & cmfe_CustomProfilingGetNumberObjects, cmfe_CustomProfilingGetEnabled
@@ -5865,6 +5867,8 @@ MODULE OpenCMISS_Iron
   PUBLIC cmfe_Problem_SolversDestroy
 
   PUBLIC cmfe_Problem_SpecificationGet,cmfe_Problem_SpecificationSizeGet
+  
+  PUBLIC cmfe_CellML_IntermediateMaxNumberSet
 
 !!==================================================================================================================================
 !!
@@ -6896,7 +6900,7 @@ MODULE OpenCMISS_Iron
 
   PUBLIC cmfe_Solver_DAESolverTypeGet,cmfe_Solver_DAESolverTypeSet
 
-  PUBLIC cmfe_Solver_DAETimesSet,cmfe_Solver_DAETimeStepSet
+  PUBLIC cmfe_Solver_DAETimesSet,cmfe_Solver_DAETimeStepSet,cmfe_Solver_DAEbdfSetTolerance
 
   PUBLIC cmfe_Solver_DynamicDegreeGet,cmfe_Solver_DynamicDegreeSet
 
@@ -7049,6 +7053,8 @@ MODULE OpenCMISS_Iron
   PUBLIC cmfe_SolverEquations_RhsVectorGet
 
   PUBLIC cmfe_BioelectricsFiniteElasticity_UpdateGeometricField
+  
+  PUBLIC cmfe_BioelectricFiniteElasticity_GetLocalElementNumber
   
 !!==================================================================================================================================
 !!
@@ -14672,7 +14678,34 @@ CONTAINS
   !
   !================================================================================================================================
   !
+  
+  ! sets the MAXIMUM_NUMBER_OF_INTERMEDIATE of a CellML object :: only for debugging issues
+  SUBROUTINE cmfe_CellML_IntermediateMaxNumberSet(CellML,number,err)
+    !DLLEXPORT(cmfe_CellML_ModelImportObjVS)
 
+    !Argument variables
+    TYPE(cmfe_CellMLType), INTENT(INOUT) :: CellML ! The CellML environment to be operated on
+    INTEGER(INTG), INTENT(IN) :: number ! the number that MAXIMUM_NUMBER_OF_INTERMEDIATES shall be set to.
+    INTEGER(INTG), INTENT(OUT) :: err ! The error code.  
+    !Local variables
+    TYPE(VARYING_STRING) :: localError
+    
+    ENTERS("cmfe_CellML_IntermediateMaxNumberSet",err,error,*999)
+    
+    CALL CELLML_INTERMEDIATE_MAX_NUMBER_SET(CellML%CELLML,number,err,error,*999)
+    
+    EXITS("cmfe_CellML_IntermediateMaxNumberSet")
+    RETURN
+999 ERRORSEXITS("cmfe_CellML_IntermediateMaxNumberSet",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+    
+  END SUBROUTINE cmfe_CellML_IntermediateMaxNumberSet
+
+  !
+  !================================================================================================================================
+  !  
+  
   !>Finishes the creation of CellML models field for a CellML environment identified by a user number.
   SUBROUTINE cmfe_CellML_ModelsFieldCreateFinishNumber(regionUserNumber,CellMLUserNumber,err)
     !DLLEXPORT(cmfe_CellML_ModelsFieldCreateFinishNumber)
@@ -50757,6 +50790,44 @@ CONTAINS
   !================================================================================================================================
   !
 
+  !>Changes the absolute and relative error tolerances for the BDF differential-algebraic equation solver.
+  SUBROUTINE cmfe_Solver_DAEbdfSetTolerance(solver,abs_tol,rel_tol,err)
+    !DLLEXPORT(cmfe_Solver_DAESolverTypeSetNumber1)
+
+    !Argument variables
+    TYPE(cmfe_SolverType), INTENT(IN) :: solver !<The solver to set the DAE error tolerance for.
+    REAL(DP), INTENT(IN) :: abs_tol !<The absolute error tolerance to be set.
+    REAL(DP), INTENT(IN) :: rel_tol !<The relative error tolerance to be set.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(VARYING_STRING) :: localError
+
+    ENTERS("cmfe_Solver_DAEbdfSetTolerance",err,error,*999)
+    
+    IF(ASSOCIATED(solver%solver)) THEN
+      IF(ASSOCIATED(solver%solver%DAE_SOLVER)) THEN
+        CALL SOLVER_DAE_BDF_SET_TOLERANCE(solver%solver%DAE_SOLVER,abs_tol,rel_tol,err,error,*999)
+      ELSE
+        localError="The DAE solver is not associated."
+        CALL FlagError(localError,err,error,*999)
+      END IF    
+    ELSE
+      localError="The solver is not associated."
+      CALL FlagError(localError,err,error,*999)
+    END IF
+
+    EXITS("cmfe_Solver_DAEbdfSetTolerance")
+    RETURN
+999 ERRORSEXITS("cmfe_Solver_DAEbdfSetTolerance",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_Solver_DAEbdfSetTolerance
+
+  !
+  !================================================================================================================================
+  !
+
   !>Returns the degree of the polynomial used to interpolate time for a dynamic solver identified by an user number.
   SUBROUTINE cmfe_Solver_DynamicDegreeGetNumber0(problemUserNumber,controlLoopIdentifier,solverIndex,degree,err)
     !DLLEXPORT(cmfe_Solver_DynamicDegreeGetNumber0)
@@ -61949,6 +62020,26 @@ CONTAINS
   
   END FUNCTION cmfe_getFieldSize
   
+  SUBROUTINE cmfe_BioelectricFiniteElasticity_GetLocalElementNumber(GeometricField, ElementGlobalNumber, ElementLocalNumber, Err)
+    TYPE(cmfe_FieldType), INTENT(IN) :: GeometricField  !< the geometric field of the elements
+    INTEGER(INTG), INTENT(IN) :: ElementGlobalNumber !< the global element number of the element for which the local number is seeked
+    INTEGER(INTG), INTENT(OUT) :: ElementLocalNumber !< the local number of the element with the global number (or 0 if the element is not on the local domain)
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    
+    ENTERS("cmfe_GetLocalElementNumber", err, error, *999)
+
+    CALL BioelectricFiniteElasticity_GetLocalElementNumber(GeometricField%Field, ElementGlobalNumber, ElementLocalNumber, Err, &
+     & Error, *999)
+    
+    EXITS("cmfe_GetLocalElementNumber")
+    RETURN
+999 ERRORSEXITS("cmfe_GetLocalElementNumber",err,error)
+    CALL cmfe_HandleError( err, error )
+    RETURN
+    
+  END SUBROUTINE cmfe_BioelectricFiniteElasticity_GetLocalElementNumber
+    
+  
   !
   !================================================================================================================================
   !
@@ -61969,7 +62060,7 @@ CONTAINS
         PRINT*, "Process ",I," of ",NumberOfComputationalNodes,": Element mapping for DecompositionM"
         ! print variables
         CALL Print_Domain_Mapping(Decomposition%DECOMPOSITION%DOMAIN( &
-          & Decomposition%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%ELEMENTS, 2, 1000)
+          & Decomposition%DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%ELEMENTS, 1, 1000)
         CALL FLUSH()   ! flush stdout
       ENDIF
     ENDDO
@@ -61985,7 +62076,6 @@ CONTAINS
     TYPE(cmfe_DecompositionType), INTENT(IN) :: Decomposition
     INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
     INTEGER(INTG) :: I, NumberOfComputationalNodes, ComputationalNodeNumber
-    
     ! get computational node numbers
     CALL cmfe_ComputationalNodeNumberGet(ComputationalNodeNumber, Err)
     CALL cmfe_ComputationalNumberOfNodesGet(NumberOfComputationalNodes, Err)
@@ -62005,6 +62095,17 @@ CONTAINS
     
     END SUBROUTINE cmfe_PrintNodesMapping
   
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_PrintSolverEquationsM(SolverEquationsM, Err)
+    TYPE(cmfe_SolverEquationsType), INTENT(IN) :: SolverEquationsM
+    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
+    
+    CALL Print_Solver_Mapping(SolverEquationsM%solverEquations%SOLVER_MAPPING, 5, 10)
+  
+  END SUBROUTINE 
   !
   !================================================================================================================================
   !
