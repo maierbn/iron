@@ -810,6 +810,8 @@ MODULE OpenCMISS_Iron
   PUBLIC CMFE_BASIS_LAGRANGE_HERMITE_TP_TYPE,CMFE_BASIS_SIMPLEX_TYPE,CMFE_BASIS_SERENDIPITY_TYPE,CMFE_BASIS_AUXILLIARY_TYPE, &
     & CMFE_BASIS_B_SPLINE_TP_TYPE,CMFE_BASIS_FOURIER_LAGRANGE_HERMITE_TP_TYPE,CMFE_BASIS_EXTENDED_LAGRANGE_TP_TYPE
 
+  PUBLIC cmfe_DomainTopologyNodeCheckExists
+
   PUBLIC CMFE_BASIS_LINEAR_LAGRANGE_INTERPOLATION,CMFE_BASIS_QUADRATIC_LAGRANGE_INTERPOLATION, &
     & CMFE_BASIS_CUBIC_LAGRANGE_INTERPOLATION, &
     & CMFE_BASIS_CUBIC_HERMITE_INTERPOLATION,CMFE_BASIS_QUADRATIC1_HERMITE_INTERPOLATION, &
@@ -62277,5 +62279,54 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
     CALL Print_HISTORY(Variable%history, MaxDepth, MaxArrayLength)
   END SUBROUTINE cmfe_PrintHistory
+
+
+  !
+  !================================================================================================================================
+  ! this subroutines checks whether or not a given Field with VariableType and NodeUserNumber has ComponentNumber and stores it in UserNodeExist
+  SUBROUTINE cmfe_DomainTopologyNodeCheckExists(Field, VariableType, NodeUserNumber, ComponentNumber, UserNodeExist, Err)
+
+    TYPE(cmfe_FieldType), INTENT(IN)    :: Field !<The field to set the boundary condition for.
+    INTEGER(INTG), INTENT(IN)           :: NodeUserNumber !<The user number of the node to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN)           :: ComponentNumber !<The component number of the field to set the boundary condition for.
+    INTEGER(INTG), INTENT(IN)           :: VariableType !<The variable type of the field to set the boundary condition for. \see OPENCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(OUT)          :: Err
+    LOGICAL      , INTENT(OUT)          :: UserNodeExist !< result, whether or not the user node ID exists for the given field
+    ! LOCAL VARIABLES
+    LOGICAL                             :: GhostNode !< redundant parameter, only used for being able to make subroutine call
+    INTEGER(INTG)                       :: DomainLocalNodeNumber !< redundant parameter, only used for being able to make subroutine call
+    TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: DOMAIN_TOPOLOGY !< redundant parameter, only used for being able to make subroutine call
+    TYPE(VARYING_STRING)                :: Error
+    INTEGER(INTG)                       :: NumberOfComponents
+    INTEGER(INTG), ALLOCATABLE          :: VariableTypes(:) !< variable to contain all variable types for a given field
+    LOGICAL                             :: VariableTypeFound
+
+    ENTERS("cmfe_DomainTopologyNodeCheckExists", Err, error, *999)
+
+    ! check if variable type is set for given field
+    ALLOCATE(VariableTypes(Field%Field%NUMBER_OF_VARIABLES))
+    CALL cmfe_Field_VariableTypesGet(Field, VariableTypes, Err)
+    VariableTypeFound=ANY(VariableTypes==VariableType)
+    IF(.NOT.VariableTypeFound) CALL cmfe_HandleError(Err, error)
+    ! check if field has given component
+    CALL cmfe_Field_NumberOfComponentsGet(Field, VariableType, NumberOfComponents, Err)
+    IF(NumberOfComponents<ComponentNumber) CALL cmfe_HandleError(Err, error)
+    ! check if domain topology has given user node ID
+    DOMAIN_TOPOLOGY=>FIELD%FIELD%VARIABLE_TYPE_MAP(variableType)%PTR%COMPONENTS(componentNumber)%DOMAIN%TOPOLOGY
+    IF(.NOT.ASSOCIATED(DOMAIN_TOPOLOGY)) CALL cmfe_HandleError(err,error)
+    ! NOTE: we are misusing this function call so we need to handle the return error code
+    CALL DOMAIN_TOPOLOGY_NODE_CHECK_EXISTS(DOMAIN_TOPOLOGY, nodeUserNumber, UserNodeExist, &
+      & DomainLocalNodeNumber, GhostNode, err, Error, *999)
+
+    DEALLOCATE(VariableTypes)
+    EXITS("cmfe_DomainTopologyNodeCheckExists")
+
+    RETURN
+999 err = 0
+    ERRORSEXITS("cmfe_DomainTopologyNodeCheckExists",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+ 
+  END SUBROUTINE cmfe_DomainTopologyNodeCheckExists
   
 END MODULE OpenCMISS_Iron
