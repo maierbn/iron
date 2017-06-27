@@ -10153,7 +10153,9 @@ CONTAINS
                   CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                 ENDIF
               ELSE
-                CALL FlagError("Decomposition mesh node corresponding to user number not found.",ERR,ERROR,*999)
+                CALL FlagError("Decomposition mesh node corresponding to user number not found. " // &
+                  "MESH_COMPONENT_NUMBER: "//TRIM(NumberToVString(MESH_COMPONENT_NUMBER,"*",ERR,ERROR))// &
+                  ", USER_NODE_NUMBER: "//TRIM(NumberToVString(USER_NODE_NUMBER,"*",ERR,ERROR)),ERR,ERROR,*999)
               ENDIF
             ELSE
               CALL FlagError("Decomposition mesh nodes are not associated.",ERR,ERROR,*999)

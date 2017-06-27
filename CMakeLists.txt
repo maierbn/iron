@@ -70,7 +70,6 @@ if(NOT IRON_BUILD_SHARED_LIBRARY AND NOT IRON_BUILD_STATIC_LIBRARY )
   message(FATAL_ERROR "You have to build at least one of the types of libraries (shared or static)." )
 endif()
 
-# The following scripts are missing:
 #include(OCMiscFunctions)
 #include(OCMultiConfigEnvironment)
 
@@ -154,8 +153,14 @@ else()
       add_definitions(-DTAUPROF)
       
       if (NOT DEFINED TAU_HOME) 
-        set(TAU_HOME "/store/Office/Studium/11.Semester/Forschungsarbeit_1/opencmiss/extras/TAU/tau-2.23.1/x86_64/lib")
-        message(WARNING "TAU Profiling is enabled but TAU_HOME is not set. Define TAU_HOME as the path to where libTAU.so is located! Using default value ${TAU_HOME}.")
+        if (NOT "$ENV{TAU_DIR}" STREQUAL "")
+          set (TAU_HOME $ENV{TAU_DIR})
+        endif ()
+      endif ()
+      
+      if (NOT DEFINED TAU_HOME) 
+        set(TAU_HOME "/store/DiHu/software/opencmiss/extras/TAU/tau-2.23.1/x86_64/lib")
+        message(WARNING "TAU Profiling is enabled but TAU_HOME is not set. Define environment variable TAU_DIR or cmake variable TAU_HOME as the path to where libTAU.so is located! Using default value ${TAU_HOME}.")
       endif()
       
       target_link_libraries(iron PUBLIC "${TAU_HOME}/libTAU.so")
