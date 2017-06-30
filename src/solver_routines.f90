@@ -2414,7 +2414,7 @@ CONTAINS
                               & TIME_INCREMENT*RATES(1:NUMBER_STATES)
                           ENDIF !model_idx  
                           ! produce some output to see state evolution after each meso time step size (1D model time step size)
-                          IF(dof_idx == 1) THEN ! .AND. TIME_INCREMENT/=TIME_INCREMENT_I .AND. DEBUG_MODE_A) THEN
+                          IF(dof_idx == 1 .AND. TIME_INCREMENT/=TIME_INCREMENT_I .AND. DEBUG_MODE_A) THEN
                             WRITE(*,*)'===================================================',TIME_INCREMENT+TIME, '========'
                             DO model_idx=0,NUMBER_STATES-1
                               WRITE(*,*) STATE_DATA(STATE_START_DOF+model_idx)
@@ -3225,7 +3225,7 @@ CONTAINS
                             ! done.
                           ENDIF !model_idx  
                           ! produce some output to see state evolution after each meso time step size (1D model time step size)
-                          IF(dof_idx == 1) THEN ! .AND. TIME_INCREMENT/=TIME_INCREMENT_I .AND. DEBUG_MODE_A) THEN
+                          IF(dof_idx == 1 .AND. TIME_INCREMENT/=TIME_INCREMENT_I .AND. DEBUG_MODE_A) THEN
                             WRITE(*,*)'===================================================',TIME_INCREMENT+TIME, '========'
                            !WRITE(*,*) 'Stepping forward by',TIME_INCREMENT,'time instances. State afterwards:'
                             DO model_idx=0,NUMBER_STATES-1
