@@ -3612,7 +3612,7 @@ CONTAINS
                   ENDIF
                   CALL CELLML_INTERMEDIATE_FIELD_INITIALISE(CELLML,ERR,ERROR,*999)
                   IF(ASSOCIATED(INTERMEDIATE_FIELD)) THEN
-                    WRITE(*,*) 'INTERMEDIATE_FIELD is not auto created'
+                    !WRITE(*,*) 'INTERMEDIATE_FIELD is not auto created'
                     !Now check the supplied field.
                     CALL FIELD_DATA_TYPE_CHECK(INTERMEDIATE_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_DP_TYPE,ERR,ERROR,*999)
                     CALL FIELD_TYPE_CHECK(INTERMEDIATE_FIELD,FIELD_GENERAL_TYPE,ERR,ERROR,*999)
@@ -3627,7 +3627,7 @@ CONTAINS
                         & CELLML_FIELD_MAPS%SOURCE_FIELD_INTERPOLATION_TYPE,ERR,ERROR,*999)
                     ENDDO !component_idx
                   ELSE
-                    WRITE(*,*) 'INTERMEDIATE_FIELD is auto created'
+                    !WRITE(*,*) 'INTERMEDIATE_FIELD is auto created'
                     CELLML%INTERMEDIATE_FIELD%INTERMEDIATE_FIELD_AUTO_CREATED=.TRUE.
                     !Create the CellML environment intermediate field
                     CALL FIELD_CREATE_START(INTERMEDIATE_FIELD_USER_NUMBER,REGION,CELLML%INTERMEDIATE_FIELD%INTERMEDIATE_FIELD, &
@@ -3647,7 +3647,7 @@ CONTAINS
                       & "IntermediateVariable",ERR,ERROR,*999)
                     CALL FIELD_DOF_ORDER_TYPE_SET(CELLML%INTERMEDIATE_FIELD%INTERMEDIATE_FIELD,FIELD_U_VARIABLE_TYPE, &
                       & FIELD_CONTIGUOUS_COMPONENT_DOF_ORDER,ERR,ERROR,*999)
-                    WRITE(*,*) 'number of components: ', CELLML%MAXIMUM_NUMBER_OF_INTERMEDIATE
+                    !WRITE(*,*) 'number of components: ', CELLML%MAXIMUM_NUMBER_OF_INTERMEDIATE
                     CALL FIELD_NUMBER_OF_COMPONENTS_SET_AND_LOCK(CELLML%INTERMEDIATE_FIELD%INTERMEDIATE_FIELD, &
                       & FIELD_U_VARIABLE_TYPE,CELLML%MAXIMUM_NUMBER_OF_INTERMEDIATE,ERR,ERROR,*999)
                     DO component_idx=1,CELLML%MAXIMUM_NUMBER_OF_INTERMEDIATE
