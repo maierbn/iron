@@ -6897,7 +6897,8 @@ MODULE OpenCMISS_Iron
 
   PUBLIC cmfe_CellMLEquations_CellMLAdd
 
-  PUBLIC cmfe_Solver_DAEEulerSolverTypeGet,cmfe_Solver_DAEEulerSolverTypeSet
+  PUBLIC cmfe_Solver_DAEEulerSolverTypeGet,cmfe_Solver_DAEEulerSolverTypeSet, &
+   & cmfe_Solver_DAEEulerForwardSetNSteps,cmfe_Solver_DAEEulerImprovedSetNSteps
 
   PUBLIC cmfe_Solver_DAESolverTypeGet,cmfe_Solver_DAESolverTypeSet
 
@@ -50288,7 +50289,77 @@ CONTAINS
   !
   !================================================================================================================================
   !
+  
+  !>Sets the number of time sets for the forward Euler differential-algebraic equation solver.
+  SUBROUTINE cmfe_Solver_DAEEulerForwardSetNSteps(solver,number_timesteps,err)
 
+    !Argument variables
+    TYPE(cmfe_SolverType), INTENT(IN) :: solver !<The solver to set the number of time steps for.
+    INTEGER(INTG) :: number_timesteps !<The number it is to be set to.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(VARYING_STRING) :: localError
+
+    ENTERS("cmfe_Solver_DAEEulerForwardSetNSteps",err,error,*999)
+    
+    IF(ASSOCIATED(solver%solver)) THEN
+      IF(ASSOCIATED(solver%solver%DAE_SOLVER)) THEN
+        CALL SOLVER_DAE_EULER_FORWARD_SET_NSTEPS(solver%solver%DAE_SOLVER,number_timesteps,err,error,*999)
+      ELSE
+        localError="The DAE solver is not associated."
+        CALL FlagError(localError,err,error,*999)
+      END IF    
+    ELSE
+      localError="The solver is not associated."
+      CALL FlagError(localError,err,error,*999)
+    END IF
+
+    EXITS("cmfe_Solver_DAEEulerForwardSetNSteps")
+    RETURN
+999 ERRORSEXITS("cmfe_Solver_DAEEulerForwardSetNSteps",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+  END SUBROUTINE cmfe_Solver_DAEEulerForwardSetNSteps
+
+  !
+  !================================================================================================================================
+  !
+  
+  !>Sets the number of time sets for the improved Euler differential-algebraic equation solver.
+  SUBROUTINE cmfe_Solver_DAEEulerImprovedSetNSteps(solver,number_timesteps,err)
+
+    !Argument variables
+    TYPE(cmfe_SolverType), INTENT(IN) :: solver !<The solver to set the number of time steps for.
+    INTEGER(INTG) :: number_timesteps !<The number it is to be set to.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(VARYING_STRING) :: localError
+
+    ENTERS("cmfe_Solver_DAEEulerImprovedSetNSteps",err,error,*999)
+    
+    IF(ASSOCIATED(solver%solver)) THEN
+      IF(ASSOCIATED(solver%solver%DAE_SOLVER)) THEN
+        CALL SOLVER_DAE_EULER_IMPROVED_SET_NSTEPS(solver%solver%DAE_SOLVER,number_timesteps,err,error,*999)
+      ELSE
+        localError="The DAE solver is not associated."
+        CALL FlagError(localError,err,error,*999)
+      END IF    
+    ELSE
+      localError="The solver is not associated."
+      CALL FlagError(localError,err,error,*999)
+    END IF
+
+    EXITS("cmfe_Solver_DAEEulerImprovedSetNSteps")
+    RETURN
+999 ERRORSEXITS("cmfe_Solver_DAEEulerImprovedSetNSteps",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+  END SUBROUTINE cmfe_Solver_DAEEulerImprovedSetNSteps
+
+  !
+  !================================================================================================================================
+  !
+  
   !>Sets/changes the solve type for an Euler differential-algebraic equation solver identified by an user number.
   SUBROUTINE cmfe_Solver_DAEEulerSolverTypeSetNumber1(problemUserNumber,controlLoopIdentifiers,solverIndex,DAEEulerSolverType,err)
     !DLLEXPORT(cmfe_Solver_DAEEulerSolverTypeSetNumber1)

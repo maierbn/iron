@@ -2510,6 +2510,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   TYPE FORWARD_EULER_DAE_SOLVER_TYPE
     TYPE(EULER_DAE_SOLVER_TYPE), POINTER :: EULER_DAE_SOLVER !<A pointer to the differential-algebraic solver
     INTEGER(INTG) :: SOLVER_LIBRARY !<The library type for the forward Euler differential-algebraic equation solver \see SOLVER_ROUTINES_SolverLibraries,SOLVER_ROUTINES
+    INTEGER(INTG) :: TIME_STEPS_NUMBER !<The number of time steps to use. '-1' if not set - then the method will fit the given step size to the total amount of simulated time.
   END TYPE FORWARD_EULER_DAE_SOLVER_TYPE
 
   !>Contains information for an backward Euler differential-algebraic equation solver
@@ -2522,6 +2523,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   TYPE IMPROVED_EULER_DAE_SOLVER_TYPE
     TYPE(EULER_DAE_SOLVER_TYPE), POINTER :: EULER_DAE_SOLVER !<A pointer to the differential-algebraic solver
     INTEGER(INTG) :: SOLVER_LIBRARY !<The library type for the improved Euler differential-algebraic equation solver \see SOLVER_ROUTINES_SolverLibraries,SOLVER_ROUTINES
+    INTEGER(INTG) :: TIME_STEPS_NUMBER !<The number of time steps to use. '-1' if not set - then the method will fit the given step size to the total amount of simulated time.
   END TYPE IMPROVED_EULER_DAE_SOLVER_TYPE
   
   !>Contains information for an Euler differential-algebraic equation solver

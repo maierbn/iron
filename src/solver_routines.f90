@@ -560,7 +560,8 @@ MODULE SOLVER_ROUTINES
 
   PUBLIC SOLVER_CELLML_EQUATIONS_GET
 
-  PUBLIC SOLVER_DAE_SOLVER_TYPE_GET,SOLVER_DAE_SOLVER_TYPE_SET
+  PUBLIC SOLVER_DAE_SOLVER_TYPE_GET,SOLVER_DAE_SOLVER_TYPE_SET, &
+   & SOLVER_DAE_EULER_FORWARD_SET_NSTEPS,SOLVER_DAE_EULER_IMPROVED_SET_NSTEPS
 
   PUBLIC SOLVER_DAE_TIMES_SET,SOLVER_DAE_TIME_STEP_SET, SOLVER_DAE_BDF_SET_TOLERANCE
 
@@ -2090,7 +2091,7 @@ CONTAINS
   SUBROUTINE SOLVER_DAE_EULER_FORWARD_INITIALISE(EULER_DAE_SOLVER,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(EULER_DAE_SOLVER_TYPE), POINTER :: EULER_DAE_SOLVER !<A pointer the Euler differential-algebraic equation solver to initialise a forward Euler solver for
+    TYPE(EULER_DAE_SOLVER_TYPE), POINTER :: EULER_DAE_SOLVER !<A pointer to the Euler differential-algebraic equation solver to initialise a forward Euler solver for
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -2111,6 +2112,7 @@ CONTAINS
         EULER_DAE_SOLVER%FORWARD_EULER_SOLVER%EULER_DAE_SOLVER=>EULER_DAE_SOLVER
         EULER_DAE_SOLVER%FORWARD_EULER_SOLVER%SOLVER_LIBRARY=SOLVER_CMISS_LIBRARY
         !Defaults
+        EULER_DAE_SOLVER%FORWARD_EULER_SOLVER%TIME_STEPS_NUMBER=-1
       ENDIF
     ELSE
       CALL FlagError("Euler differential-algebraic equation solver is not associated.",ERR,ERROR,*998)
@@ -2129,17 +2131,17 @@ CONTAINS
   !
 
   !>Integrate using a forward Euler differential-algebraic equation solver.
-  SUBROUTINE SOLVER_DAE_EULER_FORWARD_INTEGRATE(FORWARD_EULER_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_INCREMENT_I, &
+  SUBROUTINE SOLVER_DAE_EULER_FORWARD_INTEGRATE(FORWARD_EULER_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_INCREMENT, &
     & ONLY_ONE_MODEL_INDEX,MODELS_DATA,MAX_NUMBER_STATES,STATE_DATA,MAX_NUMBER_PARAMETERS,PARAMETERS_DATA, &
     & MAX_NUMBER_INTERMEDIATES,INTERMEDIATE_DATA,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(FORWARD_EULER_DAE_SOLVER_TYPE), POINTER :: FORWARD_EULER_SOLVER !<A pointer the forward Euler differential-algebraic equation solver to integrate
+    TYPE(FORWARD_EULER_DAE_SOLVER_TYPE), POINTER :: FORWARD_EULER_SOLVER !<A pointer to the forward Euler differential-algebraic equation solver to integrate
     TYPE(CELLML_TYPE), POINTER :: CELLML !<A pointer to the CellML environment to integrate the equations for.
     INTEGER(INTG), INTENT(IN) :: N !<The number of degrees-of-freedom
     REAL(DP), INTENT(IN) :: START_TIME !<The start time for the integration
     REAL(DP), INTENT(IN) :: END_TIME !<The end time for the integration
-    REAL(DP), INTENT(INOUT) :: TIME_INCREMENT_I !<The (initial) time increment for the integration
+    REAL(DP), INTENT(INOUT) :: TIME_INCREMENT !<The (initial) time increment for the integration. Will be suited to time interval (START_TIME,END_TIME) or calculated new, if Forward Euler DAE solvers TIME_STEPS_NUMBER is set.
     INTEGER(INTG), INTENT(IN) :: ONLY_ONE_MODEL_INDEX !<If only one model is used in the models data the index of that model. 0 otherwise.
     INTEGER(INTG), POINTER :: MODELS_DATA(:) !<MODELS_DATA(dof_idx). The models data for the dof_idx'th dof.
     INTEGER(INTG), INTENT(IN) :: MAX_NUMBER_STATES !<The maximum number of state variables per dof
@@ -2154,15 +2156,23 @@ CONTAINS
     INTEGER(INTG) :: dof_idx,DOF_ORDER_TYPE,INTERMEDIATE_END_DOF,intermediate_idx,INTERMEDIATE_START_DOF,model_idx, &
       & NUMBER_INTERMEDIATES,NUMBER_PARAMETERS,NUMBER_STATES,PARAMETER_END_DOF,parameter_idx,PARAMETER_START_DOF, &
       & STATE_END_DOF,state_idx,STATE_START_DOF
+    INTEGER(INTG) :: TS_NUMBER, TIME_STEP
     REAL(DP) :: INTERMEDIATES(MAX(1,MAX_NUMBER_INTERMEDIATES)),PARAMETERS(MAX(1,MAX_NUMBER_PARAMETERS)), &
-      & RATES(MAX(1,MAX_NUMBER_STATES)),STATES(MAX(1,MAX_NUMBER_STATES)),TIME
+      & RATES(MAX(1,MAX_NUMBER_STATES)),STATES(MAX(1,MAX_NUMBER_STATES))
     TYPE(CELLML_MODEL_TYPE), POINTER :: MODEL
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    REAL(DP) :: TIME_INCREMENT
     
     ENTERS("SOLVER_DAE_EULER_FORWARD_INTEGRATE",ERR,ERROR,*999)
     
-    TIME_INCREMENT=TIME_INCREMENT_I
+    !Set up the right way to integrate. (make sure that we leave with TMIE==END_TIME)
+    !We take a fixed amount of steps to yield the integration result at exactly t=END_TIME, using the same step size at every step.
+    IF(FORWARD_EULER_SOLVER%TIME_STEPS_NUMBER==-1) THEN
+      TS_NUMBER = CEILING((END_TIME-START_TIME)/TIME_INCREMENT)
+    ELSE
+      TS_NUMBER = FORWARD_EULER_SOLVER%TIME_STEPS_NUMBER
+    ENDIF
+    
+    TIME_INCREMENT = (END_TIME-START_TIME)/TS_NUMBER
 
     IF(ASSOCIATED(FORWARD_EULER_SOLVER)) THEN
       IF(ASSOCIATED(CELLML)) THEN
@@ -2172,9 +2182,7 @@ CONTAINS
             !Dof components are separated. Will need to copy data to temporary arrays.
             IF(ONLY_ONE_MODEL_INDEX==CELLML_MODELS_FIELD_NOT_CONSTANT) THEN
               !Mulitple models
-              DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
-                !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
-                TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
+              DO TIME_STEP=1,TS_NUMBER ! to go from t_n to t_{n+1} (first step: from t_0 to t_1)
                 DO dof_idx=1,N
                   model_idx=MODELS_DATA(dof_idx)
                   IF(model_idx.GT.0) THEN
@@ -2193,8 +2201,8 @@ CONTAINS
                       ENDDO !parameter_idx
 
 #ifdef WITH_CELLML
-                      CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME,STATES,RATES,INTERMEDIATES, &
-                        & PARAMETERS)
+                      CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT & !rhs is evaluated at 'old time', t_n. 
+                        & ,STATES,RATES,INTERMEDIATES,PARAMETERS)
 #else
                       CALL FlagError("Must compile with WITH_CELLML ON to use CellML functionality.",ERR,ERROR,*999)
 #endif
@@ -2206,7 +2214,6 @@ CONTAINS
                       DO state_idx=1,NUMBER_STATES
                         STATE_DATA((dof_idx-1)*N+state_idx)=STATES(state_idx)+TIME_INCREMENT*RATES(state_idx)
                       ENDDO !state_idx
-
                     ELSE
                       LOCAL_ERROR="CellML environment model is not associated for model index "// &
                         & TRIM(NumberToVString(ONLY_ONE_MODEL_INDEX,"*",ERR,ERROR))//" belonging to dof index "// &
@@ -2215,8 +2222,7 @@ CONTAINS
                     ENDIF
                   ENDIF !model_idx
                 ENDDO !dof_idx
-                TIME=TIME+TIME_INCREMENT
-              ENDDO !time
+              ENDDO !TIME_STEP
             ELSE
               !Only one model is used.
               MODEL=>CELLML%MODELS(ONLY_ONE_MODEL_INDEX)%PTR
@@ -2224,12 +2230,8 @@ CONTAINS
                 NUMBER_STATES=MODEL%NUMBER_OF_STATE
                 NUMBER_INTERMEDIATES=MODEL%NUMBER_OF_INTERMEDIATE
                 NUMBER_PARAMETERS=MODEL%NUMBER_OF_PARAMETERS
-                TIME=START_TIME
-                DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
-                  !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
-                  TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
+                DO TIME_STEP=1,TS_NUMBER ! to go from t_n to t_{n+1} (first step: from t_0 to t_1)
                   DO dof_idx=1,N
-
                     model_idx=MODELS_DATA(dof_idx)
                     IF(model_idx.GT.0) THEN
                       !Copy CellML data to temporary arrays
@@ -2241,8 +2243,8 @@ CONTAINS
                       ENDDO !parameter_idx
 
 #ifdef WITH_CELLML
-                      CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME,STATES,RATES,INTERMEDIATES, &
-                        & PARAMETERS)
+                      CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT, & !rhs is evaluated at 'old time', t_n. 
+                        & STATES,RATES,INTERMEDIATES,PARAMETERS)
 #else
                       CALL FlagError("Must compile with WITH_CELLML ON to use CellML functionality.",ERR,ERROR,*999)
 #endif
@@ -2256,8 +2258,7 @@ CONTAINS
                       ENDDO !state_idx
                     ENDIF !model_idx
                   ENDDO !dof_idx
-                  TIME=TIME+TIME_INCREMENT
-                  ENDDO !time
+                ENDDO !TIME_STEP
               ELSE
                 LOCAL_ERROR="CellML environment model is not associated for model index "// &
                   & TRIM(NumberToVString(ONLY_ONE_MODEL_INDEX,"*",ERR,ERROR))//"."
@@ -2268,10 +2269,7 @@ CONTAINS
             !Dof components are continguous. Can pass data directly.
             IF(ONLY_ONE_MODEL_INDEX==CELLML_MODELS_FIELD_NOT_CONSTANT) THEN
               !Mulitple models
-              TIME=START_TIME
-              DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
-                !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
-                TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
+              DO TIME_STEP=1,TS_NUMBER ! to go from t_n to t_{n+1} (first step: from t_0 to t_1)
                 DO dof_idx=1,N
                   model_idx=MODELS_DATA(dof_idx)
                   IF(model_idx==0) THEN
@@ -2298,9 +2296,9 @@ CONTAINS
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
 
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME,STATE_DATA(STATE_START_DOF: &
-                              & STATE_END_DOF),RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF), &
-                              & PARAMETERS_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT &
+                              & ,STATE_DATA(STATE_START_DOF:STATE_END_DOF),RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF: &
+                              & INTERMEDIATE_END_DOF),PARAMETERS_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
 
                           ELSE
                             !We do not have parameters in the model
@@ -2310,9 +2308,9 @@ CONTAINS
                             INTERMEDIATE_START_DOF=(dof_idx-1)*MAX_NUMBER_INTERMEDIATES+1
                             INTERMEDIATE_END_DOF=INTERMEDIATE_START_DOF+NUMBER_INTERMEDIATES-1
 
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME,STATE_DATA(STATE_START_DOF: &
-                              & STATE_END_DOF),RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF), &
-                              & PARAMETERS)
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT &
+                              & ,STATE_DATA(STATE_START_DOF:STATE_END_DOF),RATES &
+                              & ,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF),PARAMETERS)
 
                            ENDIF
                         ELSE
@@ -2323,16 +2321,17 @@ CONTAINS
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
 
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME,STATE_DATA(STATE_START_DOF: &
-                              & STATE_END_DOF),RATES,INTERMEDIATES,PARAMETERS_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT &
+                              & ,STATE_DATA(STATE_START_DOF:STATE_END_DOF),RATES,INTERMEDIATES &
+                              & ,PARAMETERS_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
 
                           ELSE
                             !We do not have intermediates or parameters in the model
                             STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
 
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME,STATE_DATA(STATE_START_DOF: &
-                              & STATE_END_DOF),RATES,INTERMEDIATES,PARAMETERS)
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT &
+                              & ,STATE_DATA(STATE_START_DOF:STATE_END_DOF),RATES,INTERMEDIATES,PARAMETERS)
 
                           ENDIF
                         ENDIF
@@ -2358,8 +2357,7 @@ CONTAINS
                     CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                   ENDIF
                 ENDDO !dof_idx
-                TIME=TIME+TIME_INCREMENT
-              ENDDO !time
+              ENDDO !TIME_STEP
             ELSE
               !One one model is used.
               MODEL=>CELLML%MODELS(ONLY_ONE_MODEL_INDEX)%PTR
@@ -2375,11 +2373,7 @@ CONTAINS
                   IF(NUMBER_INTERMEDIATES>0) THEN
                     IF(NUMBER_PARAMETERS>0) THEN
                       !We have states, intermediate and parameters for the model
-
-                      TIME=START_TIME
-                      DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
-                        !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
-                        TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
+                      DO TIME_STEP=1,TS_NUMBER ! to go from t_n to t_{n+1} (first step: from t_0 to t_1)
                         DO dof_idx=1,N
                           model_idx=MODELS_DATA(dof_idx)
                           IF(model_idx.GT.0) THEN
@@ -2398,7 +2392,7 @@ CONTAINS
                             CALL CustomProfilingStart('cellml call rhs')
 #endif
 
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME, &
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF), &
                               & RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF),PARAMETERS_DATA( &
                               & PARAMETER_START_DOF:PARAMETER_END_DOF))
@@ -2414,8 +2408,8 @@ CONTAINS
                               & TIME_INCREMENT*RATES(1:NUMBER_STATES)
                           ENDIF !model_idx  
                           ! produce some output to see state evolution after each meso time step size (1D model time step size)
-                          IF(dof_idx == 1 .AND. TIME_INCREMENT/=TIME_INCREMENT_I .AND. DEBUG_MODE_A) THEN
-                            WRITE(*,*)'===================================================',TIME_INCREMENT+TIME, '========'
+                          IF(dof_idx == 1 .AND. DEBUG_MODE_A) THEN
+                            WRITE(*,*)'======================================',START_TIME + TIME_STEP*TIME_INCREMENT, '========'
                             DO model_idx=0,NUMBER_STATES-1
                               WRITE(*,*) STATE_DATA(STATE_START_DOF+model_idx)
                             ENDDO
@@ -2423,15 +2417,11 @@ CONTAINS
                             WRITE(*,*) ''
                           ENDIF
                         ENDDO !dof_idx
-                        TIME=TIME+TIME_INCREMENT
-                      ENDDO !time
+                      ENDDO !TIME_STEP
                     
                     ELSE
                       !We do not have parameters in the model
-                      TIME=START_TIME
-                      DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
-                        !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
-                        TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
+                      DO TIME_STEP=1,TS_NUMBER ! to go from t_n to t_{n+1} (first step: from t_0 to t_1)
                         DO dof_idx=1,N
                           model_idx=MODELS_DATA(dof_idx)
                           IF(model_idx.GT.0) THEN
@@ -2441,7 +2431,7 @@ CONTAINS
                             INTERMEDIATE_START_DOF=(dof_idx-1)*MAX_NUMBER_INTERMEDIATES+1
                             INTERMEDIATE_END_DOF=INTERMEDIATE_START_DOF+NUMBER_INTERMEDIATES-1
 
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME, &
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF), &
                               & RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF),PARAMETERS)
 
@@ -2449,16 +2439,12 @@ CONTAINS
                               & TIME_INCREMENT*RATES(1:NUMBER_STATES)
                           ENDIF !model_idx
                         ENDDO !dof_idx
-                        TIME=TIME+TIME_INCREMENT
                       ENDDO !time
                     ENDIF
                   ELSE
                   !We do not have intermediates in the model
-                    IF(NUMBER_PARAMETERS>0) THEN
-                      TIME=START_TIME              
-                      DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
-                        !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
-                        TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
+                    IF(NUMBER_PARAMETERS>0) THEN     
+                      DO TIME_STEP=1,TS_NUMBER ! to go from t_n to t_{n+1} (first step: from t_0 to t_1)
                         DO dof_idx=1,N
                           model_idx=MODELS_DATA(dof_idx)
                           IF(model_idx.GT.0) THEN
@@ -2473,7 +2459,7 @@ CONTAINS
 #ifdef USE_CUSTOM_PROFILING
                             CALL CustomProfilingStart('cellml call rhs')
 #endif
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME, &
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF), &
                               & RATES,INTERMEDIATES,PARAMETERS_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
 #ifdef USE_CUSTOM_PROFILING
@@ -2485,9 +2471,8 @@ CONTAINS
                             STATE_DATA(STATE_START_DOF:STATE_END_DOF)=STATE_DATA(STATE_START_DOF:STATE_END_DOF)+ &
                               & TIME_INCREMENT*RATES(1:NUMBER_STATES)
                           ENDIF !model_idx
-                          IF(dof_idx == 1 .AND. TIME_INCREMENT/=TIME_INCREMENT_I .AND. DEBUG_MODE_A) THEN
-                            WRITE(*,*)'===================================================',TIME_INCREMENT+TIME, '========'
-                            ! WRITE(*,*) 'Stepping forward by',TIME_INCREMENT,'time instances. State afterwards:'
+                          IF(dof_idx == 1 .AND. DEBUG_MODE_A) THEN
+                            WRITE(*,*)'======================================',START_TIME + TIME_STEP*TIME_INCREMENT, '========'
                             DO model_idx=0,NUMBER_STATES-1
                               WRITE(*,*) STATE_DATA(STATE_START_DOF+model_idx)
                             ENDDO
@@ -2495,14 +2480,10 @@ CONTAINS
                             WRITE(*,*) ''
                           ENDIF
                         ENDDO !dof_idx
-                        TIME=TIME+TIME_INCREMENT
-                      ENDDO !time
+                      ENDDO !TIME_STEP
                     ELSE
                       !We do not have intermediates or parameters in the model
-                      TIME=START_TIME
-                      DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
-                        !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
-                        TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
+                      DO TIME_STEP=1,TS_NUMBER ! to go from t_n to t_{n+1} (first step: from t_0 to t_1)
                         DO dof_idx=1,N
                           model_idx=MODELS_DATA(dof_idx)
                           IF(model_idx.GT.0) THEN
@@ -2510,7 +2491,7 @@ CONTAINS
                             STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
 
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME, &
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF), &
                               & RATES,INTERMEDIATES,PARAMETERS)
 
@@ -2518,8 +2499,7 @@ CONTAINS
                               & TIME_INCREMENT*RATES(1:NUMBER_STATES)
                           ENDIF !model_idx
                         ENDDO !dof_idx
-                        TIME=TIME+TIME_INCREMENT
-                      ENDDO !time
+                      ENDDO !TIME_STEP
                     ENDIF
                   ENDIF
                 ELSE
@@ -2553,6 +2533,47 @@ CONTAINS
     RETURN 1
 
   END SUBROUTINE SOLVER_DAE_EULER_FORWARD_INTEGRATE
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Set the number of time steps to use for a forward Euler solver
+  SUBROUTINE SOLVER_DAE_EULER_FORWARD_SET_NSTEPS(DAE_SOLVER,NUMBER_OF_STEPS,ERR,ERROR,*)
+  
+    !Argument variables
+    TYPE(DAE_SOLVER_TYPE), POINTER :: DAE_SOLVER !<A pointer to the differential-algebraic equation solver of which the number of time steps shall be set
+    INTEGER(INTG) :: NUMBER_OF_STEPS !< The number to set TIME_STEPS_NUMBER to
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Local Variables
+    
+    ENTERS("SOLVER_DAE_EULER_FORWARD_SET_NSTEPS",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(DAE_SOLVER)) THEN
+      IF(ASSOCIATED(DAE_SOLVER%EULER_SOLVER)) THEN
+        IF(ASSOCIATED(DAE_SOLVER%EULER_SOLVER%FORWARD_EULER_SOLVER)) THEN
+          IF(NUMBER_OF_STEPS > 0) THEN
+            DAE_SOLVER%EULER_SOLVER%FORWARD_EULER_SOLVER%TIME_STEPS_NUMBER=NUMBER_OF_STEPS
+          ELSE
+            CALL FlagError("Invalid INTEGER value: NUMBER_OF_STEPS must be > 0.",ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          CALL FlagError("Forward Euler solver is not associated.",ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        CALL FlagError("Euler solver is not associated.",ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("Differential-algebraic equation solver is not associated.",ERR,ERROR,*999)
+    ENDIF
+
+    EXITS("SOLVER_DAE_EULER_FORWARD_SET_NSTEPS")
+    RETURN
+999 ERRORSEXITS("SOLVER_DAE_EULER_FORWARD_SET_NSTEPS",ERR,ERROR)
+    RETURN 1
+
+  END SUBROUTINE SOLVER_DAE_EULER_FORWARD_SET_NSTEPS 
 
   !
   !================================================================================================================================
@@ -2847,7 +2868,7 @@ CONTAINS
   !
   
   !>Integrate using an improved Euler differential-algebraic equation solver (Heun's method).
-  SUBROUTINE SOLVER_DAE_EULER_IMPROVED_INTEGRATE(IMPROVED_EULER_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_INCREMENT_I, &
+  SUBROUTINE SOLVER_DAE_EULER_IMPROVED_INTEGRATE(IMPROVED_EULER_SOLVER,CELLML,N,START_TIME,END_TIME,TIME_INCREMENT, &
     & ONLY_ONE_MODEL_INDEX,MODELS_DATA,MAX_NUMBER_STATES,STATE_DATA,MAX_NUMBER_PARAMETERS,PARAMETER_DATA, &
     & MAX_NUMBER_INTERMEDIATES,INTERMEDIATE_DATA,ERR,ERROR,*)
     
@@ -2857,7 +2878,7 @@ CONTAINS
     INTEGER(INTG), INTENT(IN) :: N !<The number of degrees-of-freedom
     REAL(DP), INTENT(IN) :: START_TIME !<The start time for the integration
     REAL(DP), INTENT(IN) :: END_TIME !<The end time for the integration
-    REAL(DP), INTENT(INOUT) :: TIME_INCREMENT_I !<The (initial) time increment for the integration
+    REAL(DP), INTENT(INOUT) :: TIME_INCREMENT !<The (initial) time increment for the integration. Will be suited to time interval (START_TIME,END_TIME) or calculated new, if Forward Euler DAE solvers TIME_STEPS_NUMBER is set.
     INTEGER(INTG), INTENT(IN) :: ONLY_ONE_MODEL_INDEX !<If only one model is used in the models data the index of that model. 0 otherwise.
     INTEGER(INTG), POINTER :: MODELS_DATA(:) !<MODELS_DATA(dof_idx). The models data for the dof_idx'th dof.
     INTEGER(INTG), INTENT(IN) :: MAX_NUMBER_STATES !<The maximum number of state variables per dof
@@ -2873,17 +2894,25 @@ CONTAINS
     INTEGER(INTG) :: dof_idx,DOF_ORDER_TYPE,INTERMEDIATE_END_DOF,intermediate_idx,INTERMEDIATE_START_DOF,model_idx, &
       & NUMBER_INTERMEDIATES,NUMBER_PARAMETERS,NUMBER_STATES,PARAMETER_END_DOF,parameter_idx,PARAMETER_START_DOF, &
       & STATE_END_DOF,state_idx,STATE_START_DOF
+    INTEGER(INTG) :: TS_NUMBER, TIME_STEP
     REAL(DP) :: INTERMEDIATES(MAX(1,MAX_NUMBER_INTERMEDIATES)),PARAMETERS(MAX(1,MAX_NUMBER_PARAMETERS)), &
-      & RATES(MAX(1,MAX_NUMBER_STATES)),STATES(MAX(1,MAX_NUMBER_STATES)),STRATES(MAX(1,MAX_NUMBER_STATES)),TIME
+      & RATES(MAX(1,MAX_NUMBER_STATES)),STATES(MAX(1,MAX_NUMBER_STATES)),STRATES(MAX(1,MAX_NUMBER_STATES))
     ! To save memory capacity, we will reuse the temporary states vector and store the rhs evaluation of this state in it self, later. Thus, we call it STRATES.
     
     TYPE(CELLML_MODEL_TYPE), POINTER :: MODEL
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    REAL(DP) :: TIME_INCREMENT
     
     ENTERS("SOLVER_DAE_EULER_IMPROVED_INTEGRATE",ERR,ERROR,*999)
     
-    TIME_INCREMENT=TIME_INCREMENT_I
+    !Set up the right way to integrate. (make sure that we leave with TMIE==END_TIME)------------------
+    !We take a fixed amount of steps to yield the integration result at exactly t=END_TIME, using the same step size at every step.
+    IF(IMPROVED_EULER_SOLVER%TIME_STEPS_NUMBER==-1) THEN
+      TS_NUMBER = CEILING((END_TIME-START_TIME)/TIME_INCREMENT)
+    ELSE
+      TS_NUMBER = IMPROVED_EULER_SOLVER%TIME_STEPS_NUMBER
+    ENDIF
+    TIME_INCREMENT = (END_TIME-START_TIME)/TS_NUMBER
+    !--------------------------------------------------------------------------------------------------
 
     IF(ASSOCIATED(IMPROVED_EULER_SOLVER)) THEN
       IF(ASSOCIATED(CELLML)) THEN
@@ -2893,9 +2922,7 @@ CONTAINS
             !Dof components are separated. Will need to copy data to temporary arrays.
             IF(ONLY_ONE_MODEL_INDEX==CELLML_MODELS_FIELD_NOT_CONSTANT) THEN
               !Mulitple models
-              DO WHILE(TIME<END_TIME)
-                !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
-                TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
+              DO TIME_STEP=1,TS_NUMBER ! to go from t_n to t_{n+1} (first step: from t_0 to t_1)
                 DO dof_idx=1,N
                   model_idx=MODELS_DATA(dof_idx)
                   IF(model_idx.GT.0) THEN
@@ -2915,14 +2942,15 @@ CONTAINS
 
 #ifdef WITH_CELLML
                       ! y_n is given - evaluate f(t,y_n):
-                      CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME,STATES,RATES,INTERMEDIATES,PARAMETERS)
+                      CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT &
+                        & ,STATES,RATES,INTERMEDIATES,PARAMETERS)
                       ! compute y_{temp} = y_n + dt*f(t,y_n) 
                       STRATES = STATES + TIME_INCREMENT * RATES
                       ! evaluate f(t+dt,y_{temp}). Note: STRATES is in/out. in: holds state values. out: holds the rates.
-                      CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME+TIME_INCREMENT,STRATES,STRATES, &
-                        & INTERMEDIATES,PARAMETERS)
+                      CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT,STRATES, &
+                        & STRATES,INTERMEDIATES,PARAMETERS)
                       ! compute y_{n+1}=y_n + dt/2*[f(t,y_n)+f(t+dt,y_{temp})]:
-                      STATES=STATES + TIME_INCREMENT * .5_DP * (RATES + STRATES)
+                      STATES = STATES + TIME_INCREMENT * .5_DP * (RATES + STRATES)
                       ! done.
 #else
                       CALL FlagError("Must compile with WITH_CELLML ON to use CellML functionality.",ERR,ERROR,*999)
@@ -2935,7 +2963,6 @@ CONTAINS
                       DO state_idx=1,NUMBER_STATES
                         STATE_DATA((dof_idx-1)*N+state_idx)=STATES(state_idx)+TIME_INCREMENT*RATES(state_idx)
                       ENDDO !state_idx
-
                     ELSE
                       LOCAL_ERROR="CellML environment model is not associated for model index "// &
                         & TRIM(NumberToVString(ONLY_ONE_MODEL_INDEX,"*",ERR,ERROR))//" belonging to dof index "// &
@@ -2944,8 +2971,7 @@ CONTAINS
                     ENDIF
                   ENDIF !model_idx
                 ENDDO !dof_idx
-                TIME=TIME+TIME_INCREMENT
-              ENDDO !time
+              ENDDO !TIME_STEP
             ELSE
               !Only one model is used.
               MODEL=>CELLML%MODELS(ONLY_ONE_MODEL_INDEX)%PTR
@@ -2953,12 +2979,8 @@ CONTAINS
                 NUMBER_STATES=MODEL%NUMBER_OF_STATE
                 NUMBER_INTERMEDIATES=MODEL%NUMBER_OF_INTERMEDIATE
                 NUMBER_PARAMETERS=MODEL%NUMBER_OF_PARAMETERS
-                TIME=START_TIME
-                DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
-                  !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
-                  TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
+                DO TIME_STEP=1,TS_NUMBER ! to go from t_n to t_{n+1} (first step: from t_0 to t_1)
                   DO dof_idx=1,N
-
                     model_idx=MODELS_DATA(dof_idx)
                     IF(model_idx.GT.0) THEN
                       !Copy CellML data to temporary arrays
@@ -2971,19 +2993,19 @@ CONTAINS
 
 #ifdef WITH_CELLML
                       ! y_n is given - evaluate f(t,y_n):
-                      CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME,STATES,RATES,INTERMEDIATES,PARAMETERS)
+                      CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT &
+                        & ,STATES,RATES,INTERMEDIATES,PARAMETERS)
                       ! compute y_{temp} = y_n + dt*f(t,y_n) 
                       STRATES = STATES + TIME_INCREMENT * RATES
                       ! evaluate f(t+dt,y_{temp}). Note: STRATES is in/out. in: holds state values. out: holds the rates.
-                      CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME+TIME_INCREMENT,STRATES,STRATES, &
-                        & INTERMEDIATES,PARAMETERS)
+                      CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT,STRATES &
+                        & ,STRATES,INTERMEDIATES,PARAMETERS)
                       ! compute y_{n+1}=y_n + dt/2*[f(t,y_n)+f(t+dt,y_{temp})]:
                       STATES=STATES + TIME_INCREMENT * .5_DP * (RATES + STRATES)
                       ! done.
 #else
                       CALL FlagError("Must compile with WITH_CELLML ON to use CellML functionality.",ERR,ERROR,*999)
 #endif
-
                       !Copy temporary data back to CellML arrays
                       DO intermediate_idx=1,NUMBER_INTERMEDIATES
                         INTERMEDIATE_DATA((dof_idx-1)*N+intermediate_idx)=INTERMEDIATES(intermediate_idx)
@@ -2993,8 +3015,7 @@ CONTAINS
                       ENDDO !state_idx
                     ENDIF !model_idx
                   ENDDO !dof_idx
-                  TIME=TIME+TIME_INCREMENT
-                  ENDDO !time
+                ENDDO !TIME_STEP
               ELSE
                 LOCAL_ERROR="CellML environment model is not associated for model index "// &
                   & TRIM(NumberToVString(ONLY_ONE_MODEL_INDEX,"*",ERR,ERROR))//"."
@@ -3005,10 +3026,7 @@ CONTAINS
             !Dof components are continguous. Can pass data directly.
             IF(ONLY_ONE_MODEL_INDEX==CELLML_MODELS_FIELD_NOT_CONSTANT) THEN
               !Mulitple models
-              TIME=START_TIME
-              DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
-                !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
-                TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
+              DO TIME_STEP=1,TS_NUMBER ! to go from t_n to t_{n+1} (first step: from t_0 to t_1)
                 DO dof_idx=1,N
                   model_idx=MODELS_DATA(dof_idx)
                   IF(model_idx==0) THEN
@@ -3035,14 +3053,14 @@ CONTAINS
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
                             ! y_n is given - evaluate f(t,y_n):
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME,STATE_DATA(STATE_START_DOF: &
-                              & STATE_END_DOF),RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF), &
-                              & PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT, &
+                              & STATE_DATA(STATE_START_DOF:STATE_END_DOF),RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF: &
+                              & INTERMEDIATE_END_DOF),PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
                             ! compute y_{temp} = y_n + dt*f(t,y_n) 
                             STRATES = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + TIME_INCREMENT * RATES
                             ! evaluate f(t+dt,y_{temp}). Note: STRATES is in/out. in: holds state values. out: holds the rates.
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME+TIME_INCREMENT,STRATES,STRATES, &
-                              & INTERMEDIATES,PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT,STRATES &
+                              & ,STRATES,INTERMEDIATES,PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
                             ! compute y_{n+1} later. But compute INTERMEDIATES (that's some kind of alternative output of the RHS model..)
                             INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF) =  &
                               & (INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF) + INTERMEDIATES) * 0.5_DP
@@ -3055,13 +3073,14 @@ CONTAINS
                             INTERMEDIATE_START_DOF=(dof_idx-1)*MAX_NUMBER_INTERMEDIATES+1
                             INTERMEDIATE_END_DOF=INTERMEDIATE_START_DOF+NUMBER_INTERMEDIATES-1
                             ! y_n is given - evaluate f(t,y_n):
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME,STATE_DATA(STATE_START_DOF: &
-                              & STATE_END_DOF),RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF),PARAMETERS)
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT &
+                              & ,STATE_DATA(STATE_START_DOF:STATE_END_DOF),RATES &
+                              & ,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF),PARAMETERS)
                             ! compute y_{temp} = y_n + dt*f(t,y_n) 
                             STRATES = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + TIME_INCREMENT * RATES
                             ! evaluate f(t+dt,y_{temp}). Note: STRATES is in/out. in: holds state values. out: holds the rates.
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME+TIME_INCREMENT,STRATES,STRATES, &
-                              & INTERMEDIATES,PARAMETERS)
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT,STRATES &
+                              & ,STRATES,INTERMEDIATES,PARAMETERS)
                             ! compute y_{n+1} later. But compute INTERMEDIATES (that's some kind of alternative output of the RHS model..)
                             INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF) = &
                               & (INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF) + INTERMEDIATES) * 0.5_DP
@@ -3075,13 +3094,14 @@ CONTAINS
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
                             ! y_n is given - evaluate f(t,y_n):
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME,STATE_DATA(STATE_START_DOF: &
-                              & STATE_END_DOF),RATES,INTERMEDIATES,PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT &
+                              & ,STATE_DATA(STATE_START_DOF:STATE_END_DOF),RATES,INTERMEDIATES &
+                              & ,PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
                             ! compute y_{temp} = y_n + dt*f(t,y_n) 
                             STRATES = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + TIME_INCREMENT * RATES
                             ! evaluate f(t+dt,y_{temp}). Note: STRATES is in/out. in: holds state values. out: holds the rates.
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME+TIME_INCREMENT,STRATES,STRATES, &
-                              & INTERMEDIATES,PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT &
+                              & ,STRATES,STRATES,INTERMEDIATES,PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
                             ! compute y_{n+1} later.
                             ! not done, yet.
                           ELSE
@@ -3089,13 +3109,13 @@ CONTAINS
                             STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                             ! y_n is given - evaluate f(t,y_n):
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME,STATE_DATA(STATE_START_DOF: &
-                              & STATE_END_DOF),RATES,INTERMEDIATES,PARAMETERS)
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT &
+                              & ,STATE_DATA(STATE_START_DOF:STATE_END_DOF),RATES,INTERMEDIATES,PARAMETERS)
                             ! compute y_{temp} = y_n + dt*f(t,y_n) 
                             STRATES = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + TIME_INCREMENT * RATES
                             ! evaluate f(t+dt,y_{temp}). Note: STRATES is in/out. in: holds state values. out: holds the rates.
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME+TIME_INCREMENT,STRATES,STRATES, &
-                              & INTERMEDIATES,PARAMETERS)
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT,STRATES &
+                              & ,STRATES,INTERMEDIATES,PARAMETERS)
                             ! compute y_{n+1} later.
                             ! not done, yet.
                           ENDIF
@@ -3124,8 +3144,7 @@ CONTAINS
                     CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
                   ENDIF
                 ENDDO !dof_idx
-                TIME=TIME+TIME_INCREMENT
-              ENDDO !time
+              ENDDO !TIME_STEP
             ELSE
               !Only one model is used.
               MODEL=>CELLML%MODELS(ONLY_ONE_MODEL_INDEX)%PTR
@@ -3141,11 +3160,7 @@ CONTAINS
                   IF(NUMBER_INTERMEDIATES>0) THEN
                     IF(NUMBER_PARAMETERS>0) THEN
                       !We have states, intermediates and parameters for the model
-
-                      TIME=START_TIME
-                      DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
-                        !prepare time increment: (actually, this only needs to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
-                        TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
+                      DO TIME_STEP=1,TS_NUMBER ! to go from t_n to t_{n+1} (first step: from t_0 to t_1)
                         DO dof_idx=1,N
                           model_idx=MODELS_DATA(dof_idx)
                           IF(model_idx.GT.0) THEN
@@ -3164,7 +3179,7 @@ CONTAINS
                             CALL CustomProfilingStart('cellml call rhs')
 #endif
                             ! y_n is given - evaluate f(t,y_n):
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME, &
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF),RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF: &
                               & INTERMEDIATE_END_DOF),PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
                             
@@ -3194,7 +3209,7 @@ CONTAINS
                             CALL CustomProfilingStart('cellml call rhs')
 #endif
                             ! evaluate f(t+dt,y_{temp}). Note: STRATES is in/out. in: holds state values. out: holds the rates.
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME+TIME_INCREMENT, &
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT, &
                               & STRATES(1:NUMBER_STATES),STRATES(1:NUMBER_STATES),INTERMEDIATES(1:MAX_NUMBER_INTERMEDIATES), &
                               & PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
 #ifdef USE_CUSTOM_PROFILING
@@ -3225,8 +3240,8 @@ CONTAINS
                             ! done.
                           ENDIF !model_idx  
                           ! produce some output to see state evolution after each meso time step size (1D model time step size)
-                          IF(dof_idx == 1 .AND. TIME_INCREMENT/=TIME_INCREMENT_I .AND. DEBUG_MODE_A) THEN
-                            WRITE(*,*)'===================================================',TIME_INCREMENT+TIME, '========'
+                          IF(dof_idx == 1 .AND. DEBUG_MODE_A) THEN
+                            WRITE(*,*)'======================================',START_TIME + TIME_STEP*TIME_INCREMENT, '========'
                            !WRITE(*,*) 'Stepping forward by',TIME_INCREMENT,'time instances. State afterwards:'
                             DO model_idx=0,NUMBER_STATES-1
                               WRITE(*,*) STATE_DATA(STATE_START_DOF+model_idx)
@@ -3235,15 +3250,11 @@ CONTAINS
                             WRITE(*,*) ''
                           ENDIF
                         ENDDO !dof_idx
-                        TIME=TIME+TIME_INCREMENT
-                      ENDDO !time
+                      ENDDO !TIME_STEP
                     
                     ELSE
                       !We do not have parameters in the model
-                      TIME=START_TIME
-                      DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
-                        !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
-                        TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
+                      DO TIME_STEP=1,TS_NUMBER ! to go from t_n to t_{n+1} (first step: from t_0 to t_1)
                         DO dof_idx=1,N
                           model_idx=MODELS_DATA(dof_idx)
                           IF(model_idx.GT.0) THEN
@@ -3261,14 +3272,14 @@ CONTAINS
                             !  & RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF),PARAMETERS)
                             
                             ! y_n is given - evaluate f(t,y_n):
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME, &
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF),RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF: &
                               & INTERMEDIATE_END_DOF),PARAMETERS)
                             ! compute y_{temp} = y_n + dt*f(t,y_n) 
                             STRATES(1:NUMBER_STATES) = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + &
                                                          & TIME_INCREMENT * RATES(1:NUMBER_STATES)
                             ! evaluate f(t+dt,y_{temp}). Note: STRATES is in/out. in: holds state values. out: holds the rates.  
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME+TIME_INCREMENT, &
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT, &
                               & STRATES,STRATES,INTERMEDIATES,PARAMETERS)
                             ! compute y_{n+1}=y_n + dt/2*[f(t,y_n)+f(t+dt,y_{temp})]:
                             STATE_DATA(STATE_START_DOF:STATE_END_DOF) = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + &
@@ -3279,16 +3290,12 @@ CONTAINS
                             ! done.
                           ENDIF !model_idx
                         ENDDO !dof_idx
-                        TIME=TIME+TIME_INCREMENT
-                      ENDDO !time
+                      ENDDO !TIME_STEP
                     ENDIF
                   ELSE
                   !We do not have intermediates in the model
                     IF(NUMBER_PARAMETERS>0) THEN
-                      TIME=START_TIME              
-                      DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
-                        !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
-                        TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
+                      DO TIME_STEP=1,TS_NUMBER ! to go from t_n to t_{n+1} (first step: from t_0 to t_1)
                         DO dof_idx=1,N
                           model_idx=MODELS_DATA(dof_idx)
                           IF(model_idx.GT.0) THEN
@@ -3303,7 +3310,7 @@ CONTAINS
                             CALL CustomProfilingStart('cellml call rhs')
 #endif
                             ! y_n is given - evaluate f(t,y_n):
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME, &
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF),RATES,INTERMEDIATES, &
                               & PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
 #ifdef USE_CUSTOM_PROFILING
@@ -3322,7 +3329,7 @@ CONTAINS
                             CALL CustomProfilingStart('cellml call rhs')
 #endif
                             ! evaluate f(t+dt,y_{temp}). Note: STRATES is in/out. in: holds state values. out: holds the rates.
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME+TIME_INCREMENT, &
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT, &
                               & STRATES,STRATES,INTERMEDIATES,PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
 #ifdef USE_CUSTOM_PROFILING
                             CALL CustomProfilingStop('cellml call rhs')
@@ -3336,8 +3343,8 @@ CONTAINS
                             ! done.
                           ENDIF !model_idx
                           ! produce some output to see state evolution after each meso time step size (1D model time step size)
-                          IF(dof_idx == 1 .AND. TIME_INCREMENT/=TIME_INCREMENT_I .AND. DEBUG_MODE_A) THEN
-                            WRITE(*,*)'===================================================',TIME_INCREMENT+TIME, '========'
+                          IF(dof_idx == 1 .AND. DEBUG_MODE_A) THEN
+                            WRITE(*,*)'======================================',START_TIME + TIME_STEP*TIME_INCREMENT, '========'
                            !WRITE(*,*) 'Stepping forward by',TIME_INCREMENT,'time instances. State afterwards:'
                             DO model_idx=0,NUMBER_STATES-1
                               WRITE(*,*) STATE_DATA(STATE_START_DOF+model_idx)
@@ -3346,14 +3353,10 @@ CONTAINS
                             WRITE(*,*) ''
                           ENDIF
                         ENDDO !dof_idx
-                        TIME=TIME+TIME_INCREMENT
-                      ENDDO !time
+                      ENDDO !TIME_STEP
                     ELSE
                       !We do not have intermediates or parameters in the model
-                      TIME=START_TIME
-                      DO WHILE(TIME<END_TIME)!Aaron changed this (was '<='). until now, we made a step too much. Additionally, the last step size is chosen s.t. we end up with TIME==END_TIME, when leaving.
-                        !prepare time increment: (actually, this needs only to be done at most once at the last step. so most of the time it might just be an expensive evaluation. ..-> better idea?!)
-                        TIME_INCREMENT=MIN(TIME_INCREMENT,END_TIME-TIME)
+                      DO TIME_STEP=1,TS_NUMBER ! to go from t_n to t_{n+1} (first step: from t_0 to t_1)
                         DO dof_idx=1,N
                           model_idx=MODELS_DATA(dof_idx)
                           IF(model_idx.GT.0) THEN
@@ -3361,13 +3364,13 @@ CONTAINS
                             STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                             ! y_n is given - evaluate f(t,y_n):
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME, &
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF),RATES,INTERMEDIATES,PARAMETERS)
                             ! compute y_{temp} = y_n + dt*f(t,y_n) 
                             STRATES(1:NUMBER_STATES) = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + &
                                                          & TIME_INCREMENT * RATES(1:NUMBER_STATES)
                             ! evaluate f(t+dt,y_{temp}). Note: STRATES is in/out. in: holds state values. out: holds the rates.
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME+TIME_INCREMENT, &
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT, &
                               & STRATES,STRATES,INTERMEDIATES,PARAMETERS)
                             ! compute y_{n+1}=y_n + dt/2*[f(t,y_n)+f(t+dt,y_{temp})]:
                             STATE_DATA(STATE_START_DOF:STATE_END_DOF)=STATE_DATA(STATE_START_DOF:STATE_END_DOF) + &
@@ -3375,8 +3378,7 @@ CONTAINS
                             ! done.
                           ENDIF !model_idx
                         ENDDO !dof_idx
-                        TIME=TIME+TIME_INCREMENT
-                      ENDDO !time
+                      ENDDO !TIME_STEP
                     ENDIF
                   ENDIF
                 ELSE
@@ -3411,6 +3413,47 @@ CONTAINS
 
   END SUBROUTINE SOLVER_DAE_EULER_IMPROVED_INTEGRATE
   
+  !
+  !================================================================================================================================
+  !
+
+  !>Set the number of time steps to use for a improved Euler solver
+  SUBROUTINE SOLVER_DAE_EULER_IMPROVED_SET_NSTEPS(DAE_SOLVER,NUMBER_OF_STEPS,ERR,ERROR,*)
+  
+    !Argument variables
+    TYPE(DAE_SOLVER_TYPE), POINTER :: DAE_SOLVER !<A pointer to the differential-algebraic equation solver of which the number of time steps shall be set
+    INTEGER(INTG) :: NUMBER_OF_STEPS !< The number to set TIME_STEPS_NUMBER to
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Local Variables
+    
+    ENTERS("SOLVER_DAE_EULER_IMPROVED_SET_NSTEPS",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(DAE_SOLVER)) THEN
+      IF(ASSOCIATED(DAE_SOLVER%EULER_SOLVER)) THEN
+        IF(ASSOCIATED(DAE_SOLVER%EULER_SOLVER%IMPROVED_EULER_SOLVER)) THEN
+          IF(NUMBER_OF_STEPS > 0) THEN
+            DAE_SOLVER%EULER_SOLVER%IMPROVED_EULER_SOLVER%TIME_STEPS_NUMBER=NUMBER_OF_STEPS
+          ELSE
+            CALL FlagError("Invalid INTEGER value: NUMBER_OF_STEPS must be > 0.",ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          CALL FlagError("Improved Euler solver is not associated.",ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        CALL FlagError("Euler solver is not associated.",ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("Differential-algebraic equation solver is not associated.",ERR,ERROR,*999)
+    ENDIF
+
+    EXITS("SOLVER_DAE_EULER_IMPROVED_SET_NSTEPS")
+    RETURN
+999 ERRORSEXITS("SOLVER_DAE_EULER_IMPROVED_SET_NSTEPS",ERR,ERROR)
+    RETURN 1
+
+  END SUBROUTINE SOLVER_DAE_EULER_IMPROVED_SET_NSTEPS 
+
   !
   !================================================================================================================================
   !
