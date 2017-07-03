@@ -62857,7 +62857,7 @@ CONTAINS
           Permutation(3)    = 2
           Permutation(4)    = 5
           Permutation(5)    = 6
-          Permutation(6)    = 7
+          Permutation(6)    = 3
           NumberOfBoundaryPatchComponents = 5_INTG
         CASE(9)
           ! Quadratic quadrilateral
