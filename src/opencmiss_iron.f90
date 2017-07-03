@@ -62608,7 +62608,8 @@ CONTAINS
     ENTERS("cmfe_DomainTopologyNodeCheckExists", Err, error, *999)
 
     ! check if variable type is set for given field
-    ALLOCATE(VariableTypes(Field%Field%NUMBER_OF_VARIABLES))
+    ALLOCATE(VariableTypes(Field%Field%NUMBER_OF_VARIABLES),STAT=Err)
+    IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
     CALL cmfe_Field_VariableTypesGet(Field, VariableTypes, Err)
     VariableTypeFound=ANY(VariableTypes==VariableType)
     IF(.NOT.VariableTypeFound) CALL cmfe_HandleError(Err, error)
@@ -62620,7 +62621,7 @@ CONTAINS
     IF(.NOT.ASSOCIATED(DOMAIN_TOPOLOGY)) CALL cmfe_HandleError(err,error)
     ! NOTE: we are misusing this function call so we need to handle the return error code
     CALL DOMAIN_TOPOLOGY_NODE_CHECK_EXISTS(DOMAIN_TOPOLOGY, nodeUserNumber, UserNodeExist, &
-      & DomainLocalNodeNumber, GhostNode, err, Error, *999)
+      & DomainLocalNodeNumber, GhostNode, Err, Error, *999)
 
     DEALLOCATE(VariableTypes)
     EXITS("cmfe_DomainTopologyNodeCheckExists")
@@ -62789,7 +62790,7 @@ CONTAINS
     CHARACTER(LEN=*),   INTENT(IN)  :: Filename             !< The file name to import the mesh data from
     REAL(DP),           INTENT(OUT) :: Nodes(:,:)           !< The coordinates of the mesh nodes
     INTEGER(INTG),      INTENT(OUT) :: Elements(:,:)        !< The node IDs for each element
-    INTEGER(INTG),      INTENT(OUT) :: BoundaryPatches(:,:) !< The boundary patch labels for all boundary nodes
+    INTEGER(INTG),      INTENT(OUT) :: BoundaryPatches(:)   !< The boundary patch labels for all boundary nodes
     CHARACTER(LEN=*),   INTENT(IN)  :: Method               !<The export method to use, e.g, CHeart, Cmgui, etc.
     INTEGER(INTG),      INTENT(OUT) :: Err                  !<The error code.
     ! Local variables
@@ -62799,12 +62800,17 @@ CONTAINS
     INTEGER(INTG)                   :: NumberOfNodes,NumberOfDimensions
     INTEGER(INTG)                   :: NumberOfElements,NumberOfNodesPerElement
     INTEGER(INTG)                   :: NumberOfBoundaryPatches,NumberOfBoundaryPatchComponents
-    INTEGER(INTG)                   :: IntValue,CurrentIdx,Idx
-    INTEGER(INTG), ALLOCATABLE      :: Permutation(:),IntValuesT(:)
+    INTEGER(INTG)                   :: IntValue,CurrentIdx,ComponentIdx,PatchIdx,CurrentPatchID,Offset,Idx
+    INTEGER(INTG), ALLOCATABLE      :: Permutation(:),IntValuesT(:),IntValuesB(:),BoundaryPatchesTemp(:,:)
+    INTEGER(INTG)                   :: NumberOfPatchIDs
+    INTEGER(INTG)                   :: PatchIDs(25),NumberOfNodesPerPatchID(25),CurrentFirstPatchIdx(25)
 
     ENTERS("cmfe_ReadMeshFiles", Err, Error, *999)
 
     ! Initialize variables
+    PatchIDs                = -1_INTG ! default, not present
+    NumberOfNodesPerPatchID =  0_INTG
+    NumberOfPatchIDs        =  0_INTG
 
     ! Get file name and method name
     FilenameLength  = LEN_TRIM(Filename)
@@ -62820,12 +62826,12 @@ CONTAINS
       NumberOfDimensions              = SIZE(Nodes,2)
       NumberOfElements                = SIZE(Elements,1)
       NumberOfNodesPerElement         = SIZE(Elements,2)
-      NumberOfBoundaryPatches         = SIZE(BoundaryPatches,1)
-      NumberOfBoundaryPatchComponents = SIZE(BoundaryPatches,2)
 
       ! Figure out which node IDs we have to swap
-      ALLOCATE(Permutation(NumberOfNodesPerElement))
-      ALLOCATE(IntValuesT(NumberOfNodesPerElement))
+      ALLOCATE(Permutation(NumberOfNodesPerElement),STAT=Err)
+      IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+      ALLOCATE(IntValuesT(NumberOfNodesPerElement),STAT=Err)
+      IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
       SELECT CASE(NumberOfDimensions)
       CASE(2)
         SELECT CASE(NumberOfNodesPerElement)
@@ -62835,12 +62841,14 @@ CONTAINS
           DO CurrentIdx=1,NumberOfNodesPerElement
             Permutation(CurrentIdx) = CurrentIdx
           END DO
+          NumberOfBoundaryPatchComponents = 4_INTG
         CASE(4)
           ! Linear quadrilateral
           Permutation       = 0
           DO CurrentIdx=1,NumberOfNodesPerElement
             Permutation(CurrentIdx) = CurrentIdx
           END DO
+          NumberOfBoundaryPatchComponents = 4_INTG
         CASE(6)
           ! Quadratic triangle
           Permutation       = 0
@@ -62850,6 +62858,7 @@ CONTAINS
           Permutation(4)    = 5
           Permutation(5)    = 6
           Permutation(6)    = 7
+          NumberOfBoundaryPatchComponents = 5_INTG
         CASE(9)
           ! Quadratic quadrilateral
           Permutation       = 0
@@ -62862,6 +62871,7 @@ CONTAINS
           Permutation(7)    = 3
           Permutation(8)    = 9
           Permutation(9)    = 4
+          NumberOfBoundaryPatchComponents = 5_INTG
         CASE DEFAULT
           CALL FlagError("Unknown 2D mesh type for method: "//TRIM(Method), Err, Error, *999)
         END SELECT
@@ -62873,12 +62883,14 @@ CONTAINS
           DO CurrentIdx=1,NumberOfNodesPerElement
             Permutation(CurrentIdx) = CurrentIdx
           END DO
+          NumberOfBoundaryPatchComponents = 5_INTG
         CASE(8)
           ! Linear hexahedron
           Permutation       = 0
           DO CurrentIdx=1,NumberOfNodesPerElement
             Permutation(CurrentIdx) = CurrentIdx
           END DO
+          NumberOfBoundaryPatchComponents = 6_INTG
         CASE(10)
           ! Quadratic tetrahedron
           Permutation       =  0
@@ -62892,6 +62904,7 @@ CONTAINS
           Permutation(8)    =  9
           Permutation(9)    = 10
           Permutation(10)   =  4
+          NumberOfBoundaryPatchComponents = 8_INTG
         CASE(27)
           ! Quadratic hexahedron
           Permutation       =  0
@@ -62922,12 +62935,15 @@ CONTAINS
           Permutation(25)   =  7
           Permutation(26)   = 27
           Permutation(27)   =  8
+          NumberOfBoundaryPatchComponents = 11_INTG
         CASE DEFAULT
           CALL FlagError("Unknown 3D mesh type for method: "//TRIM(Method), Err, Error, *999)
         END SELECT
       CASE DEFAULT
         CALL FlagError("1D mesh import not supported for method: "//TRIM(Method), Err, Error, *999)
       END SELECT
+      ALLOCATE(IntValuesB(NumberOfBoundaryPatchComponents),STAT=Err)
+      IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
       
       ! Get available file units (Fortran 2008 feature)
       OPEN(NEWUNIT=NodeFileUnit,     FILE=CHAR(VFilename)//".X", ACTION="read")
@@ -62950,9 +62966,51 @@ CONTAINS
       END DO
 
       ! Skip header line and read all other lines in the boundary file
-      READ(BoundaryFileUnit,*) IntValue
+      READ(BoundaryFileUnit,*) NumberOfBoundaryPatches
+      ALLOCATE(BoundaryPatchesTemp(NumberOfBoundaryPatches,NumberOfBoundaryPatchComponents),STAT=Err)
+      IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+      ! First of all, let's read all the boundary patches in a temporary variable and count the number of unique boundary patch IDs
       DO CurrentIdx=1,NumberOfBoundaryPatches
-        READ(BoundaryFileUnit,*) BoundaryPatches(CurrentIdx,:)
+        READ(BoundaryFileUnit,*) BoundaryPatchesTemp(CurrentIdx,:)
+        DO PatchIdx=1,SIZE(PatchIDs,1)
+          ! Check whether it is an existing patch ID or if we found a new one
+          IF(PatchIDs(PatchIdx)==BoundaryPatchesTemp(CurrentIdx,NumberOfBoundaryPatchComponents)) THEN
+            NumberOfNodesPerPatchID(PatchIdx)   = NumberOfNodesPerPatchID(PatchIdx) + NumberOfBoundaryPatchComponents - 2_INTG
+            EXIT
+          ELSE IF(PatchIDs(PatchIdx)==-1_INTG) THEN
+            NumberOfPatchIDs                    = NumberOfPatchIDs + 1_INTG
+            PatchIDs(PatchIdx)                  = BoundaryPatchesTemp(CurrentIdx,NumberOfBoundaryPatchComponents)
+            NumberOfNodesPerPatchID(PatchIdx)   = NumberOfNodesPerPatchID(PatchIdx) + NumberOfBoundaryPatchComponents - 2_INTG
+            EXIT
+          ELSE
+            ! Do nothing
+          END IF
+        END DO
+      END DO
+      ! Set the number of patch IDs
+      BoundaryPatches(1)    = NumberOfPatchIDs
+      CurrentFirstPatchIdx  = 1_INTG+2*NumberOfPatchIDs+1_INTG
+      DO CurrentIdx=1,NumberOfPatchIDs
+        ! Get number of nodes for each patch ID
+        BoundaryPatches(1+CurrentIdx)                   = NumberOfNodesPerPatchID(CurrentIdx)
+        ! Get the current patch ID
+        BoundaryPatches(1+NumberOfPatchIDs+CurrentIdx)  = PatchIDs(CurrentIdx)
+        ! Define starting indices for boundary patches
+        IF(CurrentIdx>1) CurrentFirstPatchIdx(CurrentIdx) = CurrentFirstPatchIdx(CurrentIdx-1_INTG) + BoundaryPatches(CurrentIdx)
+      END DO
+      DO CurrentIdx=1,NumberOfBoundaryPatches
+        ! Get the current patch ID to match
+        CurrentPatchID=BoundaryPatchesTemp(CurrentIdx,NumberOfBoundaryPatchComponents)
+        DO PatchIdx=1,NumberOfPatchIDs
+          IF(CurrentPatchID==PatchIDs(PatchIdx)) THEN
+            Offset=CurrentFirstPatchIdx(PatchIdx)
+            EXIT
+          END IF
+        END DO
+        DO ComponentIdx=2,NumberOfBoundaryPatchComponents-1
+          BoundaryPatches(Offset+ComponentIdx-2)    = BoundaryPatchesTemp(CurrentIdx,ComponentIdx)
+        END DO
+       CurrentFirstPatchIdx(PatchIdx)=CurrentFirstPatchIdx(PatchIdx)+NumberOfBoundaryPatchComponents-2_INTG
       END DO
 
       ! Close files
@@ -62963,8 +63021,11 @@ CONTAINS
       CALL FlagError("Invalid mesh import type. Valid types are: CHeart", Err, Error, *999)
     END IF
 
-    IF(ALLOCATED(Permutation))  DEALLOCATE(Permutation)
-    IF(ALLOCATED(IntValuesT))  DEALLOCATE(IntValuesT)
+    ! Deallocate temporary variables
+    IF(ALLOCATED(Permutation))          DEALLOCATE(Permutation)
+    IF(ALLOCATED(IntValuesT))           DEALLOCATE(IntValuesT)
+    IF(ALLOCATED(IntValuesB))           DEALLOCATE(IntValuesB)
+    IF(ALLOCATED(BoundaryPatchesTemp))  DEALLOCATE(BoundaryPatchesTemp)
 
     EXITS("cmfe_ReadMeshFiles")
 
