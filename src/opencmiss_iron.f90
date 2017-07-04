@@ -4264,6 +4264,10 @@ MODULE OpenCMISS_Iron
     MODULE PROCEDURE cmfe_GeneratedMesh_SurfaceGetObj1
   END INTERFACE
 
+  !>Returns starting and stopping index of nodes belonging to a surface of given patch ID
+  INTERFACE cmfe_ImportedMesh_SurfaceGet
+    MODULE PROCEDURE cmfe_ImportedMesh_SurfaceGetNumber0
+  END INTERFACE
 
   !>Creates an embedding of one mesh in another
   INTERFACE cmfe_MeshEmbedding_Create
@@ -4338,7 +4342,7 @@ MODULE OpenCMISS_Iron
 
   PUBLIC cmfe_GeneratedMesh_GeometricParametersCalculate
 
-  PUBLIC cmfe_GeneratedMesh_SurfaceGet
+  PUBLIC cmfe_GeneratedMesh_SurfaceGet,cmfe_ImportedMesh_SurfaceGet
 
 
 !!==================================================================================================================================
@@ -62853,11 +62857,11 @@ CONTAINS
           ! Quadratic triangle
           Permutation       = 0
           Permutation(1)    = 1
-          Permutation(2)    = 4
-          Permutation(3)    = 2
-          Permutation(4)    = 5
+          Permutation(2)    = 2
+          Permutation(3)    = 3
+          Permutation(4)    = 4
           Permutation(5)    = 6
-          Permutation(6)    = 3
+          Permutation(6)    = 5
           NumberOfBoundaryPatchComponents = 5_INTG
         CASE(9)
           ! Quadratic quadrilateral
@@ -63035,5 +63039,50 @@ CONTAINS
     RETURN
 
   END SUBROUTINE cmfe_ReadMeshFiles
-  
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Returns starting and stopping index of nodes belonging to a surface of given patch ID
+  SUBROUTINE cmfe_ImportedMesh_SurfaceGetNumber0(BoundaryPatches,PatchID,StartIdx,StopIdx,Err)
+
+    !Argument variables
+    INTEGER(INTG),      INTENT(IN)  :: BoundaryPatches(:)   !< The boundary patch labels for all boundary nodes
+    INTEGER(INTG),      INTENT(IN)  :: PatchID              !< The desired boundary patch label
+    INTEGER(INTG),      INTENT(OUT) :: StartIdx             !< On return, first index for corresponding PatchID
+    INTEGER(INTG),      INTENT(OUT) :: StopIdx              !< On return, last index for corresponding PatchID
+    INTEGER(INTG),      INTENT(OUT) :: Err                  !< The error code.
+    !Local variables
+    LOGICAL                         :: BoundaryFound
+    INTEGER(INTG)                   :: NodeIdx,NumberOfPatchIDs
+
+    ENTERS("cmfe_ImportedMesh_SurfaceGetNumber0",err,error,*999)
+
+    BoundaryFound=.FALSE.
+    NumberOfPatchIDs=BoundaryPatches(1)
+    ! Check for minimum length of BoundaryPatches variables
+    IF(SIZE(BoundaryPatches)<1+3*NumberOfPatchIDs) CALL FlagError("BoundaryPatches variable has incompatible size.",Err,Error,*999)
+    ! Set index to first non-header index
+    StartIdx=2+NumberOfPatchIDs*2
+    StopIdx=1+NumberOfPatchIDs*2
+    ! Set StartIdx and StopIdx for given PatchID
+    DO NodeIdx=2,NumberOfPatchIDs+1
+      StopIdx=StopIdx+BoundaryPatches(NodeIdx)
+      IF(BoundaryPatches(NodeIdx+NumberOfPatchIDs)==PatchID) THEN
+        BoundaryFound=.TRUE.
+        EXIT
+      ELSE
+        StartIdx=StartIdx+BoundaryPatches(NodeIdx)
+      END IF
+    END DO
+    IF(.NOT.BoundaryFound) CALL FlagError("Could not find boundary patch ID.",Err,Error,*999)
+
+    EXITS("cmfe_ImportedMesh_SurfaceGetNumber0")
+    RETURN
+999 ERRORSEXITS("cmfe_ImportedMesh_SurfaceGetNumber0",Err,Error)
+    CALL cmfe_HandleError(Err,Error)
+    RETURN
+  END SUBROUTINE cmfe_ImportedMesh_SurfaceGetNumber0
+
 END MODULE OpenCMISS_Iron
