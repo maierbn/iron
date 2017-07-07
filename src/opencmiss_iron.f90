@@ -4109,7 +4109,7 @@ MODULE OpenCMISS_Iron
 
   PUBLIC cmfe_Fields_ElementsExport,cmfe_Fields_NodesExport
 
-  PUBLIC cmfe_ReadMeshInfo,cmfe_ReadMeshFiles
+  PUBLIC cmfe_ReadMeshInfo,cmfe_ReadMeshFiles,cmfe_ReadMeshFilesCubit
 
 !!==================================================================================================================================
 !!
@@ -63039,6 +63039,337 @@ CONTAINS
     RETURN
 
   END SUBROUTINE cmfe_ReadMeshFiles
+
+  !
+  !================================================================================================================================
+  !
+
+  SUBROUTINE cmfe_ReadMeshFilesCubit(Filename, Nodes, Elements, Nodesets, InterpolationType, Method, Err)
+    ! IN / OUT variables
+    CHARACTER(LEN=*),            INTENT(IN)     :: Filename             !< The file name to import the mesh data from
+    INTEGER(INTG),  ALLOCATABLE, INTENT(INOUT)  :: Elements(:,:)
+    REAL(DP)     ,  ALLOCATABLE, INTENT(INOUT)  :: Nodes(:,:) 
+    INTEGER(INTG),  ALLOCATABLE, INTENT(INOUT)  :: Nodesets(:)
+    INTEGER(INTG),               INTENT(OUT)    :: InterpolationType
+    CHARACTER(LEN=*),            INTENT(IN)     :: Method               !<The export method to use, e.g., CHeart, OpenCMISS
+    INTEGER(INTG),               INTENT(OUT)    :: Err                  !<The error code.
+    ! Local variables
+    TYPE(VARYING_STRING)        :: VFileName,VMethod
+    TYPE(VARYING_STRING)        :: VElementType
+    CHARACTER(LEN=256)          :: ElementType
+    INTEGER(INTG)               :: FilenameLength,MethodLength,ElementTypeLength
+    INTEGER(INTG)               :: NodeFileUnit,ElementFileUnit,NodesetFileUnit
+    INTEGER(INTG)               :: NumberOfNodes,NumberOfNodesT
+    INTEGER(INTG)               :: NumberOfElements
+    INTEGER(INTG)               :: NumberOfDimensions
+    INTEGER(INTG)               :: NumberOfNodesPerElement
+    INTEGER(INTG)               :: NumberOfNodesets
+    INTEGER(INTG), ALLOCATABLE  :: LengthOfNodesets(:)
+    INTEGER(INTG), ALLOCATABLE  :: Permutation(:),IntValuesT(:)
+    INTEGER(INTG)               :: i, j, k, CurrentIdx
+
+    ENTERS("cmfe_ReadMeshFilesCubit", Err, Error, *999)
+
+    ! Initialize variables
+    NumberOfDimensions      = 0_INTG
+    NumberOfNodes           = 0_INTG
+    NumberOfNodesT          = 0_INTG
+    NumberOfElements        = 0_INTG
+    NumberOfNodesPerElement = 0_INTG
+    NumberOfNodesets        = 0_INTG
+
+    ! Get file name and method name
+    FilenameLength  = LEN_TRIM(Filename)
+    VFilename       = Filename(1:FilenameLength)
+    MethodLength    = LEN_TRIM(Method)
+    VMethod         = Method(1:MethodLength)
+
+    ! Reading the X/T/S files from CHeart file format
+    IF(VMethod=="CHeart") THEN
+      ! Get available file units (Fortran 2008 feature)
+      OPEN(NEWUNIT=NodeFileUnit,     FILE=CHAR(VFilename)//".X", ACTION="read")
+      OPEN(NEWUNIT=ElementFileUnit,  FILE=CHAR(VFilename)//".T", ACTION="read")
+      OPEN(NEWUNIT=NodesetFileUnit,  FILE=CHAR(VFilename)//".S", ACTION="read")
+
+      ! Reading the headers with mesh data
+      READ(NodeFileUnit, *)     NumberOfNodes, NumberOfDimensions
+      READ(ElementFileUnit, *)  NumberOfElements, NumberOfNodesT
+      READ(NodesetFileUnit, *)  ElementType
+
+      ! Get element name
+      ElementTypeLength  = LEN_TRIM(ElementType)
+      VElementType       = ElementType(1:ElementTypeLength)
+
+      ! Do some sanity checks before reading mesh data
+      IF(.NOT.(NumberOfNodes==NumberOfNodesT))  CALL FlagError("X and T files have different number of nodes.", Err, Error, *999)
+      IF(NumberOfNodes<0_INTG)                  CALL FlagError("Invalid number of nodes.", Err, Error, *999)
+      IF(NumberOfDimensions<0_INTG)             CALL FlagError("Invalid number of dimensions.", Err, Error, *999)
+      IF(NumberOfElements<0_INTG)               CALL FlagError("Invalid number of elements.", Err, Error, *999)
+      IF(.NOT.(VElementType=="TRI3"    .OR. &
+               VElementType=="TRI6"    .OR. &
+               VElementType=="QUAD4"   .OR. &
+               VElementType=="QUAD9"   .OR. &
+               VElementType=="TETRA4"  .OR. &
+               VElementType=="TETRA10" .OR. &
+               VElementType=="HEX8"    .OR. &
+               VElementType=="HEX27"))          CALL FlagError("Invalid element type.", Err, Error, *999)
+
+      ! Reading the nodes 
+      ALLOCATE(Nodes(NumberOfNodes,NumberOfDimensions),STAT=Err)
+      DO i = 1, NumberOfNodes
+        READ (NodeFileUnit,*) Nodes(i,:)
+      END DO 
+
+      ! Specifing number of nodes per element, interpolation type (linear/quadratic) and the permutation vector based on element type
+      IF (VElementType=="TRI3") THEN
+        NumberOfNodesPerElement = 3
+        InterpolationType = 1
+        ALLOCATE(Permutation(NumberOfNodesPerElement),STAT=Err)
+        IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+        Permutation       = 0
+        DO CurrentIdx=1,NumberOfNodesPerElement
+          Permutation(CurrentIdx) = CurrentIdx
+        END DO
+      ELSE IF (VElementType=="TRI6") THEN
+        NumberOfNodesPerElement = 6
+        InterpolationType = 2
+        ALLOCATE(Permutation(NumberOfNodesPerElement),STAT=Err)
+        IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+        Permutation       = 0
+        Permutation(1)    = 1
+        Permutation(2)    = 2
+        Permutation(3)    = 3
+        Permutation(4)    = 4
+        Permutation(5)    = 6
+        Permutation(6)    = 5
+      ELSE IF (VElementType=="QUAD4") THEN
+        NumberOfNodesPerElement = 4
+        InterpolationType = 1
+        ALLOCATE(Permutation(NumberOfNodesPerElement),STAT=Err)
+        IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+        Permutation       = 0
+        DO CurrentIdx=1,NumberOfNodesPerElement
+          Permutation(CurrentIdx) = CurrentIdx
+        END DO
+      ELSE IF (VElementType=="QUAD9") THEN
+        NumberOfNodesPerElement = 9
+        InterpolationType = 2
+        ALLOCATE(Permutation(NumberOfNodesPerElement),STAT=Err)
+        IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+        Permutation       = 0
+        Permutation(1)    = 1
+        Permutation(2)    = 5
+        Permutation(3)    = 2
+        Permutation(4)    = 6
+        Permutation(5)    = 7
+        Permutation(6)    = 8
+        Permutation(7)    = 3
+        Permutation(8)    = 9
+        Permutation(9)    = 4
+      ELSE IF (VElementType=="TETRA4") THEN
+        NumberOfNodesPerElement = 4
+        InterpolationType = 1
+        ALLOCATE(Permutation(NumberOfNodesPerElement),STAT=Err)
+        IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+        Permutation       = 0
+        DO CurrentIdx=1,NumberOfNodesPerElement
+          Permutation(CurrentIdx) = CurrentIdx
+        END DO
+      ELSE IF (VElementType=="TETRA10") THEN
+        NumberOfNodesPerElement = 10
+        InterpolationType = 2
+        ALLOCATE(Permutation(NumberOfNodesPerElement),STAT=Err)
+        IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+        Permutation       =  0
+        Permutation(1)    =  1
+        Permutation(2)    =  5
+        Permutation(3)    =  2
+        Permutation(4)    =  6
+        Permutation(5)    =  7
+        Permutation(6)    =  3
+        Permutation(7)    =  8
+        Permutation(8)    =  9
+        Permutation(9)    = 10
+        Permutation(10)   =  4
+      ELSE IF (VElementType=="HEX8") THEN
+        NumberOfNodesPerElement = 8
+        InterpolationType = 1
+        ALLOCATE(Permutation(NumberOfNodesPerElement),STAT=Err)
+        IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+        Permutation       = 0
+        DO CurrentIdx=1,NumberOfNodesPerElement
+          Permutation(CurrentIdx) = CurrentIdx
+        END DO
+      ELSE IF (VElementType=="HEX27") THEN
+        NumberOfNodesPerElement = 27 
+        InterpolationType = 2
+        ALLOCATE(Permutation(NumberOfNodesPerElement),STAT=Err)
+        IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+        Permutation       =  0
+        Permutation(1)    =  1
+        Permutation(2)    =  9
+        Permutation(3)    =  2
+        Permutation(4)    = 10
+        Permutation(5)    = 11
+        Permutation(6)    = 12
+        Permutation(7)    =  3
+        Permutation(8)    = 13
+        Permutation(9)    =  4
+        Permutation(10)   = 14
+        Permutation(11)   = 15
+        Permutation(12)   = 16
+        Permutation(13)   = 17
+        Permutation(14)   = 18
+        Permutation(15)   = 19
+        Permutation(16)   = 20
+        Permutation(17)   = 21
+        Permutation(18)   = 22
+        Permutation(19)   =  5
+        Permutation(20)   = 23
+        Permutation(21)   =  6
+        Permutation(22)   = 24
+        Permutation(23)   = 25
+        Permutation(24)   = 26
+        Permutation(25)   =  7
+        Permutation(26)   = 27
+        Permutation(27)   =  8
+      END IF      
+
+      ALLOCATE(Elements(NumberOfElements,NumberOfNodesPerElement))
+      ALLOCATE(IntValuesT(NumberOfNodesPerElement),STAT=Err)
+      IF(Err/=0) CALL FlagError("Could not allocate memory.",Err,Error,*999)
+
+      DO i = 1, NumberOfElements
+        READ (ElementFileUnit,*)  IntValuesT(:)
+        DO j=1,NumberOfNodesPerElement
+          Elements(i,j)  = IntValuesT(Permutation(j))
+        END DO
+      END DO
+
+      ! Reading the nodesets
+      READ(NodesetFileUnit, *)  NumberOfNodesets
+      IF (NumberOfNodesets > 0) THEN
+        ALLOCATE(LengthOfNodesets(NumberOfNodesets))
+        READ (NodesetFileUnit,*) LengthOfNodesets(:)
+        ALLOCATE(Nodesets(1+2*NumberOfNodesets+SUM(LengthOfNodesets)))
+
+        Nodesets(1)                    = NumberOfNodesets
+        Nodesets(2:1+NumberOfNodesets) = LengthOfNodesets(:)
+        DO i = 1, NumberOfNodesets
+          Nodesets(1+NumberOfNodesets+i) = i
+        END DO
+        READ (NodesetFileUnit,*)  Nodesets(2+2*NumberOfNodesets:)
+      END IF
+
+      ! Close files
+      CLOSE(NodeFileUnit)
+      CLOSE(ElementFileUnit)
+      CLOSE(NodesetFileUnit)
+
+    ! Reading the NODE/ELEM/NSET files from OpenCMISS file format
+    ELSE IF(VMethod=="OpenCMISS") THEN
+      ! Get available file units (Fortran 2008 feature)
+      OPEN(NEWUNIT=NodeFileUnit,     FILE=CHAR(VFilename)//".NODE", ACTION="read")
+      OPEN(NEWUNIT=ElementFileUnit,  FILE=CHAR(VFilename)//".ELEM", ACTION="read")
+      OPEN(NEWUNIT=NodesetFileUnit,  FILE=CHAR(VFilename)//".NSET", ACTION="read")
+
+      ! Reading the headers with mesh data
+      READ(NodeFileUnit, *)     NumberOfNodes, NumberOfDimensions
+      READ(ElementFileUnit, *)  NumberOfElements, NumberOfNodesT
+      READ(NodesetFileUnit, *)  ElementType
+
+      ! Get element name
+      ElementTypeLength  = LEN_TRIM(ElementType)
+      VElementType       = ElementType(1:ElementTypeLength)
+
+      ! Do some sanity checks before reading mesh data
+      IF(.NOT.(NumberOfNodes==NumberOfNodesT))  CALL FlagError("X and T files have different number of nodes.", Err, Error, *999)
+      IF(NumberOfNodes<0_INTG)                  CALL FlagError("Invalid number of nodes.", Err, Error, *999)
+      IF(NumberOfDimensions<0_INTG)             CALL FlagError("Invalid number of dimensions.", Err, Error, *999)
+      IF(NumberOfElements<0_INTG)               CALL FlagError("Invalid number of elements.", Err, Error, *999)
+      IF(.NOT.(VElementType=="TRI3"    .OR. &
+               VElementType=="TRI6"    .OR. &
+               VElementType=="QUAD4"   .OR. &
+               VElementType=="QUAD9"   .OR. &
+               VElementType=="TETRA4"  .OR. &
+               VElementType=="TETRA10" .OR. &
+               VElementType=="HEX8"    .OR. &
+               VElementType=="HEX27"))          CALL FlagError("Invalid element type.", Err, Error, *999)
+
+      ! Reading the nodes 
+      ALLOCATE(Nodes(NumberOfNodes,NumberOfDimensions),STAT=Err)
+      DO i = 1, NumberOfNodes
+        READ (NodeFileUnit,*) Nodes(i,:)
+      END DO 
+
+      ! Specifing number of nodes per element and interpolation type (linear/quadratic) based on element type
+      IF (VElementType=="TRI3") THEN
+        NumberOfNodesPerElement = 3
+        InterpolationType = 1
+      ELSE IF (VElementType=="TRI6") THEN
+        NumberOfNodesPerElement = 6
+        InterpolationType = 2
+      ELSE IF (VElementType=="QUAD4") THEN
+        NumberOfNodesPerElement = 4
+        InterpolationType = 1
+      ELSE IF (VElementType=="QUAD9") THEN
+        NumberOfNodesPerElement = 9
+        InterpolationType = 2
+      ELSE IF (VElementType=="TETRA4") THEN
+        NumberOfNodesPerElement = 4
+        InterpolationType = 1
+      ELSE IF (VElementType=="TETRA10") THEN
+        NumberOfNodesPerElement = 10
+        InterpolationType = 2
+      ELSE IF (VElementType=="HEX8") THEN
+        NumberOfNodesPerElement = 8
+        InterpolationType = 1
+      ELSE IF (VElementType=="HEX27") THEN
+        NumberOfNodesPerElement = 27 
+        InterpolationType = 2 
+      END IF      
+
+      ALLOCATE(Elements(NumberOfElements,NumberOfNodesPerElement))
+      DO i = 1, NumberOfElements
+        READ (ElementFileUnit,*)  Elements(i,:)
+      END DO
+
+      ! Reading the nodesets
+      READ(NodesetFileUnit, *)  NumberOfNodesets
+      IF (NumberOfNodesets > 0) THEN
+        ALLOCATE(LengthOfNodesets(NumberOfNodesets))
+        READ (NodesetFileUnit,*) LengthOfNodesets(:)
+        ALLOCATE(Nodesets(1+2*NumberOfNodesets+SUM(LengthOfNodesets)))
+
+        Nodesets(1)                    = NumberOfNodesets
+        Nodesets(2:1+NumberOfNodesets) = LengthOfNodesets(:)
+        DO i = 1, NumberOfNodesets
+          Nodesets(1+NumberOfNodesets+i) = i
+        END DO
+        READ (NodesetFileUnit,*)  Nodesets(2+2*NumberOfNodesets:)
+      END IF
+
+      ! Close files
+      CLOSE(NodeFileUnit)
+      CLOSE(ElementFileUnit)
+      CLOSE(NodesetFileUnit)
+
+    ELSE
+      CALL FlagError("Invalid mesh import type. Valid types are: CHeart, OpenCMISS", Err, Error, *999)
+    END IF   
+
+    IF(ALLOCATED(Permutation))       DEALLOCATE(Permutation)
+    IF(ALLOCATED(IntValuesT))        DEALLOCATE(IntValuesT)
+    IF(ALLOCATED(LengthOfNodesets))  DEALLOCATE(LengthOfNodesets)
+
+    EXITS("cmfe_ReadMeshFilesCubit")
+
+    RETURN
+999 ERRORSEXITS("cmfe_ReadMeshFilesCubit", Err, Error)
+    CALL cmfe_HandleError(Err, Error)
+    RETURN
+
+  END SUBROUTINE cmfe_ReadMeshFilesCubit
 
   !
   !================================================================================================================================
