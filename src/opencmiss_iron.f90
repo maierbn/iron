@@ -63047,9 +63047,9 @@ CONTAINS
   SUBROUTINE cmfe_ReadMeshFilesCubit(Filename, Nodes, Elements, Nodesets, InterpolationType, Method, Err)
     ! IN / OUT variables
     CHARACTER(LEN=*),            INTENT(IN)     :: Filename             !< The file name to import the mesh data from
-    INTEGER(INTG),  ALLOCATABLE, INTENT(INOUT)  :: Elements(:,:)
-    REAL(DP)     ,  ALLOCATABLE, INTENT(INOUT)  :: Nodes(:,:) 
-    INTEGER(INTG),  ALLOCATABLE, INTENT(INOUT)  :: Nodesets(:)
+    INTEGER(INTG),  ALLOCATABLE, INTENT(OUT)    :: Elements(:,:)
+    REAL(DP)     ,  ALLOCATABLE, INTENT(OUT)    :: Nodes(:,:)
+    INTEGER(INTG),  ALLOCATABLE, INTENT(OUT)    :: Nodesets(:)
     INTEGER(INTG),               INTENT(OUT)    :: InterpolationType
     CHARACTER(LEN=*),            INTENT(IN)     :: Method               !<The export method to use, e.g., CHeart, OpenCMISS
     INTEGER(INTG),               INTENT(OUT)    :: Err                  !<The error code.
