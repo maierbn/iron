@@ -7397,6 +7397,7 @@ CONTAINS
                  CALL FIELD_NUMBER_OF_COMPONENTS_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_U_VARIABLE_TYPE,5, &
                    & ERR,ERROR,*999)
                ENDIF
+               ! number of components check is disabled for the moment to allow playing around with V variable components
                ! disable this check to allow intermediate versions of iron that are currently worked on
                !CALL FIELD_NUMBER_OF_COMPONENTS_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_V_VARIABLE_TYPE,NUMBER_OF_DIMENSIONS+2, &
                !  & ERR,ERROR,*999)
