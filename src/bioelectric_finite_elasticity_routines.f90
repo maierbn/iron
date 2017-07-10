@@ -3386,9 +3386,8 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Interpolates the finite elasticity independent field from the biolectrics independent field.
+  !>Interpolates the finite elasticity independent field from the biolectrics independent field. (1D->3D)
   !>NOTE: this is only temporary - will be replaced once embedded meshes are available
-  !>TODO: The iteration scheme could be implemented better 
   SUBROUTINE BioelectricFiniteElasticity_IndependentFieldInterpolate(CONTROL_LOOP,ERR,ERROR,*)
 
     !Argument variables

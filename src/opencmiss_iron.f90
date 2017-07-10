@@ -413,7 +413,7 @@ MODULE OpenCMISS_Iron
     & cmfe_PrintSolverEquationsM, &
     & cmfe_CustomProfilingStart,cmfe_CustomProfilingStop,cmfe_CustomProfilingMemory,cmfe_CustomProfilingGetInfo, &
     & cmfe_CustomProfilingGetDuration,cmfe_CustomProfilingGetMemory,cmfe_CustomProfilingGetSizePerElement, &
-    & cmfe_CustomProfilingGetNumberObjects, cmfe_CustomProfilingGetEnabled
+    & cmfe_CustomProfilingGetNumberObjects, cmfe_CustomProfilingGetEnabled, cmfe_CustomProfilingReset
   PUBLIC cmfe_PrintMesh, cmfe_PrintFields, cmfe_PrintDistributedMatrix, cmfe_PrintRegion, cmfe_PrintMeshelementstype, &
     & cmfe_PrintInterfacepointsconnectivitytype, cmfe_PrintQuadrature, cmfe_PrintSolverEquations, cmfe_PrintNodes, &
     & cmfe_PrintDataPoints, cmfe_PrintSolver, cmfe_PrintField, cmfe_PrintCoordinateSystem, cmfe_PrintDataProjection, &
@@ -48306,13 +48306,13 @@ CONTAINS
 #endif
 
 #ifdef USE_CUSTOM_PROFILING
-    CALL CustomProfilingStart('1. problem solve')
+    CALL CustomProfilingStart('level 0: problem solve')
 #endif
 
     CALL PROBLEM_SOLVE(problem%problem,err,error,*999)
 
 #ifdef USE_CUSTOM_PROFILING
-    CALL CustomProfilingStop('1. problem solve')
+    CALL CustomProfilingStop('level 0: problem solve')
 #endif
 
 #ifdef TAUPROF
@@ -62292,6 +62292,14 @@ CONTAINS
 #endif
   END SUBROUTINE cmfe_CustomProfilingGetEnabled
 
+  !
+  !================================================================================================================================
+  !
+  SUBROUTINE cmfe_CustomProfilingReset(Err)
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    
+    CALL CustomProfilingReset()
+  END SUBROUTINE cmfe_CustomProfilingReset
 
 !!==================================================================================================================================
 !!
