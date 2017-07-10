@@ -2896,13 +2896,15 @@ CONTAINS
       & STATE_END_DOF,state_idx,STATE_START_DOF
     INTEGER(INTG) :: TS_NUMBER, TIME_STEP
     REAL(DP) :: INTERMEDIATES(MAX(1,MAX_NUMBER_INTERMEDIATES)),PARAMETERS(MAX(1,MAX_NUMBER_PARAMETERS)), &
-      & RATES(MAX(1,MAX_NUMBER_STATES)),STATES(MAX(1,MAX_NUMBER_STATES)),STRATES(MAX(1,MAX_NUMBER_STATES))
-    ! To save memory capacity, we will reuse the temporary states vector and store the rhs evaluation of this state in it self, later. Thus, we call it STRATES.
+      & RATES(MAX(1,MAX_NUMBER_STATES)),STATES(MAX(1,MAX_NUMBER_STATES)),STATES_TEMP(MAX(1,MAX_NUMBER_STATES)) &
+      & ,RATES_TEMP(MAX(1,MAX_NUMBER_STATES))
     
     TYPE(CELLML_MODEL_TYPE), POINTER :: MODEL
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     
     ENTERS("SOLVER_DAE_EULER_IMPROVED_INTEGRATE",ERR,ERROR,*999)
+    
+    ! Warning: computation of 'Intermediates' might not be correct.
     
     !Set up the right way to integrate. (make sure that we leave with TMIE==END_TIME)------------------
     !We take a fixed amount of steps to yield the integration result at exactly t=END_TIME, using the same step size at every step.
@@ -2945,12 +2947,12 @@ CONTAINS
                       CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT &
                         & ,STATES,RATES,INTERMEDIATES,PARAMETERS)
                       ! compute y_{temp} = y_n + dt*f(t,y_n) 
-                      STRATES = STATES + TIME_INCREMENT * RATES
-                      ! evaluate f(t+dt,y_{temp}). Note: STRATES is in/out. in: holds state values. out: holds the rates.
-                      CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT,STRATES, &
-                        & STRATES,INTERMEDIATES,PARAMETERS)
+                      STATES_TEMP = STATES + TIME_INCREMENT * RATES
+                      ! evaluate f(t+dt,y_{temp}).
+                      CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT,STATES_TEMP, &
+                        & RATES_TEMP,INTERMEDIATES,PARAMETERS)
                       ! compute y_{n+1}=y_n + dt/2*[f(t,y_n)+f(t+dt,y_{temp})]:
-                      STATES = STATES + TIME_INCREMENT * .5_DP * (RATES + STRATES)
+                      STATES = STATES + TIME_INCREMENT * .5_DP * (RATES + RATES_TEMP)
                       ! done.
 #else
                       CALL FlagError("Must compile with WITH_CELLML ON to use CellML functionality.",ERR,ERROR,*999)
@@ -2961,7 +2963,7 @@ CONTAINS
                         INTERMEDIATE_DATA((dof_idx-1)*N+intermediate_idx)=INTERMEDIATES(intermediate_idx)
                       ENDDO !intermediate_idx
                       DO state_idx=1,NUMBER_STATES
-                        STATE_DATA((dof_idx-1)*N+state_idx)=STATES(state_idx)+TIME_INCREMENT*RATES(state_idx)
+                        STATE_DATA((dof_idx-1)*N+state_idx)=STATES(state_idx)
                       ENDDO !state_idx
                     ELSE
                       LOCAL_ERROR="CellML environment model is not associated for model index "// &
@@ -2996,12 +2998,12 @@ CONTAINS
                       CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT &
                         & ,STATES,RATES,INTERMEDIATES,PARAMETERS)
                       ! compute y_{temp} = y_n + dt*f(t,y_n) 
-                      STRATES = STATES + TIME_INCREMENT * RATES
-                      ! evaluate f(t+dt,y_{temp}). Note: STRATES is in/out. in: holds state values. out: holds the rates.
-                      CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT,STRATES &
-                        & ,STRATES,INTERMEDIATES,PARAMETERS)
+                      STATES_TEMP = STATES + TIME_INCREMENT * RATES
+                      ! evaluate f(t+dt,y_{temp}).
+                      CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT,STATES_TEMP &
+                        & ,RATES_TEMP,INTERMEDIATES,PARAMETERS)
                       ! compute y_{n+1}=y_n + dt/2*[f(t,y_n)+f(t+dt,y_{temp})]:
-                      STATES=STATES + TIME_INCREMENT * .5_DP * (RATES + STRATES)
+                      STATES = STATES + TIME_INCREMENT * .5_DP * (RATES + RATES_TEMP)
                       ! done.
 #else
                       CALL FlagError("Must compile with WITH_CELLML ON to use CellML functionality.",ERR,ERROR,*999)
@@ -3011,7 +3013,7 @@ CONTAINS
                         INTERMEDIATE_DATA((dof_idx-1)*N+intermediate_idx)=INTERMEDIATES(intermediate_idx)
                       ENDDO !intermediate_idx
                       DO state_idx=1,NUMBER_STATES
-                        STATE_DATA((dof_idx-1)*N+state_idx)=STATES(state_idx)+TIME_INCREMENT*RATES(state_idx)
+                        STATE_DATA((dof_idx-1)*N+state_idx)=STATES(state_idx)
                       ENDDO !state_idx
                     ENDIF !model_idx
                   ENDDO !dof_idx
@@ -3057,10 +3059,10 @@ CONTAINS
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF),RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF: &
                               & INTERMEDIATE_END_DOF),PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
                             ! compute y_{temp} = y_n + dt*f(t,y_n) 
-                            STRATES = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + TIME_INCREMENT * RATES
-                            ! evaluate f(t+dt,y_{temp}). Note: STRATES is in/out. in: holds state values. out: holds the rates.
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT,STRATES &
-                              & ,STRATES,INTERMEDIATES,PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
+                            STATES_TEMP = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + TIME_INCREMENT * RATES
+                            ! evaluate f(t+dt,y_{temp}).
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT, &
+                              & STATES_TEMP,RATES_TEMP,INTERMEDIATES,PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
                             ! compute y_{n+1} later. But compute INTERMEDIATES (that's some kind of alternative output of the RHS model..)
                             INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF) =  &
                               & (INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF) + INTERMEDIATES) * 0.5_DP
@@ -3077,10 +3079,10 @@ CONTAINS
                               & ,STATE_DATA(STATE_START_DOF:STATE_END_DOF),RATES &
                               & ,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF),PARAMETERS)
                             ! compute y_{temp} = y_n + dt*f(t,y_n) 
-                            STRATES = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + TIME_INCREMENT * RATES
-                            ! evaluate f(t+dt,y_{temp}). Note: STRATES is in/out. in: holds state values. out: holds the rates.
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT,STRATES &
-                              & ,STRATES,INTERMEDIATES,PARAMETERS)
+                            STATES_TEMP = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + TIME_INCREMENT * RATES
+                            ! evaluate f(t+dt,y_{temp}).
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT, &
+                              & STATES_TEMP,RATES_TEMP,INTERMEDIATES,PARAMETERS)
                             ! compute y_{n+1} later. But compute INTERMEDIATES (that's some kind of alternative output of the RHS model..)
                             INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF) = &
                               & (INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF) + INTERMEDIATES) * 0.5_DP
@@ -3098,10 +3100,10 @@ CONTAINS
                               & ,STATE_DATA(STATE_START_DOF:STATE_END_DOF),RATES,INTERMEDIATES &
                               & ,PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
                             ! compute y_{temp} = y_n + dt*f(t,y_n) 
-                            STRATES = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + TIME_INCREMENT * RATES
-                            ! evaluate f(t+dt,y_{temp}). Note: STRATES is in/out. in: holds state values. out: holds the rates.
+                            STATES_TEMP = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + TIME_INCREMENT * RATES
+                            ! evaluate f(t+dt,y_{temp}).
                             CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT &
-                              & ,STRATES,STRATES,INTERMEDIATES,PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
+                              & ,STATES_TEMP,RATES_TEMP,INTERMEDIATES,PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
                             ! compute y_{n+1} later.
                             ! not done, yet.
                           ELSE
@@ -3112,10 +3114,10 @@ CONTAINS
                             CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT &
                               & ,STATE_DATA(STATE_START_DOF:STATE_END_DOF),RATES,INTERMEDIATES,PARAMETERS)
                             ! compute y_{temp} = y_n + dt*f(t,y_n) 
-                            STRATES = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + TIME_INCREMENT * RATES
-                            ! evaluate f(t+dt,y_{temp}). Note: STRATES is in/out. in: holds state values. out: holds the rates.
-                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT,STRATES &
-                              & ,STRATES,INTERMEDIATES,PARAMETERS)
+                            STATES_TEMP = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + TIME_INCREMENT * RATES
+                            ! evaluate f(t+dt,y_{temp}).
+                            CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT, &
+                              & STATES_TEMP,RATES_TEMP,INTERMEDIATES,PARAMETERS)
                             ! compute y_{n+1} later.
                             ! not done, yet.
                           ENDIF
@@ -3129,7 +3131,7 @@ CONTAINS
 #endif
                       ! compute y_{n+1}=y_n + dt/2*[f(t,y_n)+f(t+dt,y_{temp})]:
                       STATE_DATA(STATE_START_DOF:STATE_END_DOF) = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + &
-                        & TIME_INCREMENT * 0.5_DP * (RATES(1:NUMBER_STATES) + STRATES(1:NUMBER_STATES))
+                        & TIME_INCREMENT * 0.5_DP * (RATES(1:NUMBER_STATES) + RATES_TEMP(1:NUMBER_STATES))
                       ! done.
                     ELSE
                       LOCAL_ERROR="CellML environment model is not associated for model index "// &
@@ -3200,7 +3202,7 @@ CONTAINS
                               model_idx=MODELS_DATA(1)      
                             ENDIF
                             ! compute y_{temp} = y_n + dt*f(t,y_n) 
-                            STRATES(1:NUMBER_STATES) = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + &
+                            STATES_TEMP(1:NUMBER_STATES) = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + &
                                                          & TIME_INCREMENT * RATES(1:NUMBER_STATES)  
 #ifdef TAUPROF
                             CALL TAU_STATIC_PHASE_START('cellml call rhs')
@@ -3208,10 +3210,10 @@ CONTAINS
 #ifdef USE_CUSTOM_PROFILING
                             CALL CustomProfilingStart('cellml call rhs')
 #endif
-                            ! evaluate f(t+dt,y_{temp}). Note: STRATES is in/out. in: holds state values. out: holds the rates.
+                            ! evaluate f(t+dt,y_{temp}).
                             CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT, &
-                              & STRATES(1:NUMBER_STATES),STRATES(1:NUMBER_STATES),INTERMEDIATES(1:MAX_NUMBER_INTERMEDIATES), &
-                              & PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
+                              & STATES_TEMP(1:NUMBER_STATES),RATES_TEMP(1:NUMBER_STATES),INTERMEDIATES(1: &
+                              & MAX_NUMBER_INTERMEDIATES),PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
 #ifdef USE_CUSTOM_PROFILING
                             CALL CustomProfilingStop('cellml call rhs')
 #endif
@@ -3220,19 +3222,16 @@ CONTAINS
 #endif
                             IF(DEBUG_MODE_A) THEN
                               DO model_idx=1,NUMBER_STATES
-                                IF(ISNAN(STRATES(model_idx))) THEN
+                                IF(ISNAN(RATES_TEMP(model_idx))) THEN
                                   WRITE(*,*) "Detected NAN at (2)!"
                                   GO TO 999
                                 ENDIF
-                              ENDDO
-                              DO model_idx=1,NUMBER_STATES
-                                WRITE(*,*) RATES(model_idx), STRATES(model_idx), (RATES(model_idx)-STRATES(model_idx))
                               ENDDO
                               model_idx=MODELS_DATA(1)      
                             ENDIF
                             ! compute y_{n+1}=y_n + dt/2*[f(t,y_n)+f(t+dt,y_{temp})]:
                             STATE_DATA(STATE_START_DOF:STATE_END_DOF)=STATE_DATA(STATE_START_DOF:STATE_END_DOF) + &
-                              & TIME_INCREMENT * .5_DP * (RATES(1:NUMBER_STATES) + STRATES(1:NUMBER_STATES))
+                              & TIME_INCREMENT * .5_DP * (RATES(1:NUMBER_STATES) + RATES_TEMP(1:NUMBER_STATES))
                             ! compute INTERMEDIATES (that's some kind of alternative output of the RHS model..)
                             INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF) = &
                               & 0.5_DP * (INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF) &
@@ -3241,7 +3240,7 @@ CONTAINS
                           ENDIF !model_idx  
                           ! produce some output to see state evolution after each meso time step size (1D model time step size)
                           IF(dof_idx == 1 .AND. DEBUG_MODE_A) THEN
-                            WRITE(*,*)'======================================',START_TIME + TIME_STEP*TIME_INCREMENT, '========'
+                            WRITE(*,*)'A=====================================',START_TIME + TIME_STEP*TIME_INCREMENT, '========'
                            !WRITE(*,*) 'Stepping forward by',TIME_INCREMENT,'time instances. State afterwards:'
                             DO model_idx=0,NUMBER_STATES-1
                               WRITE(*,*) STATE_DATA(STATE_START_DOF+model_idx)
@@ -3264,26 +3263,19 @@ CONTAINS
                             INTERMEDIATE_START_DOF=(dof_idx-1)*MAX_NUMBER_INTERMEDIATES+1
                             INTERMEDIATE_END_DOF=INTERMEDIATE_START_DOF+NUMBER_INTERMEDIATES-1
 
-                            
-                            !change this as implemented more below
-                            CALL FlagError("This confiuration doesn't allow for improved Euler, yet.",ERR,ERROR,*999)
-                            !CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,TIME, &
-                            !  & STATE_DATA(STATE_START_DOF:STATE_END_DOF), &
-                            !  & RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF),PARAMETERS)
-                            
                             ! y_n is given - evaluate f(t,y_n):
                             CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF),RATES,INTERMEDIATE_DATA(INTERMEDIATE_START_DOF: &
                               & INTERMEDIATE_END_DOF),PARAMETERS)
                             ! compute y_{temp} = y_n + dt*f(t,y_n) 
-                            STRATES(1:NUMBER_STATES) = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + &
+                            STATES_TEMP(1:NUMBER_STATES) = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + &
                                                          & TIME_INCREMENT * RATES(1:NUMBER_STATES)
-                            ! evaluate f(t+dt,y_{temp}). Note: STRATES is in/out. in: holds state values. out: holds the rates.  
+                            ! evaluate f(t+dt,y_{temp}).  
                             CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT, &
-                              & STRATES,STRATES,INTERMEDIATES,PARAMETERS)
+                              & STATES_TEMP,RATES_TEMP,INTERMEDIATES,PARAMETERS)
                             ! compute y_{n+1}=y_n + dt/2*[f(t,y_n)+f(t+dt,y_{temp})]:
                             STATE_DATA(STATE_START_DOF:STATE_END_DOF) = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + &
-                              & TIME_INCREMENT * .5_DP * (RATES(1:NUMBER_STATES) + STRATES(1:NUMBER_STATES))
+                              & TIME_INCREMENT * .5_DP * (RATES(1:NUMBER_STATES) + RATES_TEMP(1:NUMBER_STATES))
                             ! compute INTERMEDIATES (that's some kind of alternative output of the RHS model..)
                             INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF) = &
                               & 0.5_DP * (INTERMEDIATE_DATA(INTERMEDIATE_START_DOF:INTERMEDIATE_END_DOF) + INTERMEDIATES)
@@ -3320,7 +3312,7 @@ CONTAINS
                             CALL TAU_STATIC_PHASE_STOP('cellml call rhs')
 #endif
                             ! compute y_{temp} = y_n + dt*f(t,y_n) 
-                            STRATES(1:NUMBER_STATES) = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + &
+                            STATES_TEMP(1:NUMBER_STATES) = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + &
                                                          & TIME_INCREMENT * RATES(1:NUMBER_STATES)
 #ifdef TAUPROF
                             CALL TAU_STATIC_PHASE_START('cellml call rhs')
@@ -3328,9 +3320,10 @@ CONTAINS
 #ifdef USE_CUSTOM_PROFILING
                             CALL CustomProfilingStart('cellml call rhs')
 #endif
-                            ! evaluate f(t+dt,y_{temp}). Note: STRATES is in/out. in: holds state values. out: holds the rates.
+                            ! evaluate f(t+dt,y_{temp}).
                             CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT, &
-                              & STRATES,STRATES,INTERMEDIATES,PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
+                              & STATES_TEMP,RATES_TEMP,INTERMEDIATES,PARAMETER_DATA(PARAMETER_START_DOF:PARAMETER_END_DOF))
+                                                         
 #ifdef USE_CUSTOM_PROFILING
                             CALL CustomProfilingStop('cellml call rhs')
 #endif
@@ -3339,19 +3332,19 @@ CONTAINS
 #endif
                             ! compute y_{n+1}=y_n + dt/2*[f(t,y_n)+f(t+dt,y_{temp})]:
                             STATE_DATA(STATE_START_DOF:STATE_END_DOF)=STATE_DATA(STATE_START_DOF:STATE_END_DOF) + &
-                              & TIME_INCREMENT * .5_DP * (RATES(1:NUMBER_STATES) + STRATES(1:NUMBER_STATES))
+                              & TIME_INCREMENT * .5_DP * (RATES(1:NUMBER_STATES) + RATES_TEMP(1:NUMBER_STATES))
                             ! done.
                           ENDIF !model_idx
+                          
                           ! produce some output to see state evolution after each meso time step size (1D model time step size)
                           IF(dof_idx == 1 .AND. DEBUG_MODE_A) THEN
-                            WRITE(*,*)'======================================',START_TIME + TIME_STEP*TIME_INCREMENT, '========'
-                           !WRITE(*,*) 'Stepping forward by',TIME_INCREMENT,'time instances. State afterwards:'
+                            WRITE(*,*)'B=====================================',START_TIME + TIME_STEP*TIME_INCREMENT, '========'
                             DO model_idx=0,NUMBER_STATES-1
                               WRITE(*,*) STATE_DATA(STATE_START_DOF+model_idx)
                             ENDDO
                             model_idx=MODELS_DATA(1)
-                            WRITE(*,*) ''
                           ENDIF
+                          
                         ENDDO !dof_idx
                       ENDDO !TIME_STEP
                     ELSE
@@ -3367,14 +3360,14 @@ CONTAINS
                             CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + (TIME_STEP-1)*TIME_INCREMENT, &
                               & STATE_DATA(STATE_START_DOF:STATE_END_DOF),RATES,INTERMEDIATES,PARAMETERS)
                             ! compute y_{temp} = y_n + dt*f(t,y_n) 
-                            STRATES(1:NUMBER_STATES) = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + &
+                            STATES_TEMP(1:NUMBER_STATES) = STATE_DATA(STATE_START_DOF:STATE_END_DOF) + &
                                                          & TIME_INCREMENT * RATES(1:NUMBER_STATES)
-                            ! evaluate f(t+dt,y_{temp}). Note: STRATES is in/out. in: holds state values. out: holds the rates.
+                            ! evaluate f(t+dt,y_{temp}).
                             CALL CELLML_MODEL_DEFINITION_CALL_RHS_ROUTINE(MODEL%PTR,START_TIME + TIME_STEP*TIME_INCREMENT, &
-                              & STRATES,STRATES,INTERMEDIATES,PARAMETERS)
+                              & STATES_TEMP,RATES_TEMP,INTERMEDIATES,PARAMETERS)
                             ! compute y_{n+1}=y_n + dt/2*[f(t,y_n)+f(t+dt,y_{temp})]:
                             STATE_DATA(STATE_START_DOF:STATE_END_DOF)=STATE_DATA(STATE_START_DOF:STATE_END_DOF) + &
-                              & TIME_INCREMENT * .5_DP * (RATES(1:NUMBER_STATES) + STRATES(1:NUMBER_STATES))
+                              & TIME_INCREMENT * .5_DP * (RATES(1:NUMBER_STATES) + RATES_TEMP(1:NUMBER_STATES))
                             ! done.
                           ENDIF !model_idx
                         ENDDO !dof_idx
