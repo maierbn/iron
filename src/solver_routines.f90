@@ -2158,9 +2158,10 @@ CONTAINS
       & STATE_END_DOF,state_idx,STATE_START_DOF
     INTEGER(INTG) :: TS_NUMBER, TIME_STEP
     REAL(DP) :: INTERMEDIATES(MAX(1,MAX_NUMBER_INTERMEDIATES)),PARAMETERS(MAX(1,MAX_NUMBER_PARAMETERS)), &
-      & RATES(MAX(1,MAX_NUMBER_STATES)),STATES(MAX(1,MAX_NUMBER_STATES))
+      & RATES(MAX(1,MAX_NUMBER_STATES)),STATES(MAX(1,MAX_NUMBER_STATES)),STARTT,FINISHT
     TYPE(CELLML_MODEL_TYPE), POINTER :: MODEL
     TYPE(VARYING_STRING) :: LOCAL_ERROR
+    LOGICAL :: exist_A,exist_B
     
     ENTERS("SOLVER_DAE_EULER_FORWARD_INTEGRATE",ERR,ERROR,*999)
     
@@ -2385,6 +2386,24 @@ CONTAINS
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
 
+                     ! remove this after test
+                          IF(dof_idx==1 .AND. TIME_STEP==1) THEN
+                            inquire(file="ODE_X_0.txt", exist=exist_B)
+                            if (exist_B) then
+                              open(4568, file="ODE_X_0.txt", status="old", position="append", action="write")
+                            else
+                              open(4568, file="ODE_X_0.txt", status="new", action="write")
+                            end if
+                            WRITE(4568,'(i4)',advance='no') TS_NUMBER
+                            DO model_idx=0,NUMBER_STATES-1
+                              WRITE(4568,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                            ENDDO
+                            WRITE(4568,'(A)',advance='yes') "eE"
+                            close(4568)
+                            model_idx=MODELS_DATA(1)
+                            CALL CPU_TIME(STARTT)
+                          ENDIF
+                     ! up to this point
 #ifdef TAUPROF
                             CALL TAU_STATIC_PHASE_START('cellml call rhs')
 #endif
@@ -2406,10 +2425,35 @@ CONTAINS
 
                             STATE_DATA(STATE_START_DOF:STATE_END_DOF)=STATE_DATA(STATE_START_DOF:STATE_END_DOF)+ &
                               & TIME_INCREMENT*RATES(1:NUMBER_STATES)
-                          ENDIF !model_idx  
+                      
+                          ENDIF !model_idx 
+                     ! remove this after test
+                          IF(dof_idx==1 .AND. TIME_STEP==TS_NUMBER) THEN
+                            inquire(file="MeinOutputExp.txt", exist=exist_A)
+                            if (exist_A) then
+                              open(1567, file="MeinOutputExp.txt", status="old", position="append", action="write")
+                            else
+                              open(1567, file="MeinOutputExp.txt", status="new", action="write")
+                            end if
+                            !produce formatted output
+                            WRITE(1567,'(i4)',advance='no') TS_NUMBER
+                            DO model_idx=0,NUMBER_STATES-1
+                              WRITE(1567,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                            ENDDO
+                            !close(4567)
+                            model_idx=MODELS_DATA(1)
+                          ENDIF
+                          IF(dof_idx==N .AND. TIME_STEP==TS_NUMBER) THEN
+                            CALL CPU_TIME(FINISHT)
+                            !produce formatted output
+                            WRITE(1567,'(A,G19.12)',advance='yes') "eE",FINISHT-STARTT
+                            close(1567)
+                            GO TO 999
+                          ENDIF
+                     ! up to this point
                           ! produce some output to see state evolution after each meso time step size (1D model time step size)
                           IF(dof_idx == 1 .AND. DEBUG_MODE_A) THEN
-                            WRITE(*,*)'======================================',START_TIME + TIME_STEP*TIME_INCREMENT, '========'
+                            WRITE(*,*)'eE====================================',START_TIME + TIME_STEP*TIME_INCREMENT, '========'
                             DO model_idx=0,NUMBER_STATES-1
                               WRITE(*,*) STATE_DATA(STATE_START_DOF+model_idx)
                             ENDDO
@@ -2897,10 +2941,12 @@ CONTAINS
     INTEGER(INTG) :: TS_NUMBER, TIME_STEP
     REAL(DP) :: INTERMEDIATES(MAX(1,MAX_NUMBER_INTERMEDIATES)),PARAMETERS(MAX(1,MAX_NUMBER_PARAMETERS)), &
       & RATES(MAX(1,MAX_NUMBER_STATES)),STATES(MAX(1,MAX_NUMBER_STATES)),STATES_TEMP(MAX(1,MAX_NUMBER_STATES)) &
-      & ,RATES_TEMP(MAX(1,MAX_NUMBER_STATES))
+      & ,RATES_TEMP(MAX(1,MAX_NUMBER_STATES)),STARTT,FINISHT
     
     TYPE(CELLML_MODEL_TYPE), POINTER :: MODEL
     TYPE(VARYING_STRING) :: LOCAL_ERROR
+  !remove this after measurements (as well as STARTT and FINISHT above):
+    LOGICAL :: exist_A,exist_B
     
     ENTERS("SOLVER_DAE_EULER_IMPROVED_INTEGRATE",ERR,ERROR,*999)
     
@@ -3174,6 +3220,24 @@ CONTAINS
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
 
+                      ! remove this after test
+                          IF(dof_idx==1 .AND. TIME_STEP==1) THEN
+                            inquire(file="ODE_X_0.txt", exist=exist_B)
+                            if (exist_B) then
+                              open(4568, file="ODE_X_0.txt", status="old", position="append", action="write")
+                            else
+                              open(4568, file="ODE_X_0.txt", status="new", action="write")
+                            end if
+                            WRITE(4568,'(i4)',advance='no') TS_NUMBER
+                            DO model_idx=0,NUMBER_STATES-1
+                              WRITE(4568,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                            ENDDO
+                            WRITE(4568,'(A)',advance='yes') "iE"
+                            close(4568)
+                            model_idx=MODELS_DATA(1)
+                            CALL CPU_TIME(STARTT)
+                          ENDIF
+                      ! up to this point
 #ifdef TAUPROF
                             CALL TAU_STATIC_PHASE_START('cellml call rhs')
 #endif
@@ -3238,10 +3302,32 @@ CONTAINS
                                         & + INTERMEDIATES(1:MAX_NUMBER_INTERMEDIATES))
                             ! done.
                           ENDIF !model_idx  
+                      ! remove this after test
+                          IF(dof_idx==1 .AND. TIME_STEP==TS_NUMBER) THEN
+                            inquire(file="MeinOutputImpr.txt", exist=exist_A)
+                            if (exist_A) then
+                              open(5567, file="MeinOutputImpr.txt", status="old", position="append", action="write")
+                            else
+                              open(5567, file="MeinOutputImpr.txt", status="new", action="write")
+                            end if
+                            !produce formatted output
+                            WRITE(5567,'(i4)',advance='no') TS_NUMBER
+                            DO model_idx=0,NUMBER_STATES-1
+                              WRITE(5567,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                            ENDDO
+                            !close(4567)
+                            model_idx=MODELS_DATA(1)
+                          ENDIF
+                          IF(dof_idx==N .AND. TIME_STEP==TS_NUMBER) THEN
+                            CALL CPU_TIME(FINISHT)
+                            WRITE(5567,'(A,G19.12)',advance='yes') "iE",FINISHT-STARTT
+                            close(5567)
+                            GO TO 999
+                          ENDIF
+                      ! up to this point
                           ! produce some output to see state evolution after each meso time step size (1D model time step size)
                           IF(dof_idx == 1 .AND. DEBUG_MODE_A) THEN
                             WRITE(*,*)'A=====================================',START_TIME + TIME_STEP*TIME_INCREMENT, '========'
-                           !WRITE(*,*) 'Stepping forward by',TIME_INCREMENT,'time instances. State afterwards:'
                             DO model_idx=0,NUMBER_STATES-1
                               WRITE(*,*) STATE_DATA(STATE_START_DOF+model_idx)
                             ENDDO
@@ -4757,6 +4843,7 @@ CONTAINS
     TYPE(CELLML_MODEL_TYPE), POINTER :: MODEL
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     TYPE(PetscVecType) :: PETSC_RATES
+    LOGICAL :: exist_A,exist_B
     EXTERNAL :: Problem_SolverDAECellMLRHSPetsc
 
 
@@ -4793,6 +4880,10 @@ CONTAINS
                   ENDIF
                   !initialize context for petsc solving.
                   CALL Solver_DAECellMLPETScContextInitialise(ctx,err,error,*999)
+                  
+           ! remove this after test:
+         !         CALL CPU_TIME(STARTT)
+                  
                   DO dof_idx=1,N
                     IF(DEBUG_MODE_A) THEN
                       WRITE(*,*) 'dof_idx is now ', dof_idx
@@ -4808,14 +4899,30 @@ CONTAINS
 ! http://www.mcs.anl.gov/petsc/documentation/tutorials/HandsOnExercise.html#ML
 
 ! c code for experimenting with petsc http://www.mcs.anl.gov/petsc/petsc-current/src/ts/examples/tutorials/ex19.c.html
-                         
+                      
+                      
                       !access the state field data
                       STATE_START_DOF=(dof_idx-1)*MAX_NUMBER_STATES+1
                       STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                       DO state_idx=1,NUMBER_STATES
                         STATES_TEMP(state_idx-1) = STATE_DATA(STATE_START_DOF+state_idx-1)
                       ENDDO
-                                            
+                  ! remove this after test
+                          IF(dof_idx==1) THEN
+                            inquire(file="ODE_X_0.txt", exist=exist_B)
+                            if (exist_B) then
+                              open(4568, file="ODE_X_0.txt", status="old", position="append", action="write")
+                            else
+                              open(4568, file="ODE_X_0.txt", status="new", action="write")
+                            end if
+                            WRITE(4568,'(A)',advance='no') "s.b."
+                            DO state_idx=1,NUMBER_STATES
+                              WRITE(4568,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+state_idx-1)
+                            ENDDO
+                            WRITE(4568,'(A)',advance='yes') "BDF"
+                            close(4568)
+                          ENDIF
+                  ! up to this point               
                       !create PETSC states vector to initialize solver
                       CALL Petsc_VecInitialise(PETSC_CURRENT_STATES,err,error,*999)
                       CALL Petsc_VecCreateSeq(PETSC_COMM_SELF, &
@@ -4871,6 +4978,8 @@ CONTAINS
                       CALL Solver_DAECellMLPETScContextSet(ctx,BDF_SOLVER%DAE_SOLVER%SOLVER,cellML,dof_idx,ERR,ERROR,*999)
                       CALL Petsc_TSSetRHSFunction(TS,PETSC_RATES,Problem_SolverDAECellMLRHSPetsc,CTX,ERR,ERROR,*999)
 
+                  !    CALL CPU_TIME(INTERMT)
+                      
                       CALL Petsc_TSSolve(TS,PETSC_CURRENT_STATES,FINALSOLVEDTIME,ERR,ERROR,*999)
                       IF(DIAGNOSTICS1) THEN
                         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  FINAL SOLVED TIME = ", &
@@ -4890,6 +4999,24 @@ CONTAINS
                         STATE_DATA(STATE_START_DOF+state_idx-1)=  &
                           & STATES_TEMP(state_idx-1)
                       ENDDO
+                      
+                    ! remove this after test
+                          IF(dof_idx==1) THEN
+                            inquire(file="MeinOutputBDF.txt", exist=exist_A)
+                            if (exist_A) then
+                              open(2567, file="MeinOutputBDF.txt", status="old", position="append", action="write")
+                            else
+                              open(2567, file="MeinOutputBDF.txt", status="new", action="write")
+                            end if
+                            !produce formatted output
+                            CALL Petsc_TSGetTimeStepNumber(ts,NUMBER_OF_STEPS,ERR,ERROR,*999)
+                            WRITE(2567,'(i4)',advance='no') NUMBER_OF_STEPS
+                            DO state_idx=1,NUMBER_STATES
+                              WRITE(2567,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+state_idx-1)
+                            ENDDO
+                            close(2567)
+                          ENDIF
+                     ! up to this point
                       
                       IF(DEBUG_MODE_A) THEN
                         WRITE(*,*) '___________________________________________________________' 
@@ -4959,6 +5086,8 @@ CONTAINS
     TYPE(FIELD_TYPE), POINTER :: MODELS_FIELD,STATE_FIELD,PARAMETERS_FIELD,INTERMEDIATE_FIELD
     TYPE(SOLVER_TYPE), POINTER :: SOLVER
     TYPE(VARYING_STRING) :: LOCAL_ERROR
+    LOGICAL :: exist_A
+    REAL(DP) :: STARTT,FINISHT
 
     ENTERS("SOLVER_DAE_BDF_SOLVE",ERR,ERROR,*999)
 
@@ -4967,7 +5096,7 @@ CONTAINS
     NULLIFY(PARAMETERS_DATA)
     NULLIFY(STATE_DATA)
     NULLIFY(MODELS_VARIABLE)
-
+    
     IF(ASSOCIATED(BDF_SOLVER)) THEN
       DAE_SOLVER=>BDF_SOLVER%DAE_SOLVER
       IF(ASSOCIATED(DAE_SOLVER)) THEN
@@ -5021,13 +5150,27 @@ CONTAINS
                     ENDIF
 
                     !Integrate these CellML equations
-
+                    CALL CPU_TIME(STARTT)
+                    
                     CALL SOLVER_DAE_BDF_INTEGRATE(BDF_SOLVER,CELLML_ENVIRONMENT,MODELS_VARIABLE% &
                       & TOTAL_NUMBER_OF_DOFS,DAE_SOLVER%START_TIME,DAE_SOLVER%END_TIME,DAE_SOLVER%INITIAL_STEP, &
                       & CELLML_ENVIRONMENT%MODELS_FIELD%ONLY_ONE_MODEL_INDEX,MODELS_DATA,CELLML_ENVIRONMENT% &
                       & MAXIMUM_NUMBER_OF_STATE,STATE_DATA,CELLML_ENVIRONMENT%MAXIMUM_NUMBER_OF_PARAMETERS, &
                       & PARAMETERS_DATA,CELLML_ENVIRONMENT%MAXIMUM_NUMBER_OF_INTERMEDIATE,INTERMEDIATE_DATA,ERR,ERROR,*999)
 
+                    CALL CPU_TIME(FINISHT)
+                    
+                    !produce formatted output
+                    inquire(file="MeinOutputBDF.txt", exist=exist_A)
+                    if (exist_A) then
+                      open(2567, file="MeinOutputBDF.txt", status="old", position="append", action="write")
+                    else
+                      open(2567, file="MeinOutputBDF.txt", status="new", action="write")
+                    end if
+                    WRITE(2567,'(A,G19.12)',advance='no') "BDF",FINISHT-STARTT
+                    close(2567)
+                    ! see go to beneath
+                    
                     !Restore field data
                     CALL FIELD_PARAMETER_SET_DATA_RESTORE(MODELS_FIELD,FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
                       & MODELS_DATA,ERR,ERROR,*999)
@@ -5041,6 +5184,7 @@ CONTAINS
                     !Make sure fields have been updated to the current value of any mapped CellML fields
                     CALL CELLML_CELLML_TO_FIELD_UPDATE(CELLML_ENVIRONMENT,ERR,ERROR,*999)
 
+                    GO TO 999
                   ELSE
                     LOCAL_ERROR="The CellML models field is not associated for CellML index "// &
                       & TRIM(NumberToVString(cellml_idx,"*",ERR,ERROR))//"."
