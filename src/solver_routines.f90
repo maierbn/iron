@@ -2398,7 +2398,7 @@ CONTAINS
                             DO model_idx=0,NUMBER_STATES-1
                               WRITE(4568,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
                             ENDDO
-                            WRITE(4568,'(A)',advance='yes') "eE"
+                            WRITE(4568,'(A)',advance='yes') " eE"
                             close(4568)
                             model_idx=MODELS_DATA(1)
                             CALL CPU_TIME(STARTT)
@@ -2446,14 +2446,14 @@ CONTAINS
                           IF(dof_idx==N .AND. TIME_STEP==TS_NUMBER) THEN
                             CALL CPU_TIME(FINISHT)
                             !produce formatted output
-                            WRITE(1567,'(A,G19.12)',advance='yes') "eE",FINISHT-STARTT
+                            WRITE(1567,'(A,G19.12)',advance='yes') " eE",FINISHT-STARTT
                             close(1567)
                             GO TO 999
                           ENDIF
                      ! up to this point
                           ! produce some output to see state evolution after each meso time step size (1D model time step size)
                           IF(dof_idx == 1 .AND. DEBUG_MODE_A) THEN
-                            WRITE(*,*)'eE====================================',START_TIME + TIME_STEP*TIME_INCREMENT, '========'
+                            WRITE(*,*)'eEA===================================',START_TIME + TIME_STEP*TIME_INCREMENT, '========'
                             DO model_idx=0,NUMBER_STATES-1
                               WRITE(*,*) STATE_DATA(STATE_START_DOF+model_idx)
                             ENDDO
@@ -2497,6 +2497,24 @@ CONTAINS
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
+                     ! remove this after test
+                          IF(dof_idx==1 .AND. TIME_STEP==1) THEN
+                            inquire(file="ODE_X_0.txt", exist=exist_B)
+                            if (exist_B) then
+                              open(4568, file="ODE_X_0.txt", status="old", position="append", action="write")
+                            else
+                              open(4568, file="ODE_X_0.txt", status="new", action="write")
+                            end if
+                            WRITE(4568,'(i4)',advance='no') TS_NUMBER
+                            DO model_idx=0,NUMBER_STATES-1
+                              WRITE(4568,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                            ENDDO
+                            WRITE(4568,'(A)',advance='yes') " eE"
+                            close(4568)
+                            model_idx=MODELS_DATA(1)
+                            CALL CPU_TIME(STARTT)
+                          ENDIF
+                     ! up to this point
 #ifdef TAUPROF
                             CALL TAU_STATIC_PHASE_START('cellml call rhs')
 #endif
@@ -2515,8 +2533,31 @@ CONTAINS
                             STATE_DATA(STATE_START_DOF:STATE_END_DOF)=STATE_DATA(STATE_START_DOF:STATE_END_DOF)+ &
                               & TIME_INCREMENT*RATES(1:NUMBER_STATES)
                           ENDIF !model_idx
+                     ! remove this after test
+                          IF(dof_idx==1 .AND. TIME_STEP==TS_NUMBER) THEN
+                            inquire(file="MeinOutputExp.txt", exist=exist_A)
+                            if (exist_A) then
+                              open(1567, file="MeinOutputExp.txt", status="old", position="append", action="write")
+                            else
+                              open(1567, file="MeinOutputExp.txt", status="new", action="write")
+                            end if
+                            !produce formatted output
+                            WRITE(1567,'(i4)',advance='no') TS_NUMBER
+                            DO model_idx=0,NUMBER_STATES-1
+                              WRITE(1567,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                            ENDDO
+                            model_idx=MODELS_DATA(1)
+                          ENDIF
+                          IF(dof_idx==N .AND. TIME_STEP==TS_NUMBER) THEN
+                            CALL CPU_TIME(FINISHT)
+                            !produce formatted output
+                            WRITE(1567,'(A,G19.12)',advance='yes') " eE",FINISHT-STARTT
+                            close(1567)
+                            GO TO 999
+                          ENDIF
+                     ! up to this point
                           IF(dof_idx == 1 .AND. DEBUG_MODE_A) THEN
-                            WRITE(*,*)'======================================',START_TIME + TIME_STEP*TIME_INCREMENT, '========'
+                            WRITE(*,*)'eEB===================================',START_TIME + TIME_STEP*TIME_INCREMENT, '========'
                             DO model_idx=0,NUMBER_STATES-1
                               WRITE(*,*) STATE_DATA(STATE_START_DOF+model_idx)
                             ENDDO
@@ -2894,6 +2935,7 @@ CONTAINS
         EULER_DAE_SOLVER%IMPROVED_EULER_SOLVER%EULER_DAE_SOLVER=>EULER_DAE_SOLVER
         EULER_DAE_SOLVER%IMPROVED_EULER_SOLVER%SOLVER_LIBRARY=SOLVER_CMISS_LIBRARY
         !Defaults
+        EULER_DAE_SOLVER%IMPROVED_EULER_SOLVER%TIME_STEPS_NUMBER=-1
       ENDIF
     ELSE
       CALL FlagError("Euler differential-algebraic equation solver is not associated.",ERR,ERROR,*998)
@@ -3232,7 +3274,7 @@ CONTAINS
                             DO model_idx=0,NUMBER_STATES-1
                               WRITE(4568,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
                             ENDDO
-                            WRITE(4568,'(A)',advance='yes') "iE"
+                            WRITE(4568,'(A)',advance='yes') " iE"
                             close(4568)
                             model_idx=MODELS_DATA(1)
                             CALL CPU_TIME(STARTT)
@@ -3320,7 +3362,7 @@ CONTAINS
                           ENDIF
                           IF(dof_idx==N .AND. TIME_STEP==TS_NUMBER) THEN
                             CALL CPU_TIME(FINISHT)
-                            WRITE(5567,'(A,G19.12)',advance='yes') "iE",FINISHT-STARTT
+                            WRITE(5567,'(A,G19.12)',advance='yes') " iE",FINISHT-STARTT
                             close(5567)
                             GO TO 999
                           ENDIF
@@ -3381,6 +3423,24 @@ CONTAINS
                             STATE_END_DOF=STATE_START_DOF+NUMBER_STATES-1
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
+                      ! remove this after test
+                          IF(dof_idx==1 .AND. TIME_STEP==1) THEN
+                            inquire(file="ODE_X_0.txt", exist=exist_B)
+                            if (exist_B) then
+                              open(4568, file="ODE_X_0.txt", status="old", position="append", action="write")
+                            else
+                              open(4568, file="ODE_X_0.txt", status="new", action="write")
+                            end if
+                            WRITE(4568,'(i4)',advance='no') TS_NUMBER
+                            DO model_idx=0,NUMBER_STATES-1
+                              WRITE(4568,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                            ENDDO
+                            WRITE(4568,'(A)',advance='yes') " iE"
+                            close(4568)
+                            model_idx=MODELS_DATA(1)
+                            CALL CPU_TIME(STARTT)
+                          ENDIF
+                      ! up to this point
 #ifdef TAUPROF
                             CALL TAU_STATIC_PHASE_START('cellml call rhs')
 #endif
@@ -3421,7 +3481,29 @@ CONTAINS
                               & TIME_INCREMENT * .5_DP * (RATES(1:NUMBER_STATES) + RATES_TEMP(1:NUMBER_STATES))
                             ! done.
                           ENDIF !model_idx
-                          
+                      ! remove this after test
+                          IF(dof_idx==1 .AND. TIME_STEP==TS_NUMBER) THEN
+                            inquire(file="MeinOutputImpr.txt", exist=exist_A)
+                            if (exist_A) then
+                              open(5567, file="MeinOutputImpr.txt", status="old", position="append", action="write")
+                            else
+                              open(5567, file="MeinOutputImpr.txt", status="new", action="write")
+                            end if
+                            !produce formatted output
+                            WRITE(5567,'(i4)',advance='no') TS_NUMBER
+                            DO model_idx=0,NUMBER_STATES-1
+                              WRITE(5567,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                            ENDDO
+                            !close(4567)
+                            model_idx=MODELS_DATA(1)
+                          ENDIF
+                          IF(dof_idx==N .AND. TIME_STEP==TS_NUMBER) THEN
+                            CALL CPU_TIME(FINISHT)
+                            WRITE(5567,'(A,G19.12)',advance='yes') " iE",FINISHT-STARTT
+                            close(5567)
+                            GO TO 999
+                          ENDIF
+                      ! up to this point                         
                           ! produce some output to see state evolution after each meso time step size (1D model time step size)
                           IF(dof_idx == 1 .AND. DEBUG_MODE_A) THEN
                             WRITE(*,*)'B=====================================',START_TIME + TIME_STEP*TIME_INCREMENT, '========'
@@ -4909,17 +4991,17 @@ CONTAINS
                       ENDDO
                   ! remove this after test
                           IF(dof_idx==1) THEN
-                            inquire(file="ODE_X_0.txt", exist=exist_B)
-                            if (exist_B) then
-                              open(4568, file="ODE_X_0.txt", status="old", position="append", action="write")
-                            else
-                              open(4568, file="ODE_X_0.txt", status="new", action="write")
-                            end if
+                              inquire(file="ODE_X_0.txt", exist=exist_B)
+                              if (exist_B) then
+                                open(4568, file="ODE_X_0.txt", status="old", position="append", action="write")
+                              else
+                                open(4568, file="ODE_X_0.txt", status="new", action="write")
+                              end if
                             WRITE(4568,'(A)',advance='no') "s.b."
                             DO state_idx=1,NUMBER_STATES
                               WRITE(4568,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+state_idx-1)
                             ENDDO
-                            WRITE(4568,'(A)',advance='yes') "BDF"
+                            WRITE(4568,'(A)',advance='yes') " BDF"
                             close(4568)
                           ENDIF
                   ! up to this point               
@@ -5001,21 +5083,23 @@ CONTAINS
                       ENDDO
                       
                     ! remove this after test
-                          IF(dof_idx==1) THEN
+                        IF(dof_idx==1) THEN
+                          
                             inquire(file="MeinOutputBDF.txt", exist=exist_A)
                             if (exist_A) then
                               open(2567, file="MeinOutputBDF.txt", status="old", position="append", action="write")
                             else
                               open(2567, file="MeinOutputBDF.txt", status="new", action="write")
                             end if
-                            !produce formatted output
-                            CALL Petsc_TSGetTimeStepNumber(ts,NUMBER_OF_STEPS,ERR,ERROR,*999)
-                            WRITE(2567,'(i4)',advance='no') NUMBER_OF_STEPS
-                            DO state_idx=1,NUMBER_STATES
-                              WRITE(2567,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+state_idx-1)
-                            ENDDO
-                            close(2567)
-                          ENDIF
+                          
+                          !produce formatted output
+                          CALL Petsc_TSGetTimeStepNumber(ts,NUMBER_OF_STEPS,ERR,ERROR,*999)
+                          WRITE(2567,'(i4)',advance='no') NUMBER_OF_STEPS
+                          DO state_idx=1,NUMBER_STATES
+                            WRITE(2567,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+state_idx-1)
+                          ENDDO
+                          close(2567)
+                        ENDIF ! dof_idx
                      ! up to this point
                       
                       IF(DEBUG_MODE_A) THEN
@@ -5167,7 +5251,7 @@ CONTAINS
                     else
                       open(2567, file="MeinOutputBDF.txt", status="new", action="write")
                     end if
-                    WRITE(2567,'(A,G19.12)',advance='no') "BDF",FINISHT-STARTT
+                    WRITE(2567,'(A,G19.12)',advance='no') " BDF",FINISHT-STARTT
                     close(2567)
                     ! see go to beneath
                     
