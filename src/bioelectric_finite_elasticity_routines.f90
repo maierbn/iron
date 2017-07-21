@@ -2526,14 +2526,6 @@ CONTAINS
           IF (DEBUGGING) PRINT *, "get d(r) from left node (global ", LeftBioelectricNodeGlobalNumber,&
             & ") DistanceNodes=",DistanceNodes
             
-          ! get distance between nodes, which is stored at the left node
-          DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
-            & NODES(LeftBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
-          CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-            & FIELD_VALUES_SET_TYPE,DofIdx,DistanceNodes,ERR,ERROR,*999)
-          
-          IF (DEBUGGING) PRINT *, "get d(l) from left node (global ", LeftBioelectricNodeGlobalNumber,&
-            & ") DistanceNodes=",DistanceNodes
         ELSEIF (DEBUGGING) THEN 
           PRINT *, "get d(l) from right node, DistanceNodes=",DistanceNodes
         
@@ -2575,12 +2567,14 @@ CONTAINS
         ! compute the 1D position of the left node
         Position1DRightNode = Position1DSecondRightNode - DistanceNodes
         
-        ! get 1D position of right node (should already been computed by the local process [not sure therefore the computation]))
-        DofIdx=FIELD_VAR_GEO_M%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
-          & NODES(RightBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
-        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-          & FIELD_VALUES_SET_TYPE,DofIdx,TemporaryValue,ERR,ERROR,*999)
-    
+        IF (DEBUGGING) THEN
+          ! get 1D position of right node (should already been computed by the local process [not sure therefore the computation]))
+          DofIdx=FIELD_VAR_GEO_M%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+            & NODES(RightBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+          CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+            & FIELD_VALUES_SET_TYPE,DofIdx,TemporaryValue,ERR,ERROR,*999)
+        ENDIF
+      
         ! store the computed position
         CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
           & FIELD_VALUES_SET_TYPE,1,1,RightBioelectricNodeLocalNumber,1,Position1DRightNode,ERR,ERROR,*999)
