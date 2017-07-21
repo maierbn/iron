@@ -1169,6 +1169,11 @@ CONTAINS
     
     ENTERS("EQUATIONS_SET_ASSEMBLE_DYNAMIC_LINEAR_FEM",ERR,ERROR,*999)
 
+#if 0
+    DEBUGGING = .FALSE.
+    IF (COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR) == 1) DEBUGGING = .TRUE.
+#endif
+    
     IF(ASSOCIATED(EQUATIONS_SET)) THEN
       DEPENDENT_FIELD=>EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD
       IF(ASSOCIATED(DEPENDENT_FIELD)) THEN
@@ -1219,7 +1224,9 @@ CONTAINS
               !CALL Print_DOMAIN_MAPPING(ELEMENTS_MAPPING, 5, 40)
               
               PRINT*, "* geometric interpolation parameters at elements:"
-              PRINT*, "* internal elements ", ELEMENTS_MAPPING%INTERNAL_START,"to",ELEMENTS_MAPPING%INTERNAL_FINISH
+              PRINT*, "* internal elements ", ELEMENTS_MAPPING%INTERNAL_START,"to",ELEMENTS_MAPPING%INTERNAL_FINISH, &
+                & " if you search for the error 'Matrix A is zero and cannot be inverted' this is because the " // &
+                & "interpolation_parameters at a node are equal"
               
               PRINT*, "*   ","index        element_no      interpolation_parameters"
               DO element_idx=ELEMENTS_MAPPING%INTERNAL_START, ELEMENTS_MAPPING%INTERNAL_FINISH
