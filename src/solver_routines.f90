@@ -78,10 +78,10 @@ MODULE SOLVER_ROUTINES
   PRIVATE
 
 #include "mpif.h"  
-  
-  LOGICAL, PUBLIC :: DEBUG_MODE_A = .FALSE. ! from Aaron
+  ! from Aaron
+  LOGICAL, PUBLIC :: DEBUG_MODE_A = .FALSE.
   LOGICAL, PUBLIC :: without_stim = .FALSE.
-  LOGICAL, PUBLIC :: with_stim = .TRUE.
+  LOGICAL, PUBLIC :: with_stim = .FALSE.
 
   
   ! Timing variables
@@ -2389,23 +2389,25 @@ CONTAINS
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
 
                      ! remove this after test OLD TOMO MECHANICS CASE
+                       if((.NOT.(without_stim .OR. with_stim)) .AND. FORWARD_EULER_SOLVER%EULER_DAE_SOLVER%ITERATOR==3) THEN
+                        ! print the state data exactly once. then quit.
+                         inquire(file="WantedStatesa.txt", exist=exist_B)
+                         if (exist_B) then
+                           open(4368, file="WantedStatesa.txt", status="old", position="append", action="write")
+                         else
+                           open(4368, file="WantedStatesa.txt", status="new", action="write")
+                         end if
+                         WRITE(4368,'(i4)',advance='no') TS_NUMBER
+                         DO model_idx=0,NUMBER_STATES-1
+                           WRITE(4368,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                         ENDDO
+                         WRITE(4368,'(A)',advance='yes') "startbed_eulA"
+                         close(4368)
+                         model_idx=MODELS_DATA(1)
+                         go to 999
+                       endif
                        if(without_stim .OR. (with_stim .AND. FORWARD_EULER_SOLVER%EULER_DAE_SOLVER%ITERATOR==3)) THEN
-                         ! print the state data exactly once. then quit.
-                         !inquire(file="WantedStatesa.txt", exist=exist_B)
-                         !if (exist_B) then
-                         !  open(4368, file="WantedStatesa.txt", status="old", position="append", action="write")
-                         !else
-                         !  open(4368, file="WantedStatesa.txt", status="new", action="write")
-                         !end if
-                         !WRITE(4368,'(i4)',advance='no') TS_NUMBER
-                         !DO model_idx=0,NUMBER_STATES-1
-                         !WRITE(4368,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
-                         !ENDDO
-                         !WRITE(4368,'(A)',advance='yes') "startbedingungena"
-                         !close(4368)
-                         !model_idx=MODELS_DATA(1)
-                         !
-                         !go to 999
+                         
                          IF(with_stim .AND. FORWARD_EULER_SOLVER%EULER_DAE_SOLVER%ITERATOR==3)THEN
                           !now set start data manually (with stimulation.)
                           STATE_DATA(STATE_START_DOF)=-80.2340818673_DP
@@ -2611,24 +2613,25 @@ CONTAINS
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
                      ! remove this after test ALIEV CASE (oldTomo = false)
-                        if(without_stim .OR. (with_stim .AND. FORWARD_EULER_SOLVER%EULER_DAE_SOLVER%ITERATOR==3)) THEN
-                         ! print the state data exactly once. then quit.
-                         !inquire(file="WantedStatesb.txt", exist=exist_B)
-                         !if (exist_B) then
-                         !  open(4368, file="WantedStatesb.txt", status="old", position="append", action="write")
-                         !else
-                         !  open(4368, file="WantedStatesb.txt", status="new", action="write")
-                         !end if
-                         !WRITE(4368,'(i4)',advance='no') TS_NUMBER
-                         !DO model_idx=0,NUMBER_STATES-1
-                         !WRITE(4368,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
-                         !ENDDO
-                         !WRITE(4368,'(A)',advance='yes') "startbedingungenb"
-                         !close(4368)
-                         !model_idx=MODELS_DATA(1)
-                         ! 
-                         !go to 999
-                         
+                         if((.NOT.(without_stim .OR. with_stim)) .AND. FORWARD_EULER_SOLVER%EULER_DAE_SOLVER%ITERATOR==3) THEN
+                          ! print the state data exactly once. then quit.
+                           inquire(file="WantedStatesb.txt", exist=exist_B)
+                           if (exist_B) then
+                             open(4368, file="WantedStatesb.txt", status="old", position="append", action="write")
+                           else
+                             open(4368, file="WantedStatesb.txt", status="new", action="write")
+                           end if
+                           WRITE(4368,'(i4)',advance='no') TS_NUMBER
+                           DO model_idx=0,NUMBER_STATES-1
+                             WRITE(4368,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                           ENDDO
+                           WRITE(4368,'(A)',advance='yes') "startbed_eulB"
+                           close(4368)
+                           model_idx=MODELS_DATA(1)
+                           go to 999
+                         endif
+                       if(without_stim .OR. (with_stim .AND. FORWARD_EULER_SOLVER%EULER_DAE_SOLVER%ITERATOR==3)) THEN
+                    
                          if(with_stim .AND. FORWARD_EULER_SOLVER%EULER_DAE_SOLVER%ITERATOR==3) THEN
                          !now set the data manually:
                            STATE_DATA(STATE_START_DOF)=0.0_DP    
@@ -3437,6 +3440,25 @@ CONTAINS
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
 
                       ! remove this after test
+                       if((.NOT. (without_stim .OR. with_stim)) .AND. IMPROVED_EULER_SOLVER%EULER_DAE_SOLVER%ITERATOR==3) THEN   
+                         ! print the state data exactly once. then quit.
+                         inquire(file="WantedStatesa.txt", exist=exist_B)
+                         if (exist_B) then
+                           open(4368, file="WantedStatesa.txt", status="old", position="append", action="write")
+                         else
+                           open(4368, file="WantedStatesa.txt", status="new", action="write")
+                         end if
+                         WRITE(4368,'(i4)',advance='no') TS_NUMBER
+                         DO model_idx=0,NUMBER_STATES-1
+                         WRITE(4368,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                         ENDDO
+                         WRITE(4368,'(A)',advance='yes') "startbed_impra"
+                         close(4368)
+                         model_idx=MODELS_DATA(1)
+                         
+                         go to 999
+                       endif
+                       
                         if(without_stim .OR. (with_stim .AND. IMPROVED_EULER_SOLVER%EULER_DAE_SOLVER%ITERATOR==3)) THEN
                           if (with_stim .AND. IMPROVED_EULER_SOLVER%EULER_DAE_SOLVER%ITERATOR==3) THEN
                           !now set start data manually (with stimulation.)
@@ -3525,7 +3547,7 @@ CONTAINS
                             DO model_idx=0,NUMBER_STATES-1
                               WRITE(4568,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
                             ENDDO
-                            WRITE(4568,'(A)',advance='yes') " iE_startbedingungen"
+                            WRITE(4568,'(A)',advance='yes') " iE_startbed_imprb"
                             close(4568)
                             model_idx=MODELS_DATA(1)
                             CALL CPU_TIME(STARTT) 
@@ -3677,6 +3699,25 @@ CONTAINS
                             PARAMETER_START_DOF=(dof_idx-1)*MAX_NUMBER_PARAMETERS+1
                             PARAMETER_END_DOF=PARAMETER_START_DOF+NUMBER_PARAMETERS-1
                       ! remove this after test
+                       if((.NOT. (without_stim .OR. with_stim)) .AND. IMPROVED_EULER_SOLVER%EULER_DAE_SOLVER%ITERATOR==3) THEN   
+                         ! print the state data exactly once. then quit.
+                         inquire(file="WantedStatesb.txt", exist=exist_B)
+                         if (exist_B) then
+                           open(4368, file="WantedStatesb.txt", status="old", position="append", action="write")
+                         else
+                           open(4368, file="WantedStatesb.txt", status="new", action="write")
+                         end if
+                         WRITE(4368,'(i4)',advance='no') TS_NUMBER
+                         DO model_idx=0,NUMBER_STATES-1
+                         WRITE(4368,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+model_idx)
+                         ENDDO
+                         WRITE(4368,'(A)',advance='yes') "startbedingungenB"
+                         close(4368)
+                         model_idx=MODELS_DATA(1)
+                         
+                         go to 999
+                       endif
+                       
                         if(without_stim .OR. (with_stim .AND. IMPROVED_EULER_SOLVER%EULER_DAE_SOLVER%ITERATOR==3)) THEN
                          if(with_stim .AND. IMPROVED_EULER_SOLVER%EULER_DAE_SOLVER%ITERATOR==3) THEN
                          !now set the data manually:
@@ -5273,6 +5314,38 @@ CONTAINS
                         STATES_TEMP(state_idx) = STATE_DATA(STATE_START_DOF+state_idx)
                       ENDDO
                   ! remove this after test
+                      if((.NOT.(without_stim .OR. with_stim)) .AND. BDF_SOLVER%ITERATOR==3) THEN
+                        ! print the state data exactly once. then quit.
+                        IF (NUMBER_STATES==57) THEN
+                         inquire(file="WantedStatesa.txt", exist=exist_B)
+                         if (exist_B) then
+                           open(4368, file="WantedStatesa.txt", status="old", position="append", action="write")
+                         else
+                           open(4368, file="WantedStatesa.txt", status="new", action="write")
+                         end if
+                         WRITE(4368,'(i4)',advance='no') 0
+                         DO state_idx=0,NUMBER_STATES-1
+                           WRITE(4368,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+state_idx)
+                         ENDDO
+                         WRITE(4368,'(A)',advance='yes') "startbed_BDFA"
+                         close(4368)
+                         go to 999
+                        ELSE IF (NUMBER_STATES==7) THEN
+                        inquire(file="WantedStatesb.txt", exist=exist_B)
+                         if (exist_B) then
+                           open(4368, file="WantedStatesb.txt", status="old", position="append", action="write")
+                         else
+                           open(4368, file="WantedStatesb.txt", status="new", action="write")
+                         end if
+                         WRITE(4368,'(i4)',advance='no') 0
+                         DO state_idx=0,NUMBER_STATES-1
+                           WRITE(4368,'(A,G19.12)',advance='no') " ",STATE_DATA(STATE_START_DOF+state_idx)
+                         ENDDO
+                         WRITE(4368,'(A)',advance='yes') "startbed_BDFB"
+                         close(4368)
+                         go to 999
+                        ENDIF
+                       endif
                       if(without_stim .OR. (with_stim .AND. BDF_SOLVER%ITERATOR==3)) THEN
                       
                     !set the data manually if third iteration.
