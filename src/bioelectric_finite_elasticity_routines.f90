@@ -3054,10 +3054,10 @@ CONTAINS
               M_DOMAIN_TOPOLOGY_ELEMENTS=>M_DOMAIN_TOPOLOGY%ELEMENTS  ! TYPE DOMAIN_ELEMENTS_TYPE
               
               ! --------- get constants --------------------
-              ! get number of in series fibres
-              DofIdx=FIELD_VAR_IND_FE%COMPONENTS(5)%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP
-              CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
-                & DofIdx,NumberInSeriesFibres,ERR,ERROR,*999)
+              ! get number of in series fibres (not used anymore, set NumberInSeriesFibres to 1)
+              !DofIdx=FIELD_VAR_IND_FE%COMPONENTS(5)%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP
+              !CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_ELASTICITY,FIELD_V_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE, &
+              !  & DofIdx,NumberInSeriesFibres,ERR,ERROR,*999)
   
               !get the initial sarcomere half length
               DofIdx=FIELD_VAR_IND_M_U1%COMPONENTS(2)%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP                          
@@ -3072,7 +3072,9 @@ CONTAINS
               ! get physical length of fibre
               RegionWidth = FIELD_VAR_IND_FE%REGION%GENERATED_MESHES%GENERATED_MESHES(1)%PTR%&
                 & REGULAR_MESH%MAXIMUM_EXTENT(1)
-              FibrePhysicalLength = RegionWidth / NumberInSeriesFibres
+              !FibrePhysicalLength = RegionWidth / NumberInSeriesFibres
+              FibrePhysicalLength = RegionWidth
+              
               
               IF (DEBUGGING) THEN
                 PRINT*, "FibrePhysicalLength: ", FibrePhysicalLength
