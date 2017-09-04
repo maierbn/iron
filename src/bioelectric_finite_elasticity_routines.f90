@@ -2548,40 +2548,38 @@ CONTAINS
         RightBioelectricElementLocalNumber = M_ELEMENTS_TOPOLOGY%ELEMENTS(BioelectricElementLocalNumber)%ADJACENT_ELEMENTS(1)%&
           & ADJACENT_ELEMENTS(1)
           
-        ! get local number of right node
-        SecondRightBioelectricNodeLocalNumber = M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(RightBioelectricElementLocalNumber)%&
-          & ELEMENT_NODES(2)
-          
-        ! get the 1D position of the right node of the right element
-        DofIdx=FIELD_VAR_GEO_M%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
-          & NODES(SecondRightBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
-        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-          & FIELD_VALUES_SET_TYPE,DofIdx,Position1DSecondRightNode,ERR,ERROR,*999)
+       ! ! get local number of right node
+       ! SecondRightBioelectricNodeLocalNumber = M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(RightBioelectricElementLocalNumber)%&
+       !   & ELEMENT_NODES(2)
+       !   
+       ! ! get the 1D position of the right node of the right element
+       ! DofIdx=FIELD_VAR_GEO_M%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+       !   & NODES(SecondRightBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+       ! CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+       !   & FIELD_VALUES_SET_TYPE,DofIdx,Position1DSecondRightNode,ERR,ERROR,*999)
+       ! 
+       ! ! get distance between nodes, which is stored at the right node
+       ! DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+       !   & NODES(RightBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+       ! CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+       !   & FIELD_VALUES_SET_TYPE,DofIdx,DistanceNodes,ERR,ERROR,*999)
+       ! 
+       ! ! compute the 1D position of the left node
+       ! Position1DRightNode = Position1DSecondRightNode - DistanceNodes
         
-        ! get distance between nodes, which is stored at the right node
-        DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
-          & NODES(RightBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
-        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceNodes,ERR,ERROR,*999)
-        
-        ! compute the 1D position of the left node
-        Position1DRightNode = Position1DSecondRightNode - DistanceNodes
-        
-        IF (DEBUGGING) THEN
           ! get 1D position of right node (should already been computed by the local process [not sure therefore the computation]))
           DofIdx=FIELD_VAR_GEO_M%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
             & NODES(RightBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
           CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-            & FIELD_VALUES_SET_TYPE,DofIdx,TemporaryValue,ERR,ERROR,*999)
-        ENDIF
+            & FIELD_VALUES_SET_TYPE,DofIdx,Position1DRightNode,ERR,ERROR,*999)
       
         ! store the computed position
-        CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-          & FIELD_VALUES_SET_TYPE,1,1,RightBioelectricNodeLocalNumber,1,Position1DRightNode,ERR,ERROR,*999)
+       ! CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+       !   & FIELD_VALUES_SET_TYPE,1,1,RightBioelectricNodeLocalNumber,1,Position1DRightNode,ERR,ERROR,*999)
         
     
-        IF (DEBUGGING) PRINT *, "position 1D right node: r=rr-d(at r)=", Position1DRightNode,"=",Position1DSecondRightNode,&
-          & "-",DistanceNodes," (was: ", TemporaryValue,")","(node global ",RightBioelectricNodeGlobalNumber,")"
+        !IF (DEBUGGING) PRINT *, "position 1D right node: r=rr-d(at r)=", Position1DRightNode,"=",Position1DSecondRightNode,&
+        !  & "-",DistanceNodes," (was: ", TemporaryValue,")","(node global ",RightBioelectricNodeGlobalNumber,")"
     
         ! get distance between nodes, which is stored at the right node
         DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
