@@ -49,6 +49,7 @@ MODULE Maths
   USE Kinds
   USE ISO_VARYING_STRING
   USE Strings
+  USE MPI
 
 #include "macros.h"  
   
@@ -1474,6 +1475,7 @@ CONTAINS
           ELSE
             CALL FLAG_WARNING("Matrix A is zero and cannot be inverted",ERR,ERROR,*999)
             PRINT *, "Abort execution in maths.f90:1476"
+            CALL MPI_BARRIER(MPI_COMM_WORLD, Err)
             STOP
             B(1,1)=0.0_DP
           ENDIF

@@ -1829,7 +1829,7 @@ CONTAINS
     ENTERS("BioelectricFiniteElasticity_IterateNextMonodomainNode",ERR,ERROR,*999)
 
 #if 0     
-    IF (COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR) == 1) THEN
+    IF (COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR) == 0) THEN
       DEBUGGING = .TRUE.
     ENDIF
 #endif    
@@ -2220,7 +2220,11 @@ CONTAINS
     INTEGER(INTG) :: BioelectricNodeIdx, BioelectricNodeLocalNumber, BioelectricNodeGlobalNumber
     INTEGER(INTG) :: LeftBioelectricNodeLocalNumber, RightBioelectricNodeLocalNumber
     INTEGER(INTG) :: LeftBioelectricNodeGlobalNumber, RightBioelectricNodeGlobalNumber
-    REAL(DP) :: Position1DLeftNode, Position1DRightNode, DistanceLeftNode, DistanceRightNode, DistanceNodes
+    INTEGER(INTG) :: SecondLeftBioelectricNodeLocalNumber, SecondRightBioelectricNodeLocalNumber
+    INTEGER(INTG) :: LeftBioelectricElementLocalNumber, RightBioelectricElementLocalNumber
+    REAL(DP) :: Position1DLeftNode, Position1DRightNode, DistanceToLeftNode, DistanceToRightNode, DistanceNodes
+    REAL(DP) :: Position1DSecondLeftNode, Position1DSecondRightNode
+    REAL(DP) :: TemporaryValue
     INTEGER(INTG) :: DofIdx, I
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     TYPE(DISTRIBUTED_VECTOR_TYPE), POINTER :: DISTRIBUTED_VECTOR
@@ -2228,10 +2232,14 @@ CONTAINS
     !LOGICAL, PARAMETER :: DEBUGGING = .TRUE.   ! enable debugging output with this parameter
     LOGICAL :: DEBUGGING = .FALSE.   ! enable debugging output with this parameter
 
+    INTEGER(INTG), SAVE :: CALL_NO = 0
+    
     TYPE(LIST_TYPE), POINTER :: List
     
     ENTERS("BioelectricFiniteElasticity_GhostElements",ERR,ERROR,*999)
 
+    CALL_NO = CALL_NO + 1
+    
     ! test case for LIST_REMOVE_DUPLICATES_WITHOUT_SORTING
 #if 0
     NULLIFY(List)
@@ -2273,16 +2281,16 @@ CONTAINS
     STOP
 #endif
     
-#if 0    
+#if 0
     DEBUGGING = .FALSE.
-    IF (COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR) == 1) DEBUGGING = .TRUE.
+    IF (COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR) == 0) DEBUGGING = .TRUE.
 #endif    
     
     IF (DEBUGGING) THEN
       ! output all values
       PRINT *, "process ",COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), " in BioelectricFiniteElasticity_GhostElements, " // &
         & "before communication"
-      PRINT *, "    process       node, dof no.(r),        distance (r),              distance (l)"
+      PRINT *, "    process, glob. node, dof no.(l),        distance (l),              distance (r)"
       PRINT *, "internal"
       DO BioelectricNodeIdx = M_NODES_MAPPING%INTERNAL_START, M_NODES_MAPPING%INTERNAL_FINISH
         BioelectricNodeLocalNumber = M_NODES_MAPPING%DOMAIN_LIST(BioelectricNodeIdx)
@@ -2295,15 +2303,15 @@ CONTAINS
         DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(7)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
           & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
         CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceLeftNode,ERR,ERROR,*999)
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceToRightNode,ERR,ERROR,*999)
           
         DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
           & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
         CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceRightNode,ERR,ERROR,*999)
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceToLeftNode,ERR,ERROR,*999)
         
-        
-        PRINT *, COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), BioelectricNodeGlobalNumber, DofIdx, DistanceRightNode, DistanceLeftNode
+        PRINT *, COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), BioelectricNodeGlobalNumber, DofIdx, &
+          & DistanceToLeftNode, DistanceToRightNode
       ENDDO
       PRINT *, "boundary"
       DO BioelectricNodeIdx = M_NODES_MAPPING%BOUNDARY_START, M_NODES_MAPPING%BOUNDARY_FINISH
@@ -2313,20 +2321,19 @@ CONTAINS
         ! store global number in U(1)
         !CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
         !  & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,DBLE(BioelectricNodeGlobalNumber),ERR,ERROR,*999)
-        
-        
+          
         DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(7)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
           & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
         CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceLeftNode,ERR,ERROR,*999)
-          
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceToRightNode,ERR,ERROR,*999)
+        
         DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
           & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
         CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceRightNode,ERR,ERROR,*999)
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceToLeftNode,ERR,ERROR,*999)
         
-        
-        PRINT *, COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), BioelectricNodeGlobalNumber, DofIdx, DistanceRightNode, DistanceLeftNode
+        PRINT *, COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), BioelectricNodeGlobalNumber, DofIdx, &
+          & DistanceToLeftNode, DistanceToRightNode
       ENDDO
       PRINT *, "ghost"
       DO BioelectricNodeIdx = M_NODES_MAPPING%GHOST_START, M_NODES_MAPPING%GHOST_FINISH
@@ -2336,18 +2343,19 @@ CONTAINS
         ! store global number in U(1)
         !CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
         !  & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,DBLE(BioelectricNodeGlobalNumber),ERR,ERROR,*999)
-        
+          
         DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(7)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
           & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
         CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceLeftNode,ERR,ERROR,*999)
-          
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceToRightNode,ERR,ERROR,*999)
+        
         DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
           & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
         CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceRightNode,ERR,ERROR,*999)
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceToLeftNode,ERR,ERROR,*999)
         
-        PRINT *, COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), BioelectricNodeGlobalNumber, DofIdx, DistanceRightNode, DistanceLeftNode
+        PRINT *, COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), BioelectricNodeGlobalNumber, DofIdx, &
+          & DistanceToLeftNode, DistanceToRightNode
       ENDDO
     ENDIF
       
@@ -2377,25 +2385,27 @@ CONTAINS
     
     IF (DEBUGGING) THEN
       ! output all values
+      ! distance (r) = physical distance to right neighouring node
+      ! distance (l) = physical distance to left neighbouring node
       PRINT *, "process ",COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), " after communication"
-      PRINT *, "    process       node, dof no.(r),        distance (r),              distance (l)"
+      PRINT *, "    process, glob. node, dof no.(l),        distance (l),              distance (r)"
       PRINT *, "internal"
       DO BioelectricNodeIdx = M_NODES_MAPPING%INTERNAL_START, M_NODES_MAPPING%INTERNAL_FINISH
         BioelectricNodeLocalNumber = M_NODES_MAPPING%DOMAIN_LIST(BioelectricNodeIdx)
         BioelectricNodeGlobalNumber = M_NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(BioelectricNodeLocalNumber)
         
-        
         DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(7)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
           & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
         CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceLeftNode,ERR,ERROR,*999)
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceToRightNode,ERR,ERROR,*999)
         
         DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
           & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
         CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceRightNode,ERR,ERROR,*999)
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceToLeftNode,ERR,ERROR,*999)
         
-        PRINT *, COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR),BioelectricNodeGlobalNumber, DofIdx, DistanceRightNode, DistanceLeftNode
+        PRINT *, COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR),BioelectricNodeGlobalNumber, DofIdx, &
+          & DistanceToLeftNode, DistanceToRightNode
       ENDDO
       PRINT *, "boundary"
       DO BioelectricNodeIdx = M_NODES_MAPPING%BOUNDARY_START, M_NODES_MAPPING%BOUNDARY_FINISH
@@ -2405,15 +2415,15 @@ CONTAINS
         DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(7)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
           & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
         CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceLeftNode,ERR,ERROR,*999)
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceToRightNode,ERR,ERROR,*999)
         
         DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
           & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
         CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceRightNode,ERR,ERROR,*999)
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceToLeftNode,ERR,ERROR,*999)
         
-        
-        PRINT *, COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR),BioelectricNodeGlobalNumber, DofIdx, DistanceRightNode, DistanceLeftNode
+        PRINT *, COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR),BioelectricNodeGlobalNumber, DofIdx, &
+          & DistanceToLeftNode, DistanceToRightNode
       ENDDO
       PRINT *, "ghost"
       DO BioelectricNodeIdx = M_NODES_MAPPING%GHOST_START, M_NODES_MAPPING%GHOST_FINISH
@@ -2423,15 +2433,15 @@ CONTAINS
         DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(7)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
           & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
         CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceLeftNode,ERR,ERROR,*999)
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceToRightNode,ERR,ERROR,*999)
         
         DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
           & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
         CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceRightNode,ERR,ERROR,*999)
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceToLeftNode,ERR,ERROR,*999)
         
-        
-        PRINT *, COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR),BioelectricNodeGlobalNumber, DofIdx, DistanceRightNode, DistanceLeftNode
+        PRINT *, COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR),BioelectricNodeGlobalNumber, DofIdx, &
+          & DistanceToLeftNode, DistanceToRightNode
       ENDDO
     ENDIF
     
@@ -2466,17 +2476,60 @@ CONTAINS
       ! if fibre continues on left side, update value of right node
       IF (M_ELEMENTS_TOPOLOGY%ELEMENTS(BioelectricElementLocalNumber)%ADJACENT_ELEMENTS(-1)%NUMBER_OF_ADJACENT_ELEMENTS == 1) THEN
         
-        ! get 1D position of left node (should already been computed by the local process)
+        ! get the left adjacent element
+        LeftBioelectricElementLocalNumber = M_ELEMENTS_TOPOLOGY%ELEMENTS(BioelectricElementLocalNumber)%ADJACENT_ELEMENTS(-1)%&
+          & ADJACENT_ELEMENTS(1)
+          
+        ! get local number of left node
+        SecondLeftBioelectricNodeLocalNumber = M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(LeftBioelectricElementLocalNumber)%&
+          & ELEMENT_NODES(1)
+          
+        ! get the 1D position of the left node of the left element
         DofIdx=FIELD_VAR_GEO_M%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
-          & NODES(LeftBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+          & NODES(SecondLeftBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
         CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-          & FIELD_VALUES_SET_TYPE,DofIdx,Position1DLeftNode,ERR,ERROR,*999)
+          & FIELD_VALUES_SET_TYPE,DofIdx,Position1DSecondLeftNode,ERR,ERROR,*999)
+        
+        ! get distance between nodes, which is stored at that second left node
+        DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+          & NODES(SecondLeftBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+          & FIELD_VALUES_SET_TYPE,DofIdx,DistanceNodes,ERR,ERROR,*999)
+        
+        ! compute the 1D position of the left node
+        Position1DLeftNode = Position1DSecondLeftNode + DistanceNodes
+        
+        ! store the computed position
+        CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+          & FIELD_VALUES_SET_TYPE,1,1,LeftBioelectricNodeLocalNumber,1,Position1DLeftNode,ERR,ERROR,*999)
+        
+        ! get 1D position of left node (should already been computed by the local process [no, therefore the previous computation])
+        !DofIdx=FIELD_VAR_GEO_M%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+        !  & NODES(LeftBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+        !CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+        !  & FIELD_VALUES_SET_TYPE,DofIdx,Position1DLeftNode,ERR,ERROR,*999)
     
         ! get distance between nodes, which is stored at the right node
         DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
           & NODES(RightBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
         CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
           & FIELD_VALUES_SET_TYPE,DofIdx,DistanceNodes,ERR,ERROR,*999)
+        
+        IF (ABS(DistanceNodes) < 1e-15) THEN
+            
+          ! get distance between nodes, which is stored at the left node
+          DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(7)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+            & NODES(LeftBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+          CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+            & FIELD_VALUES_SET_TYPE,DofIdx,DistanceNodes,ERR,ERROR,*999)
+          
+          IF (DEBUGGING) PRINT *, "get d(r) from left node (global ", LeftBioelectricNodeGlobalNumber,&
+            & ") DistanceNodes=",DistanceNodes
+            
+        ELSEIF (DEBUGGING) THEN 
+          PRINT *, "get d(l) from right node, DistanceNodes=",DistanceNodes
+        
+        ENDIF
         
         ! compute position of right node
         Position1DRightNode = Position1DLeftNode + DistanceNodes
@@ -2486,18 +2539,47 @@ CONTAINS
           & FIELD_VALUES_SET_TYPE,1,1,RightBioelectricNodeLocalNumber,1,Position1DRightNode,ERR,ERROR,*999)
 
         IF (DEBUGGING) PRINT "(I2,3(A,F8.3),A,I3,A)", COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), &
-          & ": fibre continues left, r=l+d(at r) ", Position1DRightNode,"=",&
+          & ": fibre continues left, set r=l+d(at r) ", Position1DRightNode,"=",&
           & Position1DLeftNode,"+",DistanceNodes,"(node global ",RightBioelectricNodeGlobalNumber,")"
           
-      ELSE        
-        ! get 1D position of right node (should already been computed by the local process)
-        DofIdx=FIELD_VAR_GEO_M%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
-          & NODES(RightBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
-        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-          & FIELD_VALUES_SET_TYPE,DofIdx,Position1DRightNode,ERR,ERROR,*999)
+      ELSE        ! fibre is on the right side
+      
+        ! get the right adjacent element
+        RightBioelectricElementLocalNumber = M_ELEMENTS_TOPOLOGY%ELEMENTS(BioelectricElementLocalNumber)%ADJACENT_ELEMENTS(1)%&
+          & ADJACENT_ELEMENTS(1)
+          
+       ! ! get local number of right node
+       ! SecondRightBioelectricNodeLocalNumber = M_DOMAIN_TOPOLOGY_ELEMENTS%ELEMENTS(RightBioelectricElementLocalNumber)%&
+       !   & ELEMENT_NODES(2)
+       !   
+       ! ! get the 1D position of the right node of the right element
+       ! DofIdx=FIELD_VAR_GEO_M%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+       !   & NODES(SecondRightBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+       ! CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+       !   & FIELD_VALUES_SET_TYPE,DofIdx,Position1DSecondRightNode,ERR,ERROR,*999)
+       ! 
+       ! ! get distance between nodes, which is stored at the right node
+       ! DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+       !   & NODES(RightBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+       ! CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+       !   & FIELD_VALUES_SET_TYPE,DofIdx,DistanceNodes,ERR,ERROR,*999)
+       ! 
+       ! ! compute the 1D position of the left node
+       ! Position1DRightNode = Position1DSecondRightNode - DistanceNodes
+        
+          ! get 1D position of right node (should already been computed by the local process [not sure therefore the computation]))
+          DofIdx=FIELD_VAR_GEO_M%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+            & NODES(RightBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+          CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+            & FIELD_VALUES_SET_TYPE,DofIdx,Position1DRightNode,ERR,ERROR,*999)
+      
+        ! store the computed position
+       ! CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+       !   & FIELD_VALUES_SET_TYPE,1,1,RightBioelectricNodeLocalNumber,1,Position1DRightNode,ERR,ERROR,*999)
+        
     
-    
-        IF (DEBUGGING) PRINT *, "position 1D right node: ", Position1DRightNode
+        !IF (DEBUGGING) PRINT *, "position 1D right node: r=rr-d(at r)=", Position1DRightNode,"=",Position1DSecondRightNode,&
+        !  & "-",DistanceNodes," (was: ", TemporaryValue,")","(node global ",RightBioelectricNodeGlobalNumber,")"
     
         ! get distance between nodes, which is stored at the right node
         DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
@@ -2511,7 +2593,7 @@ CONTAINS
           Position1DLeftNode = Position1DRightNode - DistanceNodes
           
           IF (DEBUGGING) PRINT "(I2,3(A,F8.3),A,I3,A)", COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), &
-            & ": fibre continues right, l=r-d(at r) ", Position1DLeftNode, "=",&
+            & ": fibre continues right, set l=r-d(at r) ", Position1DLeftNode, "=",&
             & Position1DRightNode,"-",DistanceNodes,"(node global ",RightBioelectricNodeGlobalNumber,")"
         ELSE
           
@@ -2537,10 +2619,10 @@ CONTAINS
     ENDDO
     
     IF (DEBUGGING) THEN
-      PRINT "(I1,A)", COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), ": Updated values at ghost elements"
+      PRINT "(I1,A)", COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR), ": Updated values at boundary and ghost elements"
         
       ! show distance between nodes on ghost nodes
-      DO BioelectricElementIdx = M_ELEMENTS_MAPPING%GHOST_START, M_ELEMENTS_MAPPING%GHOST_FINISH
+      DO BioelectricElementIdx = M_ELEMENTS_MAPPING%BOUNDARY_START, M_ELEMENTS_MAPPING%GHOST_FINISH
         BioelectricElementLocalNumber = M_ELEMENTS_MAPPING%DOMAIN_LIST(BioelectricElementIdx)
         BioelectricElementGlobalNumber = M_ELEMENTS_MAPPING%LOCAL_TO_GLOBAL_MAP(BioelectricElementLocalNumber)
         
@@ -2568,22 +2650,22 @@ CONTAINS
           CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
             & FIELD_VALUES_SET_TYPE,DofIdx,Position1DRightNode,ERR,ERROR,*999)    
       
-          ! get the distance to the left node
+          ! get the distance to the left node from the left node
           DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
             & NODES(LeftBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
           CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-            & FIELD_VALUES_SET_TYPE,DofIdx,DistanceLeftNode,ERR,ERROR,*999)                              
+            & FIELD_VALUES_SET_TYPE,DofIdx,DistanceToLeftNode,ERR,ERROR,*999)                              
       
-          ! get the distance to the left node
+          ! get the distance to the left node from the right node
           DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
             & NODES(RightBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
           CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-            & FIELD_VALUES_SET_TYPE,DofIdx,DistanceRightNode,ERR,ERROR,*999)                           
+            & FIELD_VALUES_SET_TYPE,DofIdx,DistanceToRightNode,ERR,ERROR,*999)                           
       
           PRINT *, "      Position1DLeftNode:", Position1DLeftNode
           PRINT *, "      Position1DRightNode:", Position1DRightNode                             
-          PRINT *, "      DistanceLeftNode:", DistanceLeftNode                             
-          PRINT *, "      DistanceRightNode:", DistanceRightNode                             
+          PRINT *, "      DistanceToLeftNode distance (l) (at l):", DistanceToLeftNode                             
+          PRINT *, "      DistanceToRightNode distance (l) (at r):", DistanceToRightNode                             
       
           
         ELSE        
@@ -2593,7 +2675,29 @@ CONTAINS
         ENDIF
       ENDDO
       
+      PRINT *, "node  local       global   1D position"
+      DO BioelectricNodeIdx = M_NODES_MAPPING%INTERNAL_START, M_NODES_MAPPING%GHOST_FINISH
+      
+        LeftBioelectricNodeLocalNumber = M_NODES_MAPPING%DOMAIN_LIST(BioelectricNodeIdx)
+        LeftBioelectricNodeGlobalNumber = M_NODES_MAPPING%LOCAL_TO_GLOBAL_MAP(LeftBioelectricNodeLocalNumber)
+          
+        ! get the position in 1D
+        DofIdx=FIELD_VAR_GEO_M%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%&
+          & NODES(LeftBioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+        CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+          & FIELD_VALUES_SET_TYPE,DofIdx,Position1DLeftNode,ERR,ERROR,*999)   
+          
+          PRINT *, LeftBioelectricNodeLocalNumber, LeftBioelectricNodeGlobalNumber, Position1DLeftNode
+      ENDDO
+      
     ENDIF
+
+#if 0
+    IF (CALL_NO == 2) THEN
+      PRINT *, "stop in bioelectric_finite_elastcity_routines.f90:2704"
+      STOP
+    ENDIF
+#endif
     
     EXITS("BioelectricFiniteElasticity_GhostElements")
     RETURN
@@ -2705,23 +2809,26 @@ CONTAINS
     TYPE(DOMAIN_ELEMENTS_TYPE), POINTER :: M_DOMAIN_TOPOLOGY_ELEMENTS
     INTEGER(INTG) :: BioelectricLeftElementLocalNumber, BioelectricRightElementLocalNumber
 
-    !LOGICAL, PARAMETER :: DEBUGGING = .TRUE.   ! enable debugging output with this parameter
+    !LOGICAL, PARAMETER :: DEBUGGING = .FALSE.   ! enable debugging output with this parameter
     LOGICAL :: DEBUGGING = .FALSE.   ! enable debugging output with this parameter
     INTEGER(Intg) :: MPI_IERROR, LeftNeighbourBioelectricNodeLocalNumber
     INTEGER(Intg) :: ComputationalNodeNumber, NumberOfComputationalNodes
 
     ENTERS("BioelectricFiniteElasticity_UpdateGeometricField",ERR,ERROR,*999)
 
-    !CALL MPI_COMM_RANK(MPI_COMM_WORLD,ComputationalNodeNumber,MPI_IERROR)
+    ! this needs to be called
+    CALL MPI_COMM_RANK(MPI_COMM_WORLD,ComputationalNodeNumber,MPI_IERROR)
     !CALL MPI_COMM_SIZE(MPI_COMM_WORLD,NumberOfComputationalNodes,MPI_IERROR)
-
 #if 0
+    CALL MPI_COMM_RANK(MPI_COMM_WORLD,ComputationalNodeNumber,MPI_IERROR)
+    CALL MPI_COMM_SIZE(MPI_COMM_WORLD,NumberOfComputationalNodes,MPI_IERROR)
+
     ! turn on debugging depending on computational node number
-    IF (NumberOfComputationalNodes == 2 .AND. ComputationalNodeNumber == 1) THEN
+    IF (NumberOfComputationalNodes == 4 .AND. ComputationalNodeNumber == 0) THEN
       DEBUGGING = .TRUE.      ! note when line searching for 'debugging = .true.': this line is eventually commented out
       PRINT*, "ComputationalNodeNumber=",ComputationalNodeNumber,"of",NumberOfComputationalNodes
     ENDIF
-#endif    
+#endif
     
     NULLIFY(CONTROL_LOOP_ROOT)
     NULLIFY(CONTROL_LOOP_PARENT)
@@ -3086,7 +3193,7 @@ CONTAINS
                 IF (DEBUGGING) PRINT *, "LeftNeighbourBioelectricNodeLocalNumber: ", LeftNeighbourBioelectricNodeLocalNumber, &
                   & "LeftNeighbourIsGhost: ", LeftNeighbourIsGhost, "DELTA_XI1:", DELTA_XI1, " XI(1)-DELTA_XI1=", (XI(1)-DELTA_XI1)
                   
-                ! if a previous node is available, that was processed earlier
+                ! if a previous node is available, which was processed earlier
                 IF (LeftNeighbourBioelectricNodeLocalNumber /= 0 .AND..NOT. LeftNeighbourIsGhost) THEN
                  
                   IF(DEBUGGING) PRINT *, "   Get stored position of left node"
@@ -3114,7 +3221,7 @@ CONTAINS
                     & FIELD_VALUES_SET_TYPE,DofIdx,Position1DLeftNode,ERR,ERROR,*999)                              
               
                 ! if the left neighbour node is still positioned inside the current FE element (but yet on another domain)
-                ELSEIF (XI(1)-DELTA_XI1 >= -1.0E-15_DP) THEN
+                ELSEIF (XI(1)-DELTA_XI1 >= -1.0E-13_DP) THEN
                   
                   IF(DEBUGGING) PRINT *, "   Compute position of left node"
                   
@@ -3156,141 +3263,137 @@ CONTAINS
                 CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U1_VARIABLE_TYPE, &
                   & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,HalfSarcomereLength,ERR,ERROR,*999)
 
-                  
-                ! problem class with predefined force-velocity relation does not need to compute contraction velocity
-                IF (PROBLEM%SPECIFICATION(3) /= PROBLEM_MONODOMAIN_ELASTICITY_VELOCITY_SUBTYPE) THEN            
-                  
-                  ! ---------------- compute contraction velocity -----------------
-                  !get the distance between current and left node in the previous time step
-                  DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
-                    & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
-                  CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,DofIdx,OLD_DIST,ERR,ERROR,*999)
+                ! ---------------- compute contraction velocity -----------------
+                !get the distance between current and left node in the previous time step
+                DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(1)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
+                  & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,DofIdx,OLD_DIST,ERR,ERROR,*999)
 
-                  !get the distance between current and left node nodes before 2 time steps
-                  DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(4)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
-                    & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
-                  CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,DofIdx,OLD_DIST_2,ERR,ERROR,*999)
+                !get the distance between current and left node nodes before 2 time steps
+                DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(4)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
+                  & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,DofIdx,OLD_DIST_2,ERR,ERROR,*999)
 
-                  !get the distance between current and left node nodes before 3 time steps
-                  DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(5)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
-                    & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
-                  CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,DofIdx,OLD_DIST_3,ERR,ERROR,*999)
+                !get the distance between current and left node nodes before 3 time steps
+                DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(5)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
+                  & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,DofIdx,OLD_DIST_3,ERR,ERROR,*999)
 
-                  !get the distance between current and left node nodes before 4 time steps
-                  DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(6)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
-                    & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
-                  CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,DofIdx,OLD_DIST_4,ERR,ERROR,*999)
-    
-                  IF (DEBUGGING) PRINT "(5(A, F6.3))", "Previous node distances: ", DIST, ", ", OLD_DIST, ", ", OLD_DIST_2, ", ", &
-                    & OLD_DIST_3, ", ", OLD_DIST_4
-    
-                  ! compute the new contraction velocity
-                  ! ContractionVelocity=(DIST-OLD_DIST)/TIME_STEP
-                  ! v = 1/4 * [(dist-dist1)/dt + (dist-dist2)/(2dt) + (dist-dist3)/(3dt) + (dist-dist4)/(4dt)]
-                  ContractionVelocity=0.25_DP*((DIST-OLD_DIST)/TIME_STEP+(DIST-OLD_DIST_2)/(2.0_DP*TIME_STEP)+ &
-                    & (DIST-OLD_DIST_3)/(3.0_DP*TIME_STEP)+(DIST-OLD_DIST_4)/(4.0_DP*TIME_STEP))
-          
-                  ! CALC_CLOSEST_GAUSS_POINT is only the first time .TRUE. and subsequent times .FALSE.
-                  IF (.NOT. CALC_CLOSEST_GAUSS_POINT) THEN
-                  
-                    ! MaximumAllowedShorteningVelocity is the maximum shortening velocity and hence negative
-                    IF (ContractionVelocity<MaximumAllowedShorteningVelocity) THEN
-                      !CALL FLAG_WARNING('Exceeded maximum contraction velocity (shortening).',ERR,ERROR,*999)
-                      !CALL FLAG_WARNING('  ContractionVelocity: '// &
-                      !  TRIM(NUMBER_TO_VSTRING(ContractionVelocity,"*",ERR,ERROR))//", MaximumAllowedShorteningVelocity:"// &
-                      !  TRIM(NUMBER_TO_VSTRING(MaximumAllowedShorteningVelocity,"*",ERR,ERROR)),ERR,ERROR,*999)
-                      ContractionVelocity=MaximumAllowedShorteningVelocity
-                    !The max lengthening velocity is assumed to be MaximumAllowedShorteningVelocity/2.0
-                    ELSEIF(ContractionVelocity>(-MaximumAllowedShorteningVelocity/2.0_DP)) THEN
-                      ! warning disabled
-                      !CALL FLAG_WARNING('Exceeded maximum contraction velocity (lengthening).',ERR,ERROR,*999)
-                      !CALL FLAG_WARNING('Exceeded maximum contraction velocity (lengthening).',ERR,ERROR,*999)
-                      !CALL FLAG_WARNING('  ContractionVelocity: '// &
-                      !  TRIM(NUMBER_TO_VSTRING(ContractionVelocity,"*",ERR,ERROR))//", MaximumAllowedLengtheningVelocity:"// &
-                      !  TRIM(NUMBER_TO_VSTRING(-MaximumAllowedShorteningVelocity/2.0_DP,"*",ERR,ERROR)),ERR,ERROR,*999)
-                      ContractionVelocity=-MaximumAllowedShorteningVelocity/2.0_DP
-                    ENDIF
-                  ENDIF
-      
-                  RelativeContractionVelocity = ContractionVelocity/ABS(MaximumAllowedShorteningVelocity)
-      
-                  ! store the relative contraction velocity in component 3 of the U2 variable of the monodomain independent field
-                  CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,3,RelativeContractionVelocity,ERR,ERROR,*999)
-
-                  ! update distances for old timesteps
-                  ! store node distance to previous node
-                  CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,DIST,ERR,ERROR,*999)
-
-                  ! store node distance to previous node before 1 time step
-                  CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,4,OLD_DIST,ERR,ERROR,*999)
-
-                  ! store node distance to previous node before 2 time step
-                  CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,5,OLD_DIST_2,ERR,ERROR,*999)
-
-                  ! store node distance to previous node before 3 time step
-                  CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,6,OLD_DIST_3,ERR,ERROR,*999)
-
-                  ! update the current 1D node position
-                  Position1DCurrentNode = Position1DLeftNode+DIST
-                  CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
-                    & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,Position1DCurrentNode,ERR,ERROR,*999)
-
-                  IF (DEBUGGING) THEN
-                    PRINT "(I1,2(A,F8.5))", ComputationalNodeNumber, ": prev node has pos ", Position1DLeftNode, ", DIST=", DIST
-                    PRINT "(I1,A,I4,3(A,F8.5))", ComputationalNodeNumber, ": node global ", BioelectricNodeGlobalNumber, " pos: ", &
-                      & Position1DCurrentNode, " dist", DIST, " |xi(1)+delta_xi1-1|=",ABS(XI(1) + DELTA_XI1 - 1.0)
-                  ENDIF
-                    
-                  ! if we are currently at the second node where left previous node had no neighbour, also store the current quantities to the left node
-                  IF (PreviousNodeHadNoLeftNeighbour) THEN
-                    ! current sarcomere half length
-                    CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U1_VARIABLE_TYPE, &
-                      & FIELD_VALUES_SET_TYPE,1,1,LeftNeighbourBioelectricNodeLocalNumber,1,HalfSarcomereLength,ERR,ERROR,*999)                            
-                    ! old node distance
-                    CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                      & FIELD_VALUES_SET_TYPE,1,1,LeftNeighbourBioelectricNodeLocalNumber,1,DIST,ERR,ERROR,*999)
-                    ! relative contraction velocity
-                    CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                      & FIELD_VALUES_SET_TYPE,1,1,LeftNeighbourBioelectricNodeLocalNumber,3,RelativeContractionVelocity, &
-                      & ERR,ERROR,*999)
-                  ENDIF
-                  
-                  ! if we are currently at the last node on the right of the domain where the next node lies on the element boundary, store distance to right node
-                  IF (ABS(XI(1) + DELTA_XI1 - 1.0) < 1e-5) THEN
-                    ! compute distance to right node
-                    
-                    XI(1) = 1.0
-                    
-                    ! find the interpolated position of the right neighbour bioelectric grid node from the finite elasticity FE dependent field
-                    ! XI goes from 0 to 1 per FE element
-                    CALL FIELD_INTERPOLATE_XI(NO_PART_DERIV,XI,INTERPOLATED_POINT,ERR,ERROR,*999)
-                    Position3DRightNode(:) = INTERPOLATED_POINT%VALUES(1:3,1)
-                      
-                    ! compute the distance between the current node and the right node
-                    DIST=SQRT( &
-                      & (Position3DCurrentNode(1)-Position3DRightNode(1)) * (Position3DCurrentNode(1)-Position3DRightNode(1))+ &
-                      & (Position3DCurrentNode(2)-Position3DRightNode(2)) * (Position3DCurrentNode(2)-Position3DRightNode(2))+ &
-                      & (Position3DCurrentNode(3)-Position3DRightNode(3)) * (Position3DCurrentNode(3)-Position3DRightNode(3)))
-      
-                    ! store node distance
-                    CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
-                      & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,7,DIST,ERR,ERROR,*999)
-
-                    IF (DEBUGGING) PRINT "(I1,A,I4,A,F8.5)", ComputationalNodeNumber, ": node global ", &
-                      & BioelectricNodeGlobalNumber, &
-                      & " distance to right node: ", &
-                      & DIST   
-                  ENDIF
+                !get the distance between current and left node nodes before 4 time steps
+                DofIdx=FIELD_VAR_IND_M_U2%COMPONENTS(6)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP% &
+                  & NODES(BioelectricNodeLocalNumber)%DERIVATIVES(1)%VERSIONS(1)
+                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,DofIdx,OLD_DIST_4,ERR,ERROR,*999)
+  
+                IF (DEBUGGING) PRINT "(5(A, F6.3))", "Previous node distances: ", DIST, ", ", OLD_DIST, ", ", OLD_DIST_2, ", ", &
+                  & OLD_DIST_3, ", ", OLD_DIST_4
+  
+                ! compute the new contraction velocity
+                ! ContractionVelocity=(DIST-OLD_DIST)/TIME_STEP
+                ! v = 1/4 * [(dist-dist1)/dt + (dist-dist2)/(2dt) + (dist-dist3)/(3dt) + (dist-dist4)/(4dt)]
+                ContractionVelocity=0.25_DP*((DIST-OLD_DIST)/TIME_STEP+(DIST-OLD_DIST_2)/(2.0_DP*TIME_STEP)+ &
+                  & (DIST-OLD_DIST_3)/(3.0_DP*TIME_STEP)+(DIST-OLD_DIST_4)/(4.0_DP*TIME_STEP))
+        
+                ! CALC_CLOSEST_GAUSS_POINT is only the first time .TRUE. and subsequent times .FALSE.
+                IF (.NOT. CALC_CLOSEST_GAUSS_POINT) THEN
                 
+                  ! MaximumAllowedShorteningVelocity is the maximum shortening velocity and hence negative
+                  IF (ContractionVelocity<MaximumAllowedShorteningVelocity) THEN
+                    !CALL FLAG_WARNING('Exceeded maximum contraction velocity (shortening).',ERR,ERROR,*999)
+                    !CALL FLAG_WARNING('  ContractionVelocity: '// &
+                    !  TRIM(NUMBER_TO_VSTRING(ContractionVelocity,"*",ERR,ERROR))//", MaximumAllowedShorteningVelocity:"// &
+                    !  TRIM(NUMBER_TO_VSTRING(MaximumAllowedShorteningVelocity,"*",ERR,ERROR)),ERR,ERROR,*999)
+                    ContractionVelocity=MaximumAllowedShorteningVelocity
+                  !The max lengthening velocity is assumed to be MaximumAllowedShorteningVelocity/2.0
+                  ELSEIF(ContractionVelocity>(-MaximumAllowedShorteningVelocity/2.0_DP)) THEN
+                    ! warning disabled
+                    !CALL FLAG_WARNING('Exceeded maximum contraction velocity (lengthening).',ERR,ERROR,*999)
+                    !CALL FLAG_WARNING('Exceeded maximum contraction velocity (lengthening).',ERR,ERROR,*999)
+                    !CALL FLAG_WARNING('  ContractionVelocity: '// &
+                    !  TRIM(NUMBER_TO_VSTRING(ContractionVelocity,"*",ERR,ERROR))//", MaximumAllowedLengtheningVelocity:"// &
+                    !  TRIM(NUMBER_TO_VSTRING(-MaximumAllowedShorteningVelocity/2.0_DP,"*",ERR,ERROR)),ERR,ERROR,*999)
+                    ContractionVelocity=-MaximumAllowedShorteningVelocity/2.0_DP
+                  ENDIF
+                ENDIF
+    
+                RelativeContractionVelocity = ContractionVelocity/ABS(MaximumAllowedShorteningVelocity)
+    
+                ! store node distance to previous node
+                CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,DIST,ERR,ERROR,*999)
+
+                IF (DEBUGGING) PRINT *, "Store d(l)=",DIST," to node global ",BioelectricNodeGlobalNumber
+                
+                ! update distances for old timesteps
+                ! store the relative contraction velocity in component 3 of the U2 variable of the monodomain independent field
+                CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,3,RelativeContractionVelocity,ERR,ERROR,*999)
+
+                ! store node distance to previous node before 1 time step
+                CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,4,OLD_DIST,ERR,ERROR,*999)
+
+                ! store node distance to previous node before 2 time step
+                CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,5,OLD_DIST_2,ERR,ERROR,*999)
+
+                ! store node distance to previous node before 3 time step
+                CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,6,OLD_DIST_3,ERR,ERROR,*999)
+
+                ! update the current 1D node position
+                Position1DCurrentNode = Position1DLeftNode+DIST
+                CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(GEOMETRIC_FIELD_MONODOMAIN,FIELD_U_VARIABLE_TYPE, &
+                  & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,1,Position1DCurrentNode,ERR,ERROR,*999)
+
+                IF (DEBUGGING) THEN
+                  PRINT "(I1,2(A,F8.5))", ComputationalNodeNumber, ": prev node has pos ", Position1DLeftNode, ", DIST=", DIST
+                  PRINT "(I1,A,I4,3(A,F8.5))", ComputationalNodeNumber, ": node global ", BioelectricNodeGlobalNumber, " pos: ", &
+                    & Position1DCurrentNode, " dist", DIST, " |xi(1)+delta_xi1-1|=",ABS(XI(1) + DELTA_XI1 - 1.0)
+                ENDIF
+                  
+                ! if we are currently at the second node where left previous node had no neighbour, also store the current quantities to the left node
+                IF (PreviousNodeHadNoLeftNeighbour) THEN
+                  ! current sarcomere half length
+                  CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U1_VARIABLE_TYPE, &
+                    & FIELD_VALUES_SET_TYPE,1,1,LeftNeighbourBioelectricNodeLocalNumber,1,HalfSarcomereLength,ERR,ERROR,*999)                            
+                  ! old node distance
+                  CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                    & FIELD_VALUES_SET_TYPE,1,1,LeftNeighbourBioelectricNodeLocalNumber,1,DIST,ERR,ERROR,*999)
+                  ! relative contraction velocity
+                  CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                    & FIELD_VALUES_SET_TYPE,1,1,LeftNeighbourBioelectricNodeLocalNumber,3,RelativeContractionVelocity, &
+                    & ERR,ERROR,*999)
+                ENDIF
+                
+                ! if we are currently at the last node on the right of the domain where the next node lies on the element boundary, store distance to right node
+                IF (ABS(XI(1) + DELTA_XI1 - 1.0) < 1e-5) THEN
+                  ! compute distance to right node
+                  
+                  XI(1) = 1.0
+                  
+                  ! find the interpolated position of the right neighbour bioelectric grid node from the finite elasticity FE dependent field
+                  ! XI goes from 0 to 1 per FE element
+                  CALL FIELD_INTERPOLATE_XI(NO_PART_DERIV,XI,INTERPOLATED_POINT,ERR,ERROR,*999)
+                  Position3DRightNode(:) = INTERPOLATED_POINT%VALUES(1:3,1)
+                    
+                  ! compute the distance between the current node and the right node
+                  DIST=SQRT( &
+                    & (Position3DCurrentNode(1)-Position3DRightNode(1)) * (Position3DCurrentNode(1)-Position3DRightNode(1))+ &
+                    & (Position3DCurrentNode(2)-Position3DRightNode(2)) * (Position3DCurrentNode(2)-Position3DRightNode(2))+ &
+                    & (Position3DCurrentNode(3)-Position3DRightNode(3)) * (Position3DCurrentNode(3)-Position3DRightNode(3)))
+    
+                  ! store node distance
+                  CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE(INDEPENDENT_FIELD_MONODOMAIN,FIELD_U2_VARIABLE_TYPE, &
+                    & FIELD_VALUES_SET_TYPE,1,1,BioelectricNodeLocalNumber,7,DIST,ERR,ERROR,*999)
+
+                  IF (DEBUGGING) PRINT "(I1,A,I4,A,F8.5)", ComputationalNodeNumber, ": node global ", &
+                    & BioelectricNodeGlobalNumber, &
+                    & " distance to right node d(r): ", &
+                    & DIST   
                 ENDIF
                   
                 ! ------------- for the bioelectric element store the position of the nearest FE element Gauss point ------------------
