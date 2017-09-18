@@ -4319,19 +4319,7 @@ CONTAINS
           !PRINT*, "Replace value by 0.0!"
         ENDIF
         
-        
-        !IF (ISNAN(VALUE)) THEN
-        !  PRINT*, "Value is NaN!"
-        !  VALUE = 0.0_DP
-        !ELSE
-        !  PRINT*, "Value is not NaN."
-        !ENDIF
-        
-        !IF (VALUE == VALUE) THEN
-        !  PRINT*, "VALUE == VALUE"
-        !ELSE
-        !  PRINT*, "VALUE != VALUE"
-        !ENDIF
+        IF (Value < 0) Value = 0.0_DP
           
         !divide by lambda and multiply by P_max
         VALUE=VALUE/SQRT(AZL(1,1))*C(5)
